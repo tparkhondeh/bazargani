@@ -4,19 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bazargani-trade-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Evidence-first trade research and landed-cost decision engine"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "Bazargani Team" }]
-dependencies = []
+dependencies = [
+  "alembic>=1.16,<2",
+  "fastapi>=0.116,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.10,<3",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn>=0.35,<1",
+]
 
 [project.optional-dependencies]
-dev = ["ruff>=0.9,<1", "mypy>=1.14,<2"]
+dev = ["httpx>=0.28,<1", "mypy>=1.14,<2", "ruff>=0.9,<1"]
 
 [project.scripts]
 trade-agent = "trade_agent.cli:main"
+trade-agent-api = "trade_agent.api.run:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
