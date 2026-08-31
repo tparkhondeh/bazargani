@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
@@ -6,7 +8,14 @@ from sqlalchemy.pool import StaticPool
 
 from trade_agent.api.app import create_app
 from trade_agent.config import Settings
-from trade_agent.infrastructure.database import AuditEventRecord
+from trade_agent.infrastructure.database import (
+    AuditEventRecord,
+    DecisionReportRecord,
+    EvidenceRecord,
+    FXRateRecord,
+    LandedCostScenarioRecord,
+    PriceObservationRecord,
+)
 
 
 class ApiTests(unittest.TestCase):
@@ -75,6 +84,82 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "VERSION_CONFLICT")
         self.assertIn("correlation_id", response.json())
+
+    def test_bundle_is_calculated_persisted_and_reported_atomically(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(f"/api/v1/opportunities/{opportunity['id']}/research-runs").json()
+        running = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+
+        completed_response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            json={"expected_version": running["version"], "bundle": bundle},
+        )
+
+        self.assertEqual(completed_response.status_code, 200)
+        completed = completed_response.json()
+        self.assertEqual(completed["status"], "COMPLETED")
+        self.assertEqual(completed["evidence_count"], 2)
+        self.assertEqual(completed["price_observation_count"], 1)
+        self.assertEqual(completed["fx_rate_count"], 1)
+        self.assertEqual(completed["scenario_count"], 3)
+
+        report_response = self.client.get(f"/api/v1/research-runs/{run['id']}/report")
+        self.assertEqual(report_response.status_code, 200)
+        self.assertIn("گزارش تصمیم بازرگانی", report_response.json()["content"])
+        self.assertEqual(report_response.json()["content_sha256"], completed["report_sha256"])
+
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(PriceObservationRecord)),
+                1,
+            )
+            self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 1)
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(LandedCostScenarioRecord)),
+                3,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(DecisionReportRecord)),
+                1,
+            )
+
+    def test_bundle_mismatch_rolls_back_all_results(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": "محصول متفاوت",
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(f"/api/v1/opportunities/{opportunity['id']}/research-runs").json()
+        self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        )
+
+        response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            json={"expected_version": 2, "bundle": bundle},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["code"], "INVALID_INPUT")
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 0)
 
 
 if __name__ == "__main__":

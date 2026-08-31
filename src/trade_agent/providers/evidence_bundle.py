@@ -44,6 +44,12 @@ def _money(data: dict[str, Any]) -> Money:
 
 def load_evidence_bundle(path: Path) -> ResearchCase:
     raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("evidence bundle root must be an object")
+    return parse_evidence_bundle(raw)
+
+
+def parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
     observations = tuple(
         PriceObservation(
             observation_id=str(item["observation_id"]),

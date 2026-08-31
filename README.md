@@ -59,3 +59,10 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 - `GET /api/v1/opportunities/{id}`
 - `POST /api/v1/opportunities/{id}/research-runs`
 - `POST /api/v1/research-runs/{id}/transitions`
+- `POST /api/v1/research-runs/{id}/evidence-bundle`
+- `GET /api/v1/research-runs/{id}/report`
+
+The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
+calculates and persists evidence, price observations, point-in-time FX, all three
+landed-cost scenarios, assumptions/unknowns, an immutable report snapshot, and an
+audit event in one transaction.

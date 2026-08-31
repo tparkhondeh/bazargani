@@ -17,6 +17,10 @@ PostgreSQL/Alembic repositories, append-only audit trail, FastAPI endpoints,
 idempotency, research-run state machine, structured logs/correlation IDs, Docker
 development environment, backup/restore procedure.
 
+Status: core foundation implemented. Remaining hardening includes explicit idempotency
+keys for bundle submission, PostgreSQL integration in CI, authentication/tenant scope,
+and production backup rehearsal.
+
 ## Phase 3 — First approved real providers
 
 Integrate one manufacturing/wholesale source and one Iranian benchmark source via
@@ -39,4 +43,3 @@ notices, production migration and rollback rehearsal.
 Tests, lint, type check, calculation regression, migration check when applicable,
 dependency/security/license scan, documentation review, and evidence/provenance
 audit. `main` receives only reviewed, reversible changes.
-

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -76,6 +88,160 @@ class AuditEventRecord(Base):
     action: Mapped[str] = mapped_column(String(80))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class SourceRecord(Base):
+    __tablename__ = "sources"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(300), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class EvidenceRecord(Base):
+    __tablename__ = "evidence"
+    __table_args__ = (
+        UniqueConstraint("research_run_id", "fingerprint", name="uq_evidence_run_fingerprint"),
+        Index("ix_evidence_run_retrieved", "research_run_id", "retrieved_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    source_id: Mapped[str] = mapped_column(String(36), ForeignKey("sources.id"))
+    classification: Mapped[str] = mapped_column(String(30))
+    source_url: Mapped[str] = mapped_column(Text)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    raw_value: Mapped[str] = mapped_column(Text)
+    confidence: Mapped[str] = mapped_column(String(20))
+    transformation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+
+
+class PriceObservationRecord(Base):
+    __tablename__ = "price_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "research_run_id", "external_observation_id", name="uq_price_run_observation"
+        ),
+        CheckConstraint("quantity > 0", name="ck_price_observations_quantity_positive"),
+        CheckConstraint(
+            "minimum_order_quantity IS NULL OR minimum_order_quantity > 0",
+            name="ck_price_observations_moq_positive",
+        ),
+        Index("ix_price_observations_run_product", "research_run_id", "product_name"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    evidence_id: Mapped[str] = mapped_column(String(36), ForeignKey("evidence.id"))
+    external_observation_id: Mapped[str] = mapped_column(String(200))
+    product_name: Mapped[str] = mapped_column(String(300))
+    supplier_name: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    original_amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
+    original_currency: Mapped[str] = mapped_column(String(3))
+    quantity: Mapped[int] = mapped_column(Integer)
+    minimum_order_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    incoterm: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    product_variant: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    market_layer: Mapped[str] = mapped_column(String(50))
+
+
+class FXRateRecord(Base):
+    __tablename__ = "fx_rates"
+    __table_args__ = (
+        UniqueConstraint(
+            "research_run_id",
+            "base_currency",
+            "quote_currency",
+            "rate_type",
+            "effective_at",
+            name="uq_fx_run_pair_type_effective",
+        ),
+        CheckConstraint("rate > 0", name="ck_fx_rates_positive"),
+        Index("ix_fx_rates_run_pair", "research_run_id", "base_currency", "quote_currency"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    evidence_id: Mapped[str] = mapped_column(String(36), ForeignKey("evidence.id"))
+    base_currency: Mapped[str] = mapped_column(String(3))
+    quote_currency: Mapped[str] = mapped_column(String(3))
+    rate: Mapped[Decimal] = mapped_column(Numeric(28, 12))
+    rate_type: Mapped[str] = mapped_column(String(100))
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class LandedCostScenarioRecord(Base):
+    __tablename__ = "landed_cost_scenarios"
+    __table_args__ = (
+        UniqueConstraint("research_run_id", "name", name="uq_scenario_run_name"),
+        CheckConstraint("quantity > 0", name="ck_scenarios_quantity_positive"),
+        CheckConstraint("total_amount >= 0", name="ck_scenarios_total_nonnegative"),
+        CheckConstraint("per_unit_amount >= 0", name="ck_scenarios_unit_nonnegative"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(30))
+    quantity: Mapped[int] = mapped_column(Integer)
+    target_currency: Mapped[str] = mapped_column(String(3))
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
+    per_unit_amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class LandedCostComponentRecord(Base):
+    __tablename__ = "landed_cost_components"
+    __table_args__ = (
+        UniqueConstraint("scenario_id", "code", name="uq_component_scenario_code"),
+        CheckConstraint("amount >= 0", name="ck_components_amount_nonnegative"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scenario_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("landed_cost_scenarios.id", ondelete="CASCADE")
+    )
+    code: Mapped[str] = mapped_column(String(100))
+    label_fa: Mapped[str] = mapped_column(String(300))
+    amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
+    currency: Mapped[str] = mapped_column(String(3))
+    evidence_class: Mapped[str] = mapped_column(String(30))
+    formula: Mapped[str] = mapped_column(Text)
+
+
+class ResearchNoteRecord(Base):
+    __tablename__ = "research_notes"
+    __table_args__ = (Index("ix_research_notes_run_kind", "research_run_id", "kind"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(20))
+    text: Mapped[str] = mapped_column(Text)
+
+
+class DecisionReportRecord(Base):
+    __tablename__ = "decision_reports"
+    __table_args__ = (UniqueConstraint("research_run_id", name="uq_report_research_run"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    case_id: Mapped[str] = mapped_column(String(200))
+    format: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:

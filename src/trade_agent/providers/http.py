@@ -30,10 +30,7 @@ Resolver = Callable[[str], Collection[str]]
 
 
 def system_resolver(hostname: str) -> Collection[str]:
-    return {
-        str(item[4][0])
-        for item in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
-    }
+    return {str(item[4][0]) for item in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)}
 
 
 def validate_public_https_url(

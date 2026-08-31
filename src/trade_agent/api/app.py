@@ -7,18 +7,23 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from trade_agent.api.logging import configure_logging
 from trade_agent.api.schemas import (
+    DecisionReportView,
     ErrorBody,
+    EvidenceBundleSubmit,
     OpportunityCreate,
     OpportunityView,
+    ResearchCompletionView,
     ResearchRunTransition,
     ResearchRunView,
 )
+from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.config import Settings, get_settings
 from trade_agent.domain.workflow import InvalidTransitionError, VersionConflictError
 from trade_agent.infrastructure.database import Base, make_session_factory
@@ -99,6 +104,14 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     async def invalid_transition(request: Request, exc: InvalidTransitionError) -> JSONResponse:
         return error(request, 409, "INVALID_TRANSITION", str(exc))
 
+    @app.exception_handler(ValueError)
+    async def invalid_input(request: Request, exc: ValueError) -> JSONResponse:
+        return error(request, 422, "INVALID_INPUT", str(exc))
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+        return error(request, 422, "REQUEST_VALIDATION_FAILED", str(exc))
+
     def correlation(request: Request) -> str:
         return str(request.state.correlation_id)
 
@@ -156,6 +169,30 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             expected_version=payload.expected_version,
             correlation_id=correlation_id,
         )
+
+    @app.post(
+        "/api/v1/research-runs/{run_id}/evidence-bundle",
+        response_model=ResearchCompletionView,
+    )
+    def submit_evidence_bundle(
+        run_id: str,
+        payload: EvidenceBundleSubmit,
+        correlation_id: str = Depends(correlation),
+    ) -> Any:
+        return complete_research_run_from_bundle(
+            repository,
+            run_id=run_id,
+            bundle=payload.bundle,
+            expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/report",
+        response_model=DecisionReportView,
+    )
+    def get_research_report(run_id: str) -> Any:
+        return repository.get_research_report(run_id)
 
     return app
 

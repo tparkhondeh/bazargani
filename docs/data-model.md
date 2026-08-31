@@ -1,7 +1,7 @@
 # Data Model
 
-The first slice uses immutable in-memory domain objects and JSON fixtures. Phase 2
-adds PostgreSQL with Alembic migrations.
+The calculation core uses immutable domain objects. PostgreSQL persistence is managed
+with Alembic; SQLite is permitted only for local/test execution.
 
 Planned core tables: `opportunities`, `research_runs`, `products`,
 `product_variants`, `suppliers`, `sources`, `evidence`, `price_observations`,
@@ -20,3 +20,8 @@ Rules:
 - Backup target before production: daily encrypted backup, tested monthly restore;
   final RPO/RTO awaits stakeholder approval.
 
+Implemented migrations now persist opportunities, versioned research runs, audit
+events, sources, deduplicated evidence, price observations, point-in-time FX rates,
+landed-cost scenario/component ledgers, assumptions/unknowns, and immutable Markdown
+report snapshots. Report hashes and append-only result semantics make a completed run
+reproducible and prevent silent overwrite.

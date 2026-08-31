@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,3 +47,30 @@ class ResearchRunView(BaseModel):
 class ResearchRunTransition(BaseModel):
     target_status: ResearchRunStatus
     expected_version: int = Field(gt=0)
+
+
+class EvidenceBundleSubmit(BaseModel):
+    expected_version: int = Field(gt=0)
+    bundle: dict[str, Any]
+
+
+class ResearchCompletionView(BaseModel):
+    research_run_id: str
+    status: str
+    version: int
+    evidence_count: int
+    price_observation_count: int
+    fx_rate_count: int
+    scenario_count: int
+    report_sha256: str
+
+
+class DecisionReportView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    research_run_id: str
+    case_id: str
+    format: str
+    content: str
+    content_sha256: str
+    generated_at: datetime
