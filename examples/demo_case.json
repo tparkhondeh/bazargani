@@ -1,0 +1,88 @@
+{
+  "case_id": "DEMO-NOT-MARKET-DATA",
+  "request_text": "نمونه آموزشی: خرید 10 دستگاه محصول آزمایشی برای تهران",
+  "product_name": "محصول آزمایشی — داده ساختگی",
+  "quantity": 10,
+  "destination": "تهران",
+  "metadata": {"data_status": "DEMO_ONLY_DO_NOT_USE_FOR_DECISIONS"},
+  "observations": [
+    {
+      "observation_id": "demo-price-1",
+      "product_name": "محصول آزمایشی — داده ساختگی",
+      "unit_price": {"amount": "5", "currency": "USD"},
+      "quantity": 10,
+      "supplier_name": "Demo Supplier — NOT REAL",
+      "minimum_order_quantity": 10,
+      "incoterm": "EXW",
+      "product_variant": "DEMO",
+      "market_layer": "DEMO",
+      "evidence": {
+        "classification": "ASSUMPTION",
+        "source_name": "Demo supplier — synthetic fixture",
+        "source_url": "https://example.com/demo-supplier",
+        "retrieved_at": "2026-08-31T00:00:00Z",
+        "raw_value": "Synthetic test value: 5 USD",
+        "confidence": "UNKNOWN",
+        "transformation": "None; synthetic fixture"
+      }
+    }
+  ],
+  "fx_rates": [
+    {
+      "base_currency": "USD",
+      "quote_currency": "IRR",
+      "rate": "100",
+      "rate_type": "SYNTHETIC_TEST",
+      "evidence": {
+        "classification": "ASSUMPTION",
+        "source_name": "Synthetic FX fixture",
+        "source_url": "https://example.com/demo-fx",
+        "retrieved_at": "2026-08-31T00:00:00Z",
+        "raw_value": "Synthetic test value: 1 USD = 100 IRR",
+        "confidence": "UNKNOWN"
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "OPTIMISTIC",
+      "purchase_unit_price": {"amount": "5", "currency": "USD"},
+      "target_currency": "IRR",
+      "purchase_price_multiplier": "0.95",
+      "cost_multiplier": "0.90",
+      "unexpected_cost_rate": "0.02",
+      "costs": [
+        {"code": "freight", "label_fa": "حمل", "money": {"amount": "1000", "currency": "IRR"}, "basis": "TOTAL", "evidence_class": "ASSUMPTION"}
+      ]
+    },
+    {
+      "name": "BASE",
+      "purchase_unit_price": {"amount": "5", "currency": "USD"},
+      "target_currency": "IRR",
+      "purchase_price_multiplier": "1",
+      "cost_multiplier": "1",
+      "unexpected_cost_rate": "0.05",
+      "costs": [
+        {"code": "freight", "label_fa": "حمل", "money": {"amount": "1000", "currency": "IRR"}, "basis": "TOTAL", "evidence_class": "ASSUMPTION"}
+      ]
+    },
+    {
+      "name": "CONSERVATIVE",
+      "purchase_unit_price": {"amount": "5", "currency": "USD"},
+      "target_currency": "IRR",
+      "purchase_price_multiplier": "1.10",
+      "cost_multiplier": "1.20",
+      "unexpected_cost_rate": "0.10",
+      "costs": [
+        {"code": "freight", "label_fa": "حمل", "money": {"amount": "1000", "currency": "IRR"}, "basis": "TOTAL", "evidence_class": "ASSUMPTION"}
+      ]
+    }
+  ],
+  "assumptions": [
+    "تمام اعداد این پرونده ساختگی و صرفاً برای تست نرم‌افزار هستند."
+  ],
+  "unknowns": [
+    "قیمت واقعی، تعرفه، مجوز، حمل، بیمه و شرایط پرداخت بررسی نشده‌اند."
+  ]
+}
+

@@ -1,0 +1,61 @@
+# MVP Product Specification
+
+## Outcome
+
+Answer one decision well: for a specified product and quantity, which supported
+suppliers and terms are credible, what is the reproducible landed cost to the
+named destination, how does it compare with the target market, and what remains
+unknown or requires human verification?
+
+## Primary workflow
+
+1. Accept a Persian or English request and extract product, quantity, origin,
+   destination, constraints, and missing critical fields.
+2. Create an immutable research run under an opportunity.
+3. Acquire observations through configured source adapters.
+4. retain raw facts and provenance; normalize without overwriting originals.
+5. classify product match and evidence quality, validate, and deduplicate.
+6. construct quantity, incoterm, FX, and cost scenarios.
+7. calculate landed cost deterministically and produce an evidence-linked report.
+8. allow a human to correct assumptions and explicitly recalculate dependants.
+
+## MVP functional requirements
+
+- Every material value is `FACT`, `ESTIMATE`, `ASSUMPTION`,
+  `DERIVED_CALCULATION`, or `AI_INFERENCE`.
+- A price requires source URL, retrieval timestamp, currency, unit, quantity or
+  tier context, product variant, and confidence label.
+- Original values remain immutable; normalized values record transformation.
+- FX is point-in-time and tied to a source and rate type.
+- Calculations expose every component and use decimal arithmetic.
+- Three scenarios are supported without silently changing evidence.
+- Provider failure produces partial results and explicit data gaps.
+- A low-confidence or incomplete result is marked `NEEDS_VERIFICATION` or
+  `NEEDS_HUMAN_REVIEW`.
+
+## Deferred from MVP
+
+Full CRM/ERP, autonomous purchasing, negotiation, RFQ messaging, shipment
+tracking, accounting, inventory, automatic customs classification, and universal
+scraping. Authentication is designed for but introduced with the network API.
+
+## Missing decisions and risks
+
+- Legal entity, target countries, data-processing obligations, and commercial
+  terms-of-use review for each source are not yet supplied.
+- Iran tariff, licensing, sanctions, payment, and customs inputs require verified
+  domain specialists; the system must represent them as unknown until supplied.
+- A canonical money display policy (IRR versus toman) must be approved; storage
+  uses ISO-like currency codes and never conflates the two.
+- Production retention, backup RPO/RTO, user roles, and model-provider policy
+  need stakeholder decisions before launch.
+- Server inventory is unavailable because SSH currently times out; no production
+  deployment is authorized until it is reconciled.
+
+## Definition of done
+
+The full MVP is done when a real request can execute against multiple compliant
+sources, preserve evidence, match products, rank supplier candidates, calculate
+tested scenarios, compare an Iranian benchmark, expose assumptions/unknowns and
+confidence, persist an audit trail, and render a usable Persian report.
+
