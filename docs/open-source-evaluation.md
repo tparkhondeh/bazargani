@@ -18,3 +18,8 @@ Snapshot date: 2026-08-31. Re-evaluate before adoption; stars alone are not a ga
 No dependency is added in slice 1 because the standard library can prove the domain
 and calculation seams. A dependency inventory and third-party notices file become a
 release gate when the first external package is locked.
+
+Phase 3 adopts the official [ECB Data Portal SDMX API](https://data.ecb.europa.eu/help/api/data)
+behind the safe HTTP port. The documented `EXR.D.<currency>.EUR.SP00.A` series provides
+daily informational euro reference rates; it does not replace a verified Iranian FX
+source or executable dealer quote.

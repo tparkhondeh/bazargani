@@ -92,6 +92,7 @@ class FXRate:
     rate: Decimal
     evidence: Evidence
     rate_type: str
+    effective_at: datetime | None = None
 
     def __post_init__(self) -> None:
         base = self.base_currency.strip().upper()
@@ -100,6 +101,8 @@ class FXRate:
             raise ValueError("FX currencies must be three-letter codes")
         if self.rate <= 0 or not self.rate.is_finite():
             raise ValueError("FX rate must be finite and positive")
+        if self.effective_at is not None and self.effective_at.tzinfo is None:
+            raise ValueError("effective_at must be timezone-aware")
         object.__setattr__(self, "base_currency", base)
         object.__setattr__(self, "quote_currency", quote)
 

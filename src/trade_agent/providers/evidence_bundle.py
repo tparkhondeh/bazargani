@@ -66,6 +66,11 @@ def load_evidence_bundle(path: Path) -> ResearchCase:
             rate=_decimal(item["rate"]),
             evidence=_evidence(item["evidence"]),
             rate_type=str(item["rate_type"]),
+            effective_at=(
+                datetime.fromisoformat(str(item["effective_at"]).replace("Z", "+00:00"))
+                if item.get("effective_at")
+                else None
+            ),
         )
         for item in raw["fx_rates"]
     )
