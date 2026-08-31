@@ -10,6 +10,10 @@
   fields, missing-field questions, and product-match outcomes before enabling LLM
   parsing in production.
 
+The initial deterministic intake regression set lives in
+`evals/request_parsing.json` and currently covers Persian/English digits, product
+placement, origins, destinations, and missing critical fields. It is a baseline for
+future LLM-assisted parsing, not a claim of universal language coverage.
+
 No calculation change passes without exact numeric tests. Network tests are isolated
 from the default suite and never rely on mutable market prices.
-

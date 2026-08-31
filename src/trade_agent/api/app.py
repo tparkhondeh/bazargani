@@ -19,6 +19,8 @@ from trade_agent.api.schemas import (
     EvidenceBundleSubmit,
     OpportunityCreate,
     OpportunityView,
+    ParsedTradeRequestView,
+    ParseRequestInput,
     ResearchCompletionView,
     ResearchRunTransition,
     ResearchRunView,
@@ -28,6 +30,7 @@ from trade_agent.config import Settings, get_settings
 from trade_agent.domain.workflow import InvalidTransitionError, VersionConflictError
 from trade_agent.infrastructure.database import Base, make_session_factory
 from trade_agent.infrastructure.repository import TradeRepository
+from trade_agent.parsing.request import parse_trade_request
 
 logger = logging.getLogger("trade_agent.http")
 
@@ -124,6 +127,23 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         with database_engine.connect() as connection:
             connection.execute(text("SELECT 1"))
         return {"status": "ready", "persistence": "database"}
+
+    @app.post("/api/v1/requests/parse", response_model=ParsedTradeRequestView)
+    def parse_request(payload: ParseRequestInput) -> Any:
+        parsed = parse_trade_request(payload.text)
+        return {
+            "original_text": parsed.original_text,
+            "normalized_text": parsed.normalized_text,
+            "product_name": parsed.product_name,
+            "quantity": parsed.quantity,
+            "quantity_unit": parsed.quantity_unit,
+            "origin_market": parsed.origin_market,
+            "destination": parsed.destination,
+            "field_confidence": parsed.field_confidence,
+            "assumptions": parsed.assumptions,
+            "critical_questions": parsed.critical_questions,
+            "can_start_research": parsed.can_start_research,
+        }
 
     @app.post("/api/v1/opportunities", response_model=OpportunityView, status_code=201)
     def create_opportunity(

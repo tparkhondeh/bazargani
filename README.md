@@ -55,6 +55,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 `docs/operations.md` for local commands. Initial endpoints are:
 
 - `GET /health` and `GET /ready`
+- `POST /api/v1/requests/parse`
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
 - `POST /api/v1/opportunities/{id}/research-runs`

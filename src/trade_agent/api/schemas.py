@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from trade_agent.domain.models import Confidence
 from trade_agent.domain.workflow import ResearchRunStatus
 
 
@@ -74,3 +75,21 @@ class DecisionReportView(BaseModel):
     content: str
     content_sha256: str
     generated_at: datetime
+
+
+class ParseRequestInput(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+
+
+class ParsedTradeRequestView(BaseModel):
+    original_text: str
+    normalized_text: str
+    product_name: str | None
+    quantity: int | None
+    quantity_unit: str | None
+    origin_market: str | None
+    destination: str | None
+    field_confidence: dict[str, Confidence]
+    assumptions: tuple[str, ...]
+    critical_questions: tuple[str, ...]
+    can_start_research: bool

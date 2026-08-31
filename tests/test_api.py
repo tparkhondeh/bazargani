@@ -69,6 +69,20 @@ class ApiTests(unittest.TestCase):
             audit_count = connection.scalar(select(func.count()).select_from(AuditEventRecord))
         self.assertEqual(audit_count, 3)
 
+    def test_parse_request_returns_only_critical_questions(self) -> None:
+        response = self.client.post(
+            "/api/v1/requests/parse",
+            json={"text": "۳۰۰ دستگاه پمپ آب به شیراز"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        parsed = response.json()
+        self.assertTrue(parsed["can_start_research"])
+        self.assertEqual(parsed["quantity"], 300)
+        self.assertEqual(parsed["destination"], "شیراز")
+        self.assertEqual(parsed["critical_questions"], [])
+        self.assertEqual(len(parsed["assumptions"]), 1)
+
     def test_optimistic_version_conflict_has_stable_error_contract(self) -> None:
         opportunity = self.client.post(
             "/api/v1/opportunities",

@@ -222,8 +222,7 @@ class TradeRepository:
                 for component in scenario_result.components:
                     if component.code in seen_codes:
                         raise ValueError(
-                            "duplicate component code in "
-                            f"{scenario_result.name}: {component.code}"
+                            f"duplicate component code in {scenario_result.name}: {component.code}"
                         )
                     seen_codes.add(component.code)
                     session.add(

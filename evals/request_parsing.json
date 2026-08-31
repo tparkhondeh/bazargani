@@ -1,0 +1,63 @@
+[
+  {
+    "id": "fa_full_espresso",
+    "input": "می‌خواهم ۲۰۰۰ دستگاه اسپرسوساز نیمه‌اتوماتیک از چین تهیه کنم و بهای تمام‌شده کف انبار تهران را بدانم.",
+    "expected": {"product_name": "اسپرسوساز نیمه اتوماتیک", "quantity": 2000, "origin_market": "چین", "destination": "تهران", "can_start_research": true}
+  },
+  {
+    "id": "en_full_espresso",
+    "input": "I need 500 units semi-automatic espresso machines from China to Tehran.",
+    "expected": {"product_name": "semi-automatic espresso machines", "quantity": 500, "origin_market": "China", "destination": "Tehran", "can_start_research": true}
+  },
+  {
+    "id": "fa_thousands_separator",
+    "input": "۱٬۰۰۰ عدد فیلتر آب صنعتی از ترکیه به اصفهان",
+    "expected": {"product_name": "فیلتر آب صنعتی", "quantity": 1000, "origin_market": "ترکیه", "destination": "اصفهان", "can_start_research": true}
+  },
+  {
+    "id": "fa_origin_assumption",
+    "input": "300 دستگاه پمپ آب به شیراز",
+    "expected": {"product_name": "پمپ آب", "quantity": 300, "origin_market": null, "destination": "شیراز", "can_start_research": true}
+  },
+  {
+    "id": "fa_missing_quantity",
+    "input": "اسپرسوساز از چین به تهران",
+    "expected": {"product_name": "اسپرسوساز", "quantity": null, "origin_market": "چین", "destination": "تهران", "can_start_research": false}
+  },
+  {
+    "id": "fa_missing_product",
+    "input": "2000 دستگاه از چین به تهران",
+    "expected": {"product_name": null, "quantity": 2000, "origin_market": "چین", "destination": "تهران", "can_start_research": false}
+  },
+  {
+    "id": "en_turkey",
+    "input": "I need 250 units solar inverter from Turkey to Tehran",
+    "expected": {"product_name": "solar inverter", "quantity": 250, "origin_market": "Turkey", "destination": "Tehran", "can_start_research": true}
+  },
+  {
+    "id": "en_uae",
+    "input": "Purchase 100 pieces LED driver from UAE delivered to Mashhad",
+    "expected": {"product_name": "LED driver", "quantity": 100, "origin_market": "UAE", "destination": "Mashhad", "can_start_research": true}
+  },
+  {
+    "id": "fa_product_before_quantity",
+    "input": "خرید دستگاه تصفیه آب، تعداد 500 دستگاه، مبدا چین، مقصد تهران",
+    "expected": {"product_name": "دستگاه تصفیه آب", "quantity": 500, "origin_market": "چین", "destination": "تهران", "can_start_research": true}
+  },
+  {
+    "id": "fa_dubai_cartons",
+    "input": "میخوام 50 کارتن قهوه از دبی به تبریز",
+    "expected": {"product_name": "قهوه", "quantity": 50, "origin_market": "امارات", "destination": "تبریز", "can_start_research": true}
+  },
+  {
+    "id": "fa_missing_destination",
+    "input": "100 واحد موتور الکتریکی از چین",
+    "expected": {"product_name": "موتور الکتریکی", "quantity": 100, "origin_market": "چین", "destination": null, "can_start_research": false}
+  },
+  {
+    "id": "fa_critical_fields_missing",
+    "input": "برای واردات از چین قیمت می خواهم",
+    "expected": {"product_name": null, "quantity": null, "origin_market": "چین", "destination": null, "can_start_research": false}
+  }
+]
+
