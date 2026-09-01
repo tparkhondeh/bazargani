@@ -441,6 +441,7 @@ class ApiTests(unittest.TestCase):
                 "evidence",
                 "price-observations",
                 "quantity-analysis",
+                "price-distribution",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -957,6 +958,7 @@ class ApiTests(unittest.TestCase):
         report_response = self.client.get(f"/api/v1/research-runs/{run['id']}/report")
         self.assertEqual(report_response.status_code, 200)
         self.assertIn("گزارش تصمیم بازرگانی", report_response.json()["content"])
+        self.assertIn("توزیع قیمت‌های مشاهده‌شده", report_response.json()["content"])
         self.assertEqual(report_response.json()["content_sha256"], completed["report_sha256"])
 
         validation_response = self.client.get(
@@ -1090,6 +1092,29 @@ class ApiTests(unittest.TestCase):
         )
         self.assertIsNone(quantity_analysis["economic_order_range_min"])
         self.assertIsNone(quantity_analysis["economic_order_range_max"])
+
+        distribution_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/price-distribution"
+        )
+        self.assertEqual(distribution_response.status_code, 200)
+        distribution = distribution_response.json()
+        self.assertEqual(distribution["status"], "OBSERVED_DISTRIBUTIONS")
+        self.assertEqual(distribution["excluded_observation_ids"], [])
+        self.assertEqual(len(distribution["groups"]), 1)
+        distribution_group = distribution["groups"][0]
+        self.assertEqual(distribution_group["product_name"], bundle["product_name"])
+        self.assertEqual(distribution_group["product_variant"], "DEMO")
+        self.assertEqual(distribution_group["market_layer"], "DEMO")
+        self.assertEqual(distribution_group["comparison_group"], "DEVICE:IRR")
+        self.assertEqual(distribution_group["quoted_quantity"], 10)
+        self.assertEqual(distribution_group["normalized_currency"], "IRR")
+        self.assertEqual(distribution_group["observation_ids"], ["demo-price-1"])
+        self.assertEqual(distribution_group["observation_count"], 1)
+        self.assertEqual(distribution_group["distinct_source_count"], 1)
+        for field in ("minimum_amount", "median_amount", "maximum_amount"):
+            self.assertEqual(Decimal(distribution_group[field]), Decimal("500"))
+        self.assertEqual(Decimal(distribution_group["range_amount"]), Decimal("0"))
+        self.assertNotIn("raw_value", json.dumps(distribution))
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

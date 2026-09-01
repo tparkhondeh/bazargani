@@ -58,6 +58,11 @@ statuses. A variant-isolation regression proves different canonical product keys
 share a series. API/report tests verify requested quantity, source-backed points, explicit
 null EOQ range, tenant isolation, and consistent PostgreSQL projection behavior.
 
+Price-distribution tests use hand-computed odd/even medians and ranges, prove that
+different quantities and variants cannot share a group, and make missing normalization
+an explicit exclusion. API, report, tenant-isolation, and PostgreSQL tests lock the
+evidence-backed projection and ensure raw evidence is absent.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

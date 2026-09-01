@@ -4,6 +4,10 @@ import html
 import re
 from urllib.parse import quote
 
+from trade_agent.application.price_distribution import (
+    DistributionPricePoint,
+    analyze_price_distribution,
+)
 from trade_agent.application.quantity import (
     QuantityPricePoint,
     analyze_quantity_points,
@@ -251,6 +255,50 @@ def render_markdown(result: ResearchResult) -> str:
             )
     lines.append("- بازه سفارش اقتصادی: محاسبه نشده")
     lines.extend(f"- محدودیت: {_text(item)}" for item in quantity_analysis.limitations)
+
+    distribution_points: list[DistributionPricePoint] = []
+    for observation in case.observations:
+        ranking = ranking_by_observation[observation.observation_id]
+        normalized_price = ranking.normalized_unit_price
+        distribution_points.append(
+            DistributionPricePoint(
+                observation_id=observation.observation_id,
+                product_name=observation.product_name,
+                product_variant=observation.product_variant,
+                product_group_key=quantity_product_key(
+                    observation.product_name,
+                    observation.product_variant,
+                    observation.product_attributes,
+                ),
+                market_layer=observation.market_layer,
+                comparison_group=ranking.comparison_group,
+                quoted_quantity=observation.quantity,
+                normalized_amount=(normalized_price.amount if normalized_price else None),
+                normalized_currency=(
+                    normalized_price.currency if normalized_price else None
+                ),
+                source_url=observation.evidence.source_url,
+            )
+        )
+    distribution = analyze_price_distribution(tuple(distribution_points))
+    lines.extend(["", "## توزیع قیمت‌های مشاهده‌شده", ""])
+    lines.append(f"- وضعیت: {_code(distribution.status)}")
+    for group in distribution.groups:
+        variant = group.product_variant or "نامشخص"
+        lines.append(
+            f"- {_text(group.product_name)}، variant {_code(variant)}، لایه "
+            f"{_code(group.market_layer)}، تعداد {group.quoted_quantity:,}، "
+            f"گروه {_code(group.comparison_group)}: کمینه {group.minimum_amount}، "
+            f"میانه {group.median_amount}، بیشینه {group.maximum_amount}، "
+            f"دامنه {group.range_amount} {_code(group.normalized_currency)}؛ "
+            f"{group.observation_count} مشاهده از {group.distinct_source_count} منبع"
+        )
+    if distribution.excluded_observation_ids:
+        lines.append(
+            "- مشاهدات فاقد قیمت قابل‌مقایسه: "
+            + "، ".join(_code(item) for item in distribution.excluded_observation_ids)
+        )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in distribution.limitations)
 
     lines.extend(["", "## فرض‌ها", ""])
     lines.extend(f"- {_text(item)}" for item in case.assumptions)

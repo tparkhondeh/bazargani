@@ -30,6 +30,10 @@ distribution and Iranian benchmark UI. Actual approved benchmark acquisition rem
 Observed-quote quantity analysis is implemented with deterministic per-supplier series
 and adjacent normalized price deltas in the API and Persian report. True EOQ/economic
 order range remains deferred until the required operational/economic inputs exist.
+Exact observed-price distributions are implemented for compatible product, quantity,
+unit/currency, and market-layer groups, including min/median/max/range and source
+coverage in the API and Persian report. Approved Iranian benchmark acquisition and
+representativeness rules remain Phase 3 work; labels alone never establish a benchmark.
 
 ## Phase 2 — Persistence and service boundary
 

@@ -159,6 +159,13 @@ The canonical product grouping key includes name, variant, and sorted attributes
 different products cannot form a false tier series. The module
 does not extrapolate continuous tiers, supplier capacity, negotiation margin, or EOQ.
 
+Observed price distribution is another pure application calculation shared by the API
+and report. Repository and report adapters construct the same point shape from the
+immutable run, while the calculation groups compatible canonical product, market,
+quantity, and unit/currency dimensions and uses exact decimal statistics. The read model
+returns source coverage and exclusions without raw evidence; it does not infer benchmark
+authority from a user-supplied market-layer label.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

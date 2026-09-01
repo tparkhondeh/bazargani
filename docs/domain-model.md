@@ -138,6 +138,21 @@ The status distinguishes no observations, no comparable prices, and observed quo
 Economic order range stays null because observed quotes alone do not provide demand,
 ordering cost, holding cost, lead time, service level, or capacity evidence.
 
+## Observed price-distribution policy
+
+A distribution is derived only from retained observations in one immutable research
+run. Its grouping key combines canonical product name/variant/attributes, declared
+market layer, quoted quantity, and the ranking comparison group that carries compatible
+unit and normalized currency. Missing normalized prices are excluded and identified;
+different dimensions never contribute to one statistic.
+
+Minimum, median, maximum, and range use exact `Decimal` arithmetic. Even-sized medians
+use the arithmetic mean of the two center values and round half-up to eight decimal
+places. Observation IDs and distinct source-URL count accompany every group. These
+statistics describe submitted observations only: a market-layer label does not prove
+source approval, representativeness, an Iranian benchmark, or a commercially available
+price.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

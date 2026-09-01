@@ -181,6 +181,19 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(quantity_analysis.status_code, 200)
         self.assertEqual(quantity_analysis.json()["status"], "OBSERVED_QUOTES_ONLY")
         self.assertIsNone(quantity_analysis.json()["economic_order_range_min"])
+        price_distribution = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/price-distribution"
+        )
+        self.assertEqual(price_distribution.status_code, 200)
+        distribution = price_distribution.json()
+        self.assertEqual(distribution["status"], "OBSERVED_DISTRIBUTIONS")
+        self.assertEqual(len(distribution["groups"]), 1)
+        self.assertEqual(distribution["groups"][0]["observation_count"], 1)
+        self.assertEqual(
+            Decimal(distribution["groups"][0]["median_amount"]),
+            Decimal("500"),
+        )
+        self.assertNotIn("raw_value", json.dumps(distribution))
 
         additional_ids = {
             self.client.post(

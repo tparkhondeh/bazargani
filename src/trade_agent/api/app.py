@@ -38,6 +38,7 @@ from trade_agent.api.schemas import (
     OpportunityView,
     ParsedTradeRequestView,
     ParseRequestInput,
+    PriceDistributionView,
     ProductMatchView,
     ProviderView,
     QuantityAnalysisView,
@@ -625,6 +626,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_quantity_analysis(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/price-distribution",
+        response_model=PriceDistributionView,
+    )
+    def get_price_distribution(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_price_distribution(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

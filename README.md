@@ -19,6 +19,9 @@ normalized price—while keeping supplier due diligence explicitly unresolved.
 The decision view and new reports also expose exact per-unit deltas and percentage
 sensitivity around the base scenario. Comparison is withheld when scenario quantities
 or currencies differ, and the output explicitly does not claim to be an EOQ model.
+Observed BASE-normalized prices also expose deterministic min/median/max/range
+distributions, but only inside identical product, quantity, unit/currency, and market-
+layer groups; these submitted observations are not asserted to be market benchmarks.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -95,6 +98,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/evidence`
 - `GET /api/v1/research-runs/{id}/price-observations`
 - `GET /api/v1/research-runs/{id}/quantity-analysis`
+- `GET /api/v1/research-runs/{id}/price-distribution`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -214,6 +218,13 @@ and calculates exact `Decimal`
 price changes between adjacent observed points. Anonymous suppliers are never merged.
 The API and Persian report explicitly leave economic order range null/uncomputed until
 demand, ordering, holding, lead-time, and service-level inputs are supplied.
+
+Observed price distribution groups BASE-normalized unit prices only when canonical
+product identity, quoted quantity, normalized unit/currency comparison group, and
+declared market layer all match. It returns exact `Decimal` minimum, median, maximum,
+range, observation IDs, and distinct source count. Missing-FX observations are listed
+as excluded. A market-layer label does not establish Iranian-market representativeness,
+source approval, or a validated benchmark.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

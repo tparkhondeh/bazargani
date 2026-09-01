@@ -385,6 +385,29 @@ class QuantityAnalysisView(BaseModel):
     limitations: tuple[str, ...]
 
 
+class PriceDistributionGroupView(BaseModel):
+    product_name: str
+    product_variant: str | None
+    market_layer: str
+    comparison_group: str
+    quoted_quantity: int
+    normalized_currency: str
+    observation_ids: tuple[str, ...]
+    observation_count: int
+    distinct_source_count: int
+    minimum_amount: Decimal
+    median_amount: Decimal
+    maximum_amount: Decimal
+    range_amount: Decimal
+
+
+class PriceDistributionView(BaseModel):
+    status: str
+    groups: tuple[PriceDistributionGroupView, ...]
+    excluded_observation_ids: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+
 class LandedCostScenarioView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
