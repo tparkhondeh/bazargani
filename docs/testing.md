@@ -246,4 +246,8 @@ separate read-only smoke check confirmed the documented official endpoint on
 
 Provider-registry tests require authentication, verify the controlled ECB descriptor
 and explicit pending/unknown governance fields, toggle the kill switch, and prove a
-disabled request returns before the injected provider receives any call.
+disabled request returns before the injected provider receives any call. Configuration
+tests prove production cannot enable ECB while its terms assertion is false, while an
+approved assertion or a disabled provider takes the intended distinct startup paths.
+API tests also prove the registry's boolean assertion and derived review status remain
+consistent.

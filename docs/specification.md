@@ -95,6 +95,9 @@ unknown or requires human verification?
   headings, or additional links; client rendering remains separately sanitized.
 - Every automated provider exposes controlled scope/limitations/terms status and a
   tested kill switch; unknown operational policy is represented explicitly, not guessed.
+- Production startup rejects an enabled automated provider without an explicit,
+  documented terms-approval assertion; runtime approval flags do not replace the
+  underlying authorization record or network-egress review.
 
 ## Deferred from MVP
 

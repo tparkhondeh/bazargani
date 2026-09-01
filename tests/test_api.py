@@ -750,6 +750,7 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(catalog[0]["enabled"])
         self.assertEqual(catalog[0]["retrieval_method"], "OFFICIAL_API")
         self.assertEqual(catalog[0]["terms_review_status"], "PENDING_FORMAL_REVIEW")
+        self.assertFalse(catalog[0]["terms_approved"])
         self.assertEqual(catalog[0]["fixed_hosts"], ["data-api.ecb.europa.eu"])
         self.assertIsNone(catalog[0]["declared_rate_limit"])
 
@@ -785,6 +786,35 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(disabled_rate.status_code, 502)
         self.assertEqual(disabled_rate.json()["code"], "UPSTREAM_UNAVAILABLE")
         self.assertEqual(disabled_rates.calls, 0)
+
+        approved_engine = create_engine(
+            "sqlite+pysqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        approved_settings = Settings(
+            environment="test",
+            database_url="sqlite+pysqlite://",
+            auto_create_schema=True,
+            log_level="CRITICAL",
+            ecb_terms_approved=True,
+            auth_enabled=True,
+            api_key_credentials={
+                hashlib.sha256(self.api_key.encode()).hexdigest(): "tenant-a",
+            },
+        )
+        with TestClient(
+            create_app(
+                settings=approved_settings,
+                engine=approved_engine,
+                reference_rates=StubReferenceRateProvider(),
+            )
+        ) as approved_client:
+            approved_client.headers.update({"X-API-Key": self.api_key})
+            approved_catalog = approved_client.get("/api/v1/providers").json()
+
+        self.assertTrue(approved_catalog[0]["terms_approved"])
+        self.assertEqual(approved_catalog[0]["terms_review_status"], "APPROVED")
 
     def test_review_outcome_requires_an_atomic_tenant_scoped_decision(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

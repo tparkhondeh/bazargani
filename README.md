@@ -194,10 +194,13 @@ reduces upstream load. Upstream/network/format failure returns a stable `502` an
 never replaced by silently stale or invented data.
 
 The authenticated provider registry exposes machine-readable scope, fixed hosts,
-cache policy, limitations, enabled state, and terms-review status. ECB can be disabled
-immediately with `TRADE_AGENT_ECB_ENABLED=false`; disabled calls fail before constructing
-or contacting the provider. Formal terms review remains pending and no undocumented
-upstream rate-limit number is asserted.
+cache policy, limitations, enabled state, terms-review status, and its explicit approval
+assertion. ECB can be disabled immediately with `TRADE_AGENT_ECB_ENABLED=false`;
+disabled calls fail before constructing or contacting the provider. Production refuses
+to start with ECB enabled unless `TRADE_AGENT_ECB_TERMS_APPROVED=true`. Set that flag
+only after retaining the real authorization decision and completing the separate egress
+review; it is not legal evidence by itself. No undocumented upstream rate-limit number
+is asserted.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

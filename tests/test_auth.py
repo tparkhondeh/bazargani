@@ -48,6 +48,26 @@ class AuthenticationTests(unittest.TestCase):
                 auto_create_schema=False,
             )
 
+    def test_production_provider_requires_explicit_terms_approval(self) -> None:
+        digest = hashlib.sha256(b"production-api-key-fixture").hexdigest()
+        common = {
+            "environment": "production",
+            "database_url": "postgresql+psycopg://app:secret@db/app",
+            "auto_create_schema": False,
+            "auth_enabled": True,
+            "api_key_credentials": {digest: "tenant-a"},
+        }
+
+        with self.assertRaisesRegex(ValidationError, "explicit terms approval"):
+            Settings(**common)
+
+        enabled = Settings(**common, ecb_terms_approved=True)
+        disabled = Settings(**common, ecb_enabled=False)
+        self.assertTrue(enabled.ecb_enabled)
+        self.assertTrue(enabled.ecb_terms_approved)
+        self.assertFalse(disabled.ecb_enabled)
+        self.assertFalse(disabled.ecb_terms_approved)
+
     def test_authentication_requires_well_formed_hashed_credentials(self) -> None:
         with self.assertRaisesRegex(ValidationError, "SHA-256"):
             Settings(

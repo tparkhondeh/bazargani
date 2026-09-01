@@ -252,10 +252,15 @@ Provider governance metadata lives in a typed provider registry outside the HTTP
 layer. It exposes only controlled operational facts and explicit unknowns. The ECB kill
 switch is checked before lazy provider construction, so disabling it cannot trigger a
 network request; adding a provider requires a new descriptor rather than ad-hoc API
-metadata.
+metadata. The registry also exposes a boolean terms-approval assertion beside the
+human-readable review status. Production configuration fails at startup if ECB is
+enabled while that assertion is false, keeping an advisory governance state from
+silently becoming live egress.
 
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated
 at startup. Secrets come from environment/secret managers and are redacted from
-structured logs. No environment-specific business rules belong in source code.
+structured logs. Provider terms approval is a non-secret deployment assertion backed by
+an external decision record; it neither stores the legal record nor grants network
+access. No environment-specific business rules belong in source code.

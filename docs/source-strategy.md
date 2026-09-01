@@ -30,6 +30,17 @@ transaction, remittance, sanctions, customs, or settlement rate.
 
 `GET /api/v1/providers` exposes the governed descriptor for authenticated operators.
 The ECB descriptor declares its narrow scope, fixed host, cache TTL, limitations,
-enabled state, and `PENDING_FORMAL_REVIEW` terms status. An unknown official rate limit
-is represented as `null`, never guessed. `TRADE_AGENT_ECB_ENABLED=false` is the shutdown
-path and prevents provider construction/network use.
+enabled state, and explicit terms-approval state. An unknown official rate limit is
+represented as `null`, never guessed. `TRADE_AGENT_ECB_ENABLED=false` is the shutdown
+path and prevents provider construction/network use. Production startup fails closed
+when ECB is enabled without `TRADE_AGENT_ECB_TERMS_APPROVED=true`; that assertion may be
+set only after a documented authorization/terms decision and does not replace the
+separate network-egress review.
+
+The 2026-09-01 source review did not approve a product-price adapter. eBay Browse API
+production access is subject to application/approval and API-license restrictions;
+Best Buy's Products API requires a key and its published terms constrain how content is
+used. Both remain deferred until the intended commercial use, retention/display rules,
+and authorization are approved. UN Comtrade remains useful trade-statistics context,
+not supplier quote evidence. No scraper or inferred replacement is introduced for any
+of these sources.

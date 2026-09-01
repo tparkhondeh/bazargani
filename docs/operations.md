@@ -88,8 +88,12 @@ misrepresenting cached ECB reference rates as Iranian transaction rates.
 `TRADE_AGENT_ECB_ENABLED` defaults to `true` for the current development slice. Set it
 to `false` as the provider kill switch; requests then return `502` before any provider
 construction or network call. Inspect authenticated `GET /api/v1/providers` during
-deployment verification. Do not enable production egress while its descriptor reports
-`PENDING_FORMAL_REVIEW` without an explicit terms/authorization decision.
+deployment verification. `TRADE_AGENT_ECB_TERMS_APPROVED` defaults to `false`.
+Production startup fails if ECB is both enabled and unapproved. Keep ECB disabled until
+the exact official service, use case, retention obligations, and authorization decision
+are recorded; only then set the approval assertion to `true`. Preserve that decision
+outside runtime configuration and complete the separate egress/monitoring review. The
+flag alone is not proof of legal approval.
 
 SQLite auto-schema mode is allowed only for local development and tests. Production
 requires PostgreSQL, Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`), and enabled

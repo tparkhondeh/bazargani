@@ -105,8 +105,12 @@ without serving a stale value as if it were current.
 
 The authenticated provider registry exposes scope and fixed-host policy without
 credentials. ECB has a configuration kill switch checked before adapter construction;
-disabled requests cannot reach the network. `PENDING_FORMAL_REVIEW` is a production
-gate, not an approval, and an undocumented upstream rate limit remains explicit null.
+disabled requests cannot reach the network. Production startup rejects enabled ECB
+configuration unless `TRADE_AGENT_ECB_TERMS_APPROVED=true`; the registry reports the
+same boolean and derives `APPROVED`/`PENDING_FORMAL_REVIEW` from it. The flag is an
+operator assertion backed by a separately retained authorization decision, not legal
+evidence by itself. Network egress allowlisting and review remain independent controls,
+and an undocumented upstream rate limit remains explicit null.
 
 `pip-audit` checks the exact Python lock in every CI run and fails on known published
 advisories. The lock and `THIRD_PARTY_NOTICES.md` are reviewed together whenever a

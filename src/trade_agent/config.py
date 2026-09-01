@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     auto_create_schema: bool = True
     max_request_body_bytes: int = Field(default=2_000_000, ge=1024, le=10_000_000)
     ecb_enabled: bool = True
+    ecb_terms_approved: bool = False
     ecb_cache_ttl_seconds: int = Field(default=3_600, ge=60, le=86_400)
     api_rate_limit_requests: int = Field(default=120, ge=1, le=100_000)
     api_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
                 raise ValueError("production schema must be managed by Alembic")
             if not self.auth_enabled:
                 raise ValueError("production requires authentication")
+            if self.ecb_enabled and not self.ecb_terms_approved:
+                raise ValueError(
+                    "production cannot enable ECB before explicit terms approval"
+                )
         return self
 
 

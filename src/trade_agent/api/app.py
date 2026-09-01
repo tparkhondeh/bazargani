@@ -304,6 +304,7 @@ def create_app(
     ) -> Any:
         return provider_catalog(
             ecb_enabled=resolved.ecb_enabled,
+            ecb_terms_approved=resolved.ecb_terms_approved,
             ecb_cache_ttl_seconds=resolved.ecb_cache_ttl_seconds,
         )
 

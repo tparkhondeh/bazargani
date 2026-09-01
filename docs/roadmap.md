@@ -132,7 +132,11 @@ provenance, bounded safe HTTP, TTL caching, and stable failure behavior. It rema
 informational EUR reference only. Approved manufacturing/wholesale and Iranian
 benchmark sources, shared provider telemetry, and distributed rate control remain.
 The provider now has a typed authenticated governance descriptor and configuration kill
-switch; formal ECB terms/authorization review is still a production prerequisite.
+switch. Production now fails closed when ECB is enabled without an explicit
+terms-approval assertion; formal authorization evidence and network review are still
+prerequisites. A 2026-09-01 review deferred eBay Browse and Best Buy Products adapters
+until their production/commercial access and content-use constraints are approved; UN
+Comtrade remains contextual trade data rather than quote evidence.
 
 ## Phase 4 — Assisted intelligence and RTL UI
 

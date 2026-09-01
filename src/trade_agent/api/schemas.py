@@ -248,6 +248,7 @@ class ProviderView(BaseModel):
     retrieval_method: str
     evidence_classification: str
     terms_review_status: str
+    terms_approved: bool
     supported_scope: tuple[str, ...]
     fixed_hosts: tuple[str, ...]
     cache_ttl_seconds: int
