@@ -458,6 +458,7 @@ class ApiTests(unittest.TestCase):
                 "fx-rates",
                 "assumptions",
                 "evidence",
+                "evidence-freshness",
                 "price-observations",
                 "incoterm-coverage",
                 "quantity-analysis",
@@ -1156,6 +1157,48 @@ class ApiTests(unittest.TestCase):
         self.assertEqual({item["kind"] for item in fx_evidence["usages"]}, {"FX_RATE"})
         self.assertRegex(fx_evidence["fingerprint_sha256"], r"^[0-9a-f]{64}$")
         self.assertNotIn("raw_value", json.dumps(evidence_catalog))
+
+        freshness_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/evidence-freshness"
+        )
+        self.assertEqual(freshness_response.status_code, 200)
+        freshness = freshness_response.json()
+        self.assertEqual(freshness["validation_policy_version"], validation["policy_version"])
+        self.assertEqual(freshness["evidence_count"], completed["evidence_count"])
+        self.assertEqual(
+            freshness["current_count"]
+            + freshness["within_clock_skew_count"]
+            + freshness["stale_count"]
+            + freshness["future_dated_count"],
+            freshness["evidence_count"],
+        )
+        expected_freshness_status = (
+            "FUTURE_DATED_EVIDENCE_RECORDED"
+            if freshness["future_dated_count"]
+            else (
+                "STALE_EVIDENCE_RECORDED"
+                if freshness["stale_count"]
+                else "EVIDENCE_WITHIN_FRESHNESS_POLICY"
+            )
+        )
+        self.assertEqual(freshness["status"], expected_freshness_status)
+        self.assertEqual(freshness["max_age_seconds"], 30 * 24 * 60 * 60)
+        self.assertEqual(freshness["future_clock_skew_seconds"], 5 * 60)
+        self.assertEqual(
+            {item["evidence_id"] for item in freshness["items"]},
+            {item["id"] for item in evidence_catalog},
+        )
+        self.assertEqual(
+            {item["fingerprint_sha256"] for item in freshness["items"]},
+            {item["fingerprint_sha256"] for item in evidence_catalog},
+        )
+        freshness_by_source = {item["source_name"]: item for item in freshness["items"]}
+        self.assertEqual(
+            freshness_by_source["Demo supplier — synthetic fixture"]["usage_count"],
+            1,
+        )
+        self.assertEqual(freshness_by_source["Synthetic FX fixture"]["usage_count"], 3)
+        self.assertNotIn("raw_value", json.dumps(freshness))
 
         observations_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/price-observations"

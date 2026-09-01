@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from statistics import median
 from typing import Any
 
+from trade_agent.application.evidence_freshness import (
+    DEFAULT_MAX_EVIDENCE_AGE,
+    MAX_FUTURE_CLOCK_SKEW,
+)
 from trade_agent.application.incoterms import INCOTERMS_2020_CODES
 from trade_agent.domain.models import (
     Confidence,
@@ -20,8 +24,6 @@ from trade_agent.domain.models import (
 )
 
 VALIDATION_POLICY_VERSION = "2026-08-31.1"
-DEFAULT_MAX_EVIDENCE_AGE = timedelta(days=30)
-MAX_FUTURE_CLOCK_SKEW = timedelta(minutes=5)
 OUTLIER_FACTOR = Decimal("3")
 KNOWN_INCOTERMS = frozenset(INCOTERMS_2020_CODES)
 

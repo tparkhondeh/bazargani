@@ -25,6 +25,9 @@ unknown or requires human verification?
   `DERIVED_CALCULATION`, or `AI_INFERENCE`.
 - Evidence metadata remains traceable to every price/FX use through a content
   fingerprint, while decision-oriented API views avoid duplicating raw source bodies.
+- Evidence freshness is measured against the immutable validation timestamp with the
+  same stale/future thresholds used by validation; exact age and usage counts remain
+  visible, and freshness is never presented as source trust or correctness.
 - A price requires source URL, retrieval timestamp, currency, unit, quantity or
   tier context, product variant, and confidence label.
 - Original values remain immutable; normalized values record transformation.

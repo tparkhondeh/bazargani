@@ -10,6 +10,11 @@ from trade_agent.application.cost_coverage import (
     analyze_trade_cost_coverage,
 )
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.evidence_freshness import (
+    EvidenceFreshnessPoint,
+    analyze_evidence_freshness,
+    evidence_fingerprint_sha256,
+)
 from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
     build_executive_summary,
@@ -33,6 +38,7 @@ from trade_agent.application.supplier_coverage import (
     SupplierEvidencePoint,
     summarize_supplier_coverage,
 )
+from trade_agent.domain.models import Evidence
 
 _MARKDOWN_SPECIAL = frozenset("\\`*_{}[]()#!|")
 _BACKTICK_RUN = re.compile(r"`+")
@@ -180,6 +186,57 @@ def render_markdown(result: ResearchResult) -> str:
         f"{_code(executive.iran_market_benchmark_status)}"
     )
     lines.extend(f"- محدودیت: {_text(item)}" for item in executive.limitations)
+
+    evidence_uses: dict[str, tuple[Evidence, int]] = {}
+    for observation in case.observations:
+        fingerprint = evidence_fingerprint_sha256(observation.evidence)
+        existing = evidence_uses.get(fingerprint)
+        evidence_uses[fingerprint] = (
+            observation.evidence,
+            1 if existing is None else existing[1] + 1,
+        )
+    for scenario_input in case.scenarios:
+        for rate in scenario_input.fx_rates:
+            fingerprint = evidence_fingerprint_sha256(rate.evidence)
+            existing = evidence_uses.get(fingerprint)
+            evidence_uses[fingerprint] = (
+                rate.evidence,
+                1 if existing is None else existing[1] + 1,
+            )
+    freshness = analyze_evidence_freshness(
+        tuple(
+            EvidenceFreshnessPoint(
+                evidence_id=fingerprint,
+                fingerprint_sha256=fingerprint,
+                classification=evidence.classification.value,
+                confidence=evidence.confidence.value,
+                source_name=evidence.source_name,
+                source_url=evidence.source_url,
+                retrieved_at=evidence.retrieved_at,
+                usage_count=usage_count,
+            )
+            for fingerprint, (evidence, usage_count) in evidence_uses.items()
+        ),
+        evaluated_at=validation.evaluated_at,
+        validation_policy_version=validation.policy_version,
+    )
+    lines.extend(["", "## تازگی شواهد", ""])
+    lines.append(f"- وضعیت: {_code(freshness.status)}")
+    lines.append(f"- زمان مبنای ارزیابی: {_code(freshness.evaluated_at.isoformat())}")
+    lines.append(
+        f"- تعداد: {freshness.evidence_count}؛ تازه {freshness.current_count}؛ "
+        f"در تلورانس ساعت {freshness.within_clock_skew_count}؛ "
+        f"کهنه {freshness.stale_count}؛ آینده‌دار {freshness.future_dated_count}"
+    )
+    for freshness_item in freshness.items:
+        lines.append(
+            f"- [{_text(freshness_item.source_name)}]"
+            f"({_link_target(freshness_item.source_url)}): "
+            f"{_code(freshness_item.freshness_status)}، سن "
+            f"{freshness_item.age_seconds} ثانیه، "
+            f"{freshness_item.usage_count} کاربرد"
+        )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in freshness.limitations)
 
     lines.extend(
         [

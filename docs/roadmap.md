@@ -73,6 +73,10 @@ calculation component/formula/evidence class, and shared sensitivity without Mar
 parsing. A scenario cost-coverage projection now highlights recorded, unrecorded
 reference, custom, zero, and evidence-class coverage without inventing applicability or
 amounts; richer evidence drill-down and UI visualization remain later work.
+An evidence-freshness projection now applies the persisted validation time and shared
+30-day/five-minute policy boundaries to deduplicated evidence and exact price/FX usage
+counts. Provider-specific validity windows and live refresh workflows remain future
+work; recency is not treated as proof of source quality.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

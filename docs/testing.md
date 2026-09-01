@@ -57,6 +57,12 @@ observation, fingerprints are 64-character lowercase SHA-256 values, raw content
 absent, and other tenants receive `404`. PostgreSQL integration compares catalog size
 with the atomically persisted completion count.
 
+Evidence-freshness tests lock the exact 30-day and five-minute boundaries, decimal age
+seconds, current/within-skew/stale/future counts, status precedence, deterministic
+ordering, duplicate IDs, timezone awareness, non-negative usage counts, and empty
+results. API/report and PostgreSQL tests verify price/FX usage totals, shared fingerprints,
+tenant hiding, the immutable evaluation anchor, and absence of raw evidence.
+
 Price-observation API tests lock original and BASE-normalized decimal amounts, currency,
 quantity terms, product variant/attributes, market layer, product-match class/score,
 source metadata, and raw-evidence omission. Cross-tenant reads return `404`, and the

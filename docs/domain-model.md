@@ -160,6 +160,14 @@ scenario/pair/type/effective time. Fingerprints are integrity identifiers, not s
 trust scores. Raw evidence remains stored for controlled future review but is not
 returned by this general decision API.
 
+Evidence freshness is derived from the catalog and the run's stored validation time.
+Each unique evidence ID receives an exact decimal age in seconds and one of `CURRENT`,
+`WITHIN_ALLOWED_FUTURE_CLOCK_SKEW`, `STALE`, or `FUTURE_DATED`, using the same 30-day
+and five-minute thresholds as validation. Summary precedence exposes future-dated
+evidence before stale evidence. Usage counts include retained price observations and
+scenario-linked FX uses. The result does not change with wall-clock time and does not
+convert recency into authority, accuracy, independence, or fitness.
+
 The evidence-backed price-observation view joins the immutable observation to its
 source, product match, and supplier-ranking normalization. Original amount/currency
 remain authoritative source values. `normalized_amount` is the deterministic BASE-

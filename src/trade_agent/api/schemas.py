@@ -179,6 +179,34 @@ class EvidenceSummaryView(BaseModel):
         return value
 
 
+class EvidenceFreshnessItemView(BaseModel):
+    evidence_id: str
+    fingerprint_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    classification: str
+    confidence: Confidence
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    age_seconds: Decimal
+    usage_count: int = Field(ge=0)
+    freshness_status: str
+
+
+class EvidenceFreshnessSummaryView(BaseModel):
+    status: str
+    validation_policy_version: str
+    evaluated_at: AwareDatetime
+    max_age_seconds: int = Field(gt=0)
+    future_clock_skew_seconds: int = Field(ge=0)
+    evidence_count: int = Field(ge=0)
+    current_count: int = Field(ge=0)
+    within_clock_skew_count: int = Field(ge=0)
+    stale_count: int = Field(ge=0)
+    future_dated_count: int = Field(ge=0)
+    items: tuple[EvidenceFreshnessItemView, ...]
+    limitations: tuple[str, ...]
+
+
 class ReferenceRateView(BaseModel):
     base_currency: str
     quote_currency: str

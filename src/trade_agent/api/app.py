@@ -28,6 +28,7 @@ from trade_agent.api.schemas import (
     EvidenceBackedPriceObservationView,
     EvidenceBackedSupplierOfferView,
     EvidenceBundleSubmit,
+    EvidenceFreshnessSummaryView,
     EvidenceSummaryView,
     ExecutiveDecisionSummaryView,
     IncotermCoverageSummaryView,
@@ -631,6 +632,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_research_evidence(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/evidence-freshness",
+        response_model=EvidenceFreshnessSummaryView,
+    )
+    def get_evidence_freshness(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_evidence_freshness(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

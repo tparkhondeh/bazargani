@@ -162,6 +162,13 @@ rows. It exposes the stored SHA-256 fingerprint but not `raw_value`. This keeps 
 result consumption provenance-aware while leaving any future raw-evidence access behind
 a separate, stronger authorization and retention policy.
 
+Evidence freshness reuses the persisted validation timestamp and the validation
+module's shared age/skew constants. The repository counts price and FX references to
+each tenant-owned evidence row, normalizes database timestamps to UTC at the adapter
+boundary, and invokes a pure projection. Report generation deduplicates the immutable
+domain evidence through the same SHA-256 identity function used by persistence, then
+calls that projection. Neither surface reads raw evidence into its response.
+
 The price-observation projection joins observation, product match, ranking, evidence,
 and source rows only when every record belongs to the same tenant-owned run. It returns
 the original commercial fields beside BASE-scenario normalization and match metadata,

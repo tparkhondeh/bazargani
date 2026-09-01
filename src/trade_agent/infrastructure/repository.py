@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from typing import Any
@@ -17,6 +16,11 @@ from trade_agent.application.cost_coverage import (
     analyze_trade_cost_coverage,
 )
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.evidence_freshness import (
+    EvidenceFreshnessPoint,
+    analyze_evidence_freshness,
+    evidence_fingerprint_sha256,
+)
 from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
     build_executive_summary,
@@ -79,6 +83,12 @@ from trade_agent.infrastructure.database import (
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
+
+
+def _database_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class TradeRepository:
@@ -1491,6 +1501,66 @@ class TradeRepository:
                 for evidence, source in evidence_rows
             ]
 
+    def get_evidence_freshness(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            validation = session.scalar(
+                select(ResearchValidationRecord).where(
+                    ResearchValidationRecord.research_run_id == run_id
+                )
+            )
+            if validation is None:
+                raise KeyError("research validation not found")
+            evidence_rows = tuple(
+                session.execute(
+                    select(EvidenceRecord, SourceRecord)
+                    .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                    .where(EvidenceRecord.research_run_id == run_id)
+                )
+            )
+            usage_counts = {
+                evidence.id: 0 for evidence, _source in evidence_rows
+            }
+            observation_evidence_ids = session.scalars(
+                select(PriceObservationRecord.evidence_id).where(
+                    PriceObservationRecord.research_run_id == run_id
+                )
+            )
+            for evidence_id in observation_evidence_ids:
+                usage_counts[evidence_id] += 1
+            rate_evidence_ids = session.scalars(
+                select(FXRateRecord.evidence_id).where(
+                    FXRateRecord.research_run_id == run_id
+                )
+            )
+            for evidence_id in rate_evidence_ids:
+                usage_counts[evidence_id] += 1
+            points = tuple(
+                EvidenceFreshnessPoint(
+                    evidence_id=evidence.id,
+                    fingerprint_sha256=evidence.fingerprint,
+                    classification=evidence.classification,
+                    confidence=evidence.confidence,
+                    source_name=source.name,
+                    source_url=evidence.source_url,
+                    retrieved_at=_database_utc(evidence.retrieved_at),
+                    usage_count=usage_counts[evidence.id],
+                )
+                for evidence, source in evidence_rows
+            )
+            return asdict(
+                analyze_evidence_freshness(
+                    points,
+                    evaluated_at=_database_utc(validation.evaluated_at),
+                    validation_policy_version=validation.policy_version,
+                )
+            )
+
     def get_price_observations(
         self,
         run_id: str,
@@ -1980,24 +2050,6 @@ class TradeRepository:
         completion = ResearchCompletion(**record.response_payload)
         return replace(completion, idempotency_replayed=True)
 
-    @staticmethod
-    def _evidence_fingerprint(evidence: Evidence) -> str:
-        canonical = json.dumps(
-            {
-                "classification": evidence.classification.value,
-                "source_name": evidence.source_name,
-                "source_url": evidence.source_url,
-                "retrieved_at": evidence.retrieved_at.isoformat(),
-                "raw_value": evidence.raw_value,
-                "confidence": evidence.confidence.value,
-                "transformation": evidence.transformation,
-            },
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
     @classmethod
     def _evidence(
         cls,
@@ -2006,7 +2058,7 @@ class TradeRepository:
         evidence: Evidence,
         cache: dict[str, EvidenceRecord],
     ) -> EvidenceRecord:
-        fingerprint = cls._evidence_fingerprint(evidence)
+        fingerprint = evidence_fingerprint_sha256(evidence)
         cached = cache.get(fingerprint)
         if cached is not None:
             return cached

@@ -32,6 +32,8 @@ Trade-cost coverage compares recorded scenario component codes with a transparen
 reference vocabulary without inferring applicability or missing amounts.
 Incoterm coverage groups only declared offer codes against the Incoterms 2020
 reference vocabulary and withholds route-specific comparison when scenarios are absent.
+Evidence freshness applies the validation run's immutable evaluation timestamp and
+policy thresholds to every deduplicated evidence item and its exact usage count.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -108,6 +110,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/fx-rates`
 - `GET /api/v1/research-runs/{id}/assumptions`
 - `GET /api/v1/research-runs/{id}/evidence`
+- `GET /api/v1/research-runs/{id}/evidence-freshness`
 - `GET /api/v1/research-runs/{id}/price-observations`
 - `GET /api/v1/research-runs/{id}/incoterm-coverage`
 - `GET /api/v1/research-runs/{id}/quantity-analysis`
@@ -278,6 +281,14 @@ with no declared code, and reports exact offer/supplier/source coverage. Its com
 status remains `WITHHELD_NO_INCOTERM_SCENARIOS`: the current model does not capture a
 named place, asserted edition, or route-specific cost/control/risk scenarios, so the
 system does not recommend a “best” Incoterm from offer metadata alone.
+
+Evidence freshness reports each deduplicated item's retrieval time, exact age in seconds,
+classification/confidence, fingerprint, provenance, and usage count against the stored
+validation `evaluated_at`. It uses the same 30-day maximum age and five-minute future
+clock tolerance as validation, with separate current, within-skew, stale, and future-
+dated states. The projection is immutable with its run: it is not recalculated against
+the wall clock, and freshness alone does not prove authority, accuracy, independence,
+or commercial fitness.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

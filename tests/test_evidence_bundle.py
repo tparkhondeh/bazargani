@@ -21,6 +21,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("مجهول اعلام‌شده: 1", report)
         self.assertIn("خلاصه اجرایی تصمیم", report)
         self.assertIn("`WITHHELD_NO_APPROVED_BENCHMARK`", report)
+        self.assertIn("تازگی شواهد", report)
+        self.assertIn("زمان مبنای ارزیابی", report)
         self.assertIn("https://example.com/demo-supplier", report)
         self.assertIn("EXACT_VARIANT", report)
         self.assertIn("تطبیق محصول", report)
