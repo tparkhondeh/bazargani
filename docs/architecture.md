@@ -23,7 +23,7 @@ CLI / future FastAPI / future RTL UI
 - `domain`: immutable vocabulary, evidence, price, FX, research case.
 - `calculation`: currency and landed-cost formulas only.
 - `application`: use cases, deterministic quality validation/deduplication,
-  explainable confidence, and partial-result orchestration.
+  explainable confidence, product matching, and partial-result orchestration.
 - `providers`: acquisition contracts and adapters; no business decisions.
 - `reporting`: presentation from an already-computed result.
 - future `infrastructure`: PostgreSQL, queues, telemetry, HTTP clients.

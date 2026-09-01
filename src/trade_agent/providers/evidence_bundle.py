@@ -69,6 +69,10 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
             minimum_order_quantity=item.get("minimum_order_quantity"),
             incoterm=item.get("incoterm"),
             product_variant=item.get("product_variant"),
+            product_attributes={
+                str(key): str(value)
+                for key, value in dict(item.get("product_attributes", {})).items()
+            },
             market_layer=str(item.get("market_layer", "UNKNOWN")),
         )
         for item in raw["observations"]
@@ -122,5 +126,9 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
         scenarios=scenarios,
         assumptions=tuple(map(str, raw.get("assumptions", []))),
         unknowns=tuple(map(str, raw.get("unknowns", []))),
+        product_attributes={
+            str(key): str(value)
+            for key, value in dict(raw.get("product_attributes", {})).items()
+        },
         metadata=dict(raw.get("metadata", {})),
     )

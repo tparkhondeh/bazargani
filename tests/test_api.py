@@ -15,6 +15,7 @@ from trade_agent.infrastructure.database import (
     FXRateRecord,
     LandedCostScenarioRecord,
     PriceObservationRecord,
+    ProductMatchRecord,
     ResearchValidationRecord,
     ValidationIssueRecord,
 )
@@ -130,6 +131,7 @@ class ApiTests(unittest.TestCase):
         self.assertLess(completed["confidence_score"], 100)
         self.assertEqual(completed["evidence_count"], 2)
         self.assertEqual(completed["price_observation_count"], 1)
+        self.assertEqual(completed["product_match_count"], 1)
         self.assertEqual(completed["fx_rate_count"], 1)
         self.assertEqual(completed["scenario_count"], 3)
 
@@ -147,10 +149,25 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(len(validation["issues"]), completed["validation_issue_count"])
         self.assertIn("ASSUMED_COST_COMPONENTS", {item["code"] for item in validation["issues"]})
 
+        matches_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/product-matches"
+        )
+        self.assertEqual(matches_response.status_code, 200)
+        matches = matches_response.json()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["classification"], "EXACT_VARIANT")
+        self.assertEqual(matches[0]["score"], 100)
+        self.assertEqual(matches[0]["requested_attributes"], {"variant": "DEMO"})
+        self.assertEqual(matches[0]["observed_attributes"], {"variant": "DEMO"})
+
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)
             self.assertEqual(
                 connection.scalar(select(func.count()).select_from(PriceObservationRecord)),
+                1,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(ProductMatchRecord)),
                 1,
             )
             self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 1)
@@ -222,6 +239,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["code"], "INVALID_INPUT")
         self.assertIn("unit", response.json()["message"])
+
+    def test_bundle_destination_mismatch_rolls_back_results(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": "شیراز",
+            },
+        ).json()
+        run = self.client.post(f"/api/v1/opportunities/{opportunity['id']}/research-runs").json()
+        self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        )
+
+        response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            json={"expected_version": 2, "bundle": bundle},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("destination", response.json()["message"])
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 0)
 
 
 if __name__ == "__main__":

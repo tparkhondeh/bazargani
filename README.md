@@ -10,7 +10,9 @@ source-backed price observations with explicit units, point-in-time FX rates, an
 explicit cost assumptions. It validates provenance and freshness, removes exact
 duplicates, flags conflicts and price outliers, calculates optimistic/base/
 conservative landed-cost scenarios with `Decimal`, and emits a Persian Markdown
-report with an explainable confidence score.
+report with an explainable confidence score. Each retained price is also classified
+as an exact product, exact variant, comparable, similar, or substitute using a
+policy-versioned deterministic feature ledger.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -65,6 +67,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 - `POST /api/v1/research-runs/{id}/evidence-bundle`
 - `GET /api/v1/research-runs/{id}/report`
 - `GET /api/v1/research-runs/{id}/validation`
+- `GET /api/v1/research-runs/{id}/product-matches`
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

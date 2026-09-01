@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -61,6 +62,7 @@ class ResearchCompletionView(BaseModel):
     version: int
     evidence_count: int
     price_observation_count: int
+    product_match_count: int
     fx_rate_count: int
     scenario_count: int
     validation_disposition: str
@@ -87,6 +89,22 @@ class ResearchValidationView(BaseModel):
     confidence_label: Confidence
     evaluated_at: datetime
     issues: list[ValidationIssueView]
+
+
+class ProductMatchView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    external_observation_id: str
+    classification: str
+    score: int = Field(ge=0, le=100)
+    name_similarity: Decimal = Field(ge=0, le=1)
+    requested_attributes: dict[str, str]
+    observed_attributes: dict[str, str]
+    matched_attributes: list[str]
+    conflicting_attributes: list[str]
+    missing_attributes: list[str]
+    explanation_fa: list[str]
+    policy_version: str
 
 
 class DecisionReportView(BaseModel):

@@ -148,7 +148,40 @@ class PriceObservationRecord(Base):
     minimum_order_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     incoterm: Mapped[str | None] = mapped_column(String(10), nullable=True)
     product_variant: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    product_attributes: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     market_layer: Mapped[str] = mapped_column(String(50))
+
+
+class ProductMatchRecord(Base):
+    __tablename__ = "product_matches"
+    __table_args__ = (
+        UniqueConstraint("price_observation_id", name="uq_product_match_price_observation"),
+        CheckConstraint("score >= 0 AND score <= 100", name="ck_product_matches_score_range"),
+        CheckConstraint(
+            "name_similarity >= 0 AND name_similarity <= 1",
+            name="ck_product_matches_name_similarity_range",
+        ),
+        Index("ix_product_matches_run_class", "research_run_id", "classification"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    price_observation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("price_observations.id", ondelete="CASCADE")
+    )
+    external_observation_id: Mapped[str] = mapped_column(String(200))
+    classification: Mapped[str] = mapped_column(String(30))
+    score: Mapped[int] = mapped_column(Integer)
+    name_similarity: Mapped[Decimal] = mapped_column(Numeric(8, 6))
+    requested_attributes: Mapped[dict[str, str]] = mapped_column(JSON)
+    observed_attributes: Mapped[dict[str, str]] = mapped_column(JSON)
+    matched_attributes: Mapped[list[str]] = mapped_column(JSON)
+    conflicting_attributes: Mapped[list[str]] = mapped_column(JSON)
+    missing_attributes: Mapped[list[str]] = mapped_column(JSON)
+    explanation_fa: Mapped[list[str]] = mapped_column(JSON)
+    policy_version: Mapped[str] = mapped_column(String(50))
 
 
 class FXRateRecord(Base):

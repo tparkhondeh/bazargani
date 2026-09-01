@@ -21,6 +21,7 @@ from trade_agent.api.schemas import (
     OpportunityView,
     ParsedTradeRequestView,
     ParseRequestInput,
+    ProductMatchView,
     ResearchCompletionView,
     ResearchRunTransition,
     ResearchRunView,
@@ -61,7 +62,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.3.0",
+        version="0.4.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -221,6 +222,13 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     )
     def get_research_validation(run_id: str) -> Any:
         return repository.get_research_validation(run_id)
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/product-matches",
+        response_model=list[ProductMatchView],
+    )
+    def get_product_matches(run_id: str) -> Any:
+        return repository.get_product_matches(run_id)
 
     return app
 

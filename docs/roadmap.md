@@ -21,13 +21,14 @@ Status: core foundation implemented. Remaining hardening includes explicit idemp
 keys for bundle submission, PostgreSQL integration in CI, authentication/tenant scope,
 and production backup rehearsal. Deterministic data-quality validation, exact
 observation deduplication, persisted validation issues, and explainable confidence are
-implemented; semantic product matching remains in Phase 3.
+implemented. The deterministic product-match baseline and persistence are implemented;
+assisted/semantic matching evaluation remains in Phase 3.
 
 ## Phase 3 — First approved real providers
 
 Integrate one manufacturing/wholesale source and one Iranian benchmark source via
 contract-tested adapters. Add safe URL fetcher, rate limits, cache, partial results,
-product matching, deduplication, and provider health.
+assisted product matching, deduplication, and provider health.
 
 ## Phase 4 — Assisted intelligence and RTL UI
 

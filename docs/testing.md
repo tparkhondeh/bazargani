@@ -23,3 +23,9 @@ fact-backed input, exact deduplication, stale evidence, price outliers, zero pri
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify
 that the validation ledger and non-complete run status are persisted atomically with
 the decision report.
+
+Product-match tests cover Persian/Arabic normalization, exact product/variant,
+comparable and substitute classes, conflicting attributes, missing features, and the
+guard that prevents generic attributes from promoting unrelated products. API tests
+verify the match ledger is persisted and retrievable with its raw features and policy
+version.

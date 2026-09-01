@@ -4,6 +4,7 @@
   "product_name": "محصول آزمایشی — داده ساختگی",
   "quantity": 10,
   "destination": "تهران",
+  "product_attributes": {"variant": "DEMO"},
   "metadata": {"data_status": "DEMO_ONLY_DO_NOT_USE_FOR_DECISIONS"},
   "observations": [
     {
@@ -16,6 +17,7 @@
       "minimum_order_quantity": 10,
       "incoterm": "EXW",
       "product_variant": "DEMO",
+      "product_attributes": {"variant": "DEMO"},
       "market_layer": "DEMO",
       "evidence": {
         "classification": "ASSUMPTION",

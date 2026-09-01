@@ -12,6 +12,8 @@ from trade_agent.domain.models import (
     Evidence,
     EvidenceClass,
     PriceObservation,
+    ProductMatch,
+    ProductMatchClass,
     ResearchCase,
 )
 
@@ -211,24 +213,9 @@ def validate_research_case(
             )
         )
 
-    case_product = _normal(case.product_name)
     eligible_count = 0
     grouped_prices: dict[tuple[str, str], list[PriceObservation]] = {}
     for observation in clean_case.observations:
-        if observation.product_name and _normal(observation.product_name) != case_product:
-            issues.append(
-                ValidationIssue(
-                    code="PRODUCT_NAME_CONFLICT",
-                    severity=ValidationSeverity.ERROR,
-                    message_fa="نام محصول مشاهده قیمت با محصول پرونده یکسان نیست.",
-                    subject_type="PRICE_OBSERVATION",
-                    subject_id=observation.observation_id,
-                    details={
-                        "case_product": case.product_name,
-                        "observed_product": observation.product_name,
-                    },
-                )
-            )
         if observation.unit_price.amount == 0:
             issues.append(
                 ValidationIssue(
@@ -394,6 +381,88 @@ def validate_research_case(
     return clean_case, ValidationResult(
         policy_version=VALIDATION_POLICY_VERSION,
         evaluated_at=evaluation_time,
+        disposition=disposition,
+        confidence_score=score,
+        confidence_label=label,
+        issues=tuple(issues),
+    )
+
+
+def validate_product_matches(
+    validation: ValidationResult, matches: tuple[ProductMatch, ...]
+) -> ValidationResult:
+    additions: list[ValidationIssue] = []
+    for match in matches:
+        if match.conflicting_attributes:
+            additions.append(
+                ValidationIssue(
+                    code="PRODUCT_ATTRIBUTE_CONFLICT",
+                    severity=ValidationSeverity.ERROR,
+                    message_fa="ویژگی‌های محصول مشاهده‌شده با نیاز پرونده تعارض دارد.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=match.observation_id,
+                    details={"attributes": list(match.conflicting_attributes)},
+                )
+            )
+        elif match.classification is ProductMatchClass.EXACT_PRODUCT and match.missing_attributes:
+            additions.append(
+                ValidationIssue(
+                    code="UNVERIFIED_PRODUCT_VARIANT",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="محصول دقیق است اما همه ویژگی‌های واریانت تأیید نشده‌اند.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=match.observation_id,
+                    details={"missing_attributes": list(match.missing_attributes)},
+                )
+            )
+
+        if match.classification is ProductMatchClass.COMPARABLE:
+            additions.append(
+                ValidationIssue(
+                    code="COMPARABLE_PRODUCT_PRICE",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="قیمت مربوط به محصول قابل‌مقایسه است، نه تطبیق دقیق.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=match.observation_id,
+                    details={"match_score": match.score},
+                )
+            )
+        elif match.classification is ProductMatchClass.SIMILAR:
+            additions.append(
+                ValidationIssue(
+                    code="SIMILAR_PRODUCT_PRICE",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="قیمت مربوط به محصول مشابه است و نباید معادل دقیق تلقی شود.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=match.observation_id,
+                    details={"match_score": match.score},
+                )
+            )
+        elif match.classification is ProductMatchClass.SUBSTITUTE:
+            additions.append(
+                ValidationIssue(
+                    code="SUBSTITUTE_PRODUCT_PRICE",
+                    severity=ValidationSeverity.ERROR,
+                    message_fa=(
+                        "قیمت مربوط به محصول جایگزین است و استفاده مستقیم "
+                        "نیازمند بررسی انسانی است."
+                    ),
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=match.observation_id,
+                    details={"match_score": match.score},
+                )
+            )
+
+    issues = [*validation.issues, *additions]
+    score, label = _confidence(issues)
+    if any(issue.severity is ValidationSeverity.ERROR for issue in issues):
+        disposition = ValidationDisposition.NEEDS_HUMAN_REVIEW
+    elif issues:
+        disposition = ValidationDisposition.NEEDS_VERIFICATION
+    else:
+        disposition = ValidationDisposition.PASSED
+    return replace(
+        validation,
         disposition=disposition,
         confidence_score=score,
         confidence_label=label,

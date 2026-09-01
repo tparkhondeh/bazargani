@@ -15,6 +15,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("DEMO-NOT-MARKET-DATA", report)
         self.assertIn("مجهولات", report)
         self.assertIn("https://example.com/demo-supplier", report)
+        self.assertIn("EXACT_VARIANT", report)
+        self.assertIn("تطبیق محصول", report)
 
 
 if __name__ == "__main__":

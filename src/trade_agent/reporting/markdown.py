@@ -67,6 +67,21 @@ def render_markdown(result: ResearchResult) -> str:
             f"اعتماد `{observation.evidence.confidence.value}`"
         )
 
+    lines.extend(["", "## تطبیق محصول", ""])
+    if case.product_attributes:
+        requested_attributes = "، ".join(
+            f"`{key}={value}`" for key, value in sorted(case.product_attributes.items())
+        )
+        lines.append(f"- ویژگی‌های مرجع پرونده: {requested_attributes}")
+    for match in result.product_matches:
+        lines.append(
+            f"- مشاهده `{match.observation_id}`: `{match.classification.value}`، "
+            f"امتیاز {match.score}/100، شباهت نام {match.name_similarity:.2f}"
+        )
+        lines.extend(f"  - {reason}" for reason in match.explanation_fa)
+    if not result.product_matches:
+        lines.append("- مشاهده‌ای برای تطبیق وجود ندارد.")
+
     lines.extend(["", "## فرض‌ها", ""])
     lines.extend(f"- {item}" for item in case.assumptions)
     if not case.assumptions:

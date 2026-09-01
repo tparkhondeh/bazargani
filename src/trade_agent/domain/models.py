@@ -28,6 +28,14 @@ class ScenarioName(StrEnum):
     CONSERVATIVE = "CONSERVATIVE"
 
 
+class ProductMatchClass(StrEnum):
+    EXACT_PRODUCT = "EXACT_PRODUCT"
+    EXACT_VARIANT = "EXACT_VARIANT"
+    COMPARABLE = "COMPARABLE"
+    SIMILAR = "SIMILAR"
+    SUBSTITUTE = "SUBSTITUTE"
+
+
 @dataclass(frozen=True, slots=True)
 class Money:
     amount: Decimal
@@ -75,6 +83,7 @@ class PriceObservation:
     minimum_order_quantity: int | None = None
     incoterm: str | None = None
     product_variant: str | None = None
+    product_attributes: dict[str, str] = field(default_factory=dict)
     market_layer: str = "UNKNOWN"
 
     def __post_init__(self) -> None:
@@ -92,6 +101,33 @@ class PriceObservation:
         if not unit or len(unit) > 50 or any(ord(character) < 32 for character in unit):
             raise ValueError("price observation unit must be a non-empty safe value")
         object.__setattr__(self, "unit", unit)
+        invalid_attributes = (
+            not str(key).strip() or not str(value).strip()
+            for key, value in self.product_attributes.items()
+        )
+        if any(invalid_attributes):
+            raise ValueError("product attribute keys and values must be non-empty")
+
+
+@dataclass(frozen=True, slots=True)
+class ProductMatch:
+    observation_id: str
+    classification: ProductMatchClass
+    score: int
+    name_similarity: Decimal
+    requested_attributes: dict[str, str]
+    observed_attributes: dict[str, str]
+    matched_attributes: tuple[str, ...]
+    conflicting_attributes: tuple[str, ...]
+    missing_attributes: tuple[str, ...]
+    explanation_fa: tuple[str, ...]
+    policy_version: str
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.score <= 100:
+            raise ValueError("product match score must be between 0 and 100")
+        if not Decimal("0") <= self.name_similarity <= Decimal("1"):
+            raise ValueError("name similarity must be between 0 and 1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,6 +219,7 @@ class ResearchCase:
     scenarios: tuple[ScenarioInput, ...]
     assumptions: tuple[str, ...] = ()
     unknowns: tuple[str, ...] = ()
+    product_attributes: dict[str, str] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -196,3 +233,9 @@ class ResearchCase:
         observation_ids = [observation.observation_id for observation in self.observations]
         if len(observation_ids) != len(set(observation_ids)):
             raise ValueError("observation_id values must be unique within a research case")
+        invalid_attributes = (
+            not str(key).strip() or not str(value).strip()
+            for key, value in self.product_attributes.items()
+        )
+        if any(invalid_attributes):
+            raise ValueError("requested product attribute keys and values must be non-empty")

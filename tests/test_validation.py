@@ -130,8 +130,7 @@ class ValidationTests(unittest.TestCase):
 
         codes = {issue.code for issue in validation.issues}
         self.assertTrue(
-            {"PRODUCT_NAME_CONFLICT", "ZERO_PRICE", "NO_QUANTITY_ELIGIBLE_PRICE"}
-            <= codes
+            {"ZERO_PRICE", "NO_QUANTITY_ELIGIBLE_PRICE"} <= codes
         )
         self.assertEqual(validation.disposition, ValidationDisposition.NEEDS_HUMAN_REVIEW)
 

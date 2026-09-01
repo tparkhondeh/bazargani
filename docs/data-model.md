@@ -30,3 +30,8 @@ Migration `20260831_0003` adds explicit price units plus one immutable validatio
 summary and its issue ledger per research run. The summary records policy version,
 evaluation time, disposition, and a 0–100 confidence score; each issue records its
 stable code, severity, subject, Persian explanation, and structured details.
+
+Migration `20260831_0004` stores raw requested/observed product attributes and one
+policy-versioned match result for every retained price observation. Match rows retain
+the class, score, normalized-name similarity, matched/conflicting/missing feature
+keys, and Persian explanations; normalized features never overwrite raw attributes.

@@ -9,6 +9,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.validation import ValidationDisposition
@@ -29,6 +30,7 @@ from trade_agent.infrastructure.database import (
     LandedCostScenarioRecord,
     OpportunityRecord,
     PriceObservationRecord,
+    ProductMatchRecord,
     ResearchNoteRecord,
     ResearchRunRecord,
     ResearchValidationRecord,
@@ -159,28 +161,61 @@ class TradeRepository:
                 raise KeyError("opportunity not found")
             if opportunity.quantity != result.case.quantity:
                 raise ValueError("bundle quantity does not match the opportunity")
-            if opportunity.product_name.casefold() != result.case.product_name.casefold():
+            if normalize_product_text(opportunity.product_name) != normalize_product_text(
+                result.case.product_name
+            ):
                 raise ValueError("bundle product_name does not match the opportunity")
+            if normalize_product_text(opportunity.target_market) != normalize_product_text(
+                result.case.destination
+            ):
+                raise ValueError("bundle destination does not match the opportunity")
 
             evidence_cache: dict[str, EvidenceRecord] = {}
+            observation_records: dict[str, PriceObservationRecord] = {}
             for observation in result.case.observations:
                 evidence = self._evidence(session, run_id, observation.evidence, evidence_cache)
+                observation_record = PriceObservationRecord(
+                    id=str(uuid4()),
+                    research_run_id=run_id,
+                    evidence_id=evidence.id,
+                    external_observation_id=observation.observation_id,
+                    product_name=observation.product_name,
+                    supplier_name=observation.supplier_name,
+                    original_amount=observation.unit_price.amount,
+                    original_currency=observation.unit_price.currency,
+                    quantity=observation.quantity,
+                    unit=observation.unit,
+                    minimum_order_quantity=observation.minimum_order_quantity,
+                    incoterm=observation.incoterm,
+                    product_variant=observation.product_variant,
+                    product_attributes=observation.product_attributes,
+                    market_layer=observation.market_layer,
+                )
+                session.add(observation_record)
+                observation_records[observation.observation_id] = observation_record
+
+            for match in result.product_matches:
+                matched_observation_record = observation_records.get(match.observation_id)
+                if matched_observation_record is None:
+                    raise ValueError(
+                        f"product match references unknown observation: {match.observation_id}"
+                    )
                 session.add(
-                    PriceObservationRecord(
+                    ProductMatchRecord(
                         id=str(uuid4()),
                         research_run_id=run_id,
-                        evidence_id=evidence.id,
-                        external_observation_id=observation.observation_id,
-                        product_name=observation.product_name,
-                        supplier_name=observation.supplier_name,
-                        original_amount=observation.unit_price.amount,
-                        original_currency=observation.unit_price.currency,
-                        quantity=observation.quantity,
-                        unit=observation.unit,
-                        minimum_order_quantity=observation.minimum_order_quantity,
-                        incoterm=observation.incoterm,
-                        product_variant=observation.product_variant,
-                        market_layer=observation.market_layer,
+                        price_observation_id=matched_observation_record.id,
+                        external_observation_id=match.observation_id,
+                        classification=match.classification.value,
+                        score=match.score,
+                        name_similarity=match.name_similarity,
+                        requested_attributes=match.requested_attributes,
+                        observed_attributes=match.observed_attributes,
+                        matched_attributes=list(match.matched_attributes),
+                        conflicting_attributes=list(match.conflicting_attributes),
+                        missing_attributes=list(match.missing_attributes),
+                        explanation_fa=list(match.explanation_fa),
+                        policy_version=match.policy_version,
                     )
                 )
 
@@ -309,6 +344,7 @@ class TradeRepository:
                     "case_id": result.case.case_id,
                     "evidence_count": len(evidence_cache),
                     "price_observation_count": len(result.case.observations),
+                    "product_match_count": len(result.product_matches),
                     "fx_rate_count": len(fx_keys),
                     "scenario_count": len(result.scenarios),
                     "validation_disposition": validation.disposition.value,
@@ -326,6 +362,7 @@ class TradeRepository:
             version=expected_version + 1,
             evidence_count=len(evidence_cache),
             price_observation_count=len(result.case.observations),
+            product_match_count=len(result.product_matches),
             fx_rate_count=len(fx_keys),
             scenario_count=len(result.scenarios),
             validation_disposition=validation.disposition.value,
@@ -378,6 +415,22 @@ class TradeRepository:
                     for issue in issues
                 ],
             }
+
+    def get_product_matches(self, run_id: str) -> list[ProductMatchRecord]:
+        with self._session_factory() as session:
+            run = session.get(ResearchRunRecord, run_id)
+            if run is None:
+                raise KeyError("research run not found")
+            records = list(
+                session.scalars(
+                    select(ProductMatchRecord)
+                    .where(ProductMatchRecord.research_run_id == run_id)
+                    .order_by(ProductMatchRecord.score.desc(), ProductMatchRecord.id)
+                )
+            )
+            for record in records:
+                session.expunge(record)
+            return records
 
     @staticmethod
     def _evidence_fingerprint(evidence: Evidence) -> str:
