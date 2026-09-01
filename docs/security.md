@@ -56,6 +56,11 @@ audit event. The generic status endpoint cannot mark a run completed or fabricat
 validation/review status. The current actor is a non-secret API-key fingerprint; it
 must not be represented as verified human identity until OIDC and roles are enabled.
 
+Opportunity transitions use the same tenant predicate, row lock, optimistic version,
+and atomic audit boundary. Invalid stage changes return `409`, stale writers cannot
+overwrite newer decisions, and cross-tenant identifiers remain indistinguishable from
+missing records. `WON` and `LOST` cannot be reopened through this API.
+
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.

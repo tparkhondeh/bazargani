@@ -26,6 +26,9 @@ service-to-service baseline. Atomic bundle-submission idempotency is implemented
 The append-only approve/reject review ledger, rationale requirement, optimistic
 locking, and protected system-derived statuses are implemented; named-user identity,
 role policy, reassignment, and review queues remain future work.
+The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
+with atomic audit history and terminal won/lost states. The initial transition graph
+still requires commercial stakeholder validation before production activation.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

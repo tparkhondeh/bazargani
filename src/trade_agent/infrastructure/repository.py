@@ -26,6 +26,7 @@ from trade_agent.domain.workflow import (
     ResearchRunStatus,
     VersionConflictError,
     ensure_manual_research_transition,
+    ensure_opportunity_transition,
     review_target_status,
 )
 from trade_agent.infrastructure.database import (
@@ -104,6 +105,48 @@ class TradeRepository:
                 raise KeyError("opportunity not found")
             session.expunge(record)
             return record
+
+    def transition_opportunity(
+        self,
+        *,
+        opportunity_id: str,
+        target: OpportunityStatus,
+        expected_version: int,
+        correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> OpportunityRecord:
+        with self._session_factory.begin() as session:
+            record = session.scalar(
+                select(OpportunityRecord)
+                .where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
+            if record is None:
+                raise KeyError("opportunity not found")
+            if record.version != expected_version:
+                raise VersionConflictError(
+                    f"expected version {expected_version}, current version {record.version}"
+                )
+            current = OpportunityStatus(record.status)
+            ensure_opportunity_transition(current, target)
+            record.status = target.value
+            record.version += 1
+            record.updated_at = datetime.now(UTC)
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "Opportunity",
+                record.id,
+                "STATUS_CHANGED",
+                {"from": current.value, "to": target.value, "version": record.version},
+            )
+        return record
 
     def list_opportunities(
         self,

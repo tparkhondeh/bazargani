@@ -74,6 +74,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
+- `POST /api/v1/opportunities/{id}/transitions`
 - `POST /api/v1/opportunities/{id}/research-runs`
 - `GET /api/v1/opportunities/{id}/research-runs`
 - `POST /api/v1/research-runs/{id}/transitions`
@@ -99,6 +100,12 @@ Authenticated API traffic has a per-tenant, per-process fixed-window limit (defa
 exhaustion returns `429 RATE_LIMIT_EXCEEDED` with `Retry-After`. Health/readiness are
 excluded. A trusted edge/distributed limiter is still required for production because
 budgets multiply across workers and reset with the process.
+
+Opportunity lifecycle changes use an explicit state machine and require the current
+aggregate version. The locked status/version update and actor-attributed audit event
+commit atomically. `WON` and `LOST` are terminal; `ON_HOLD` can resume only through a
+named target stage. The initial transition policy is documented in ADR 0007 and must
+be validated with commercial stakeholders before production use.
 
 Statuses derived from validation cannot be manually promoted to `COMPLETED` through
 the generic transition endpoint. An authenticated actor must record an `APPROVE` or

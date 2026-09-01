@@ -95,6 +95,12 @@ transition route permits only operational lifecycle changes; a review-required r
 can reach `COMPLETED` or `CANCELLED` only through an append-only review decision. The
 review row, locked run version update, and audit event share one transaction.
 
+Opportunity lifecycle mutations also lock the tenant-owned aggregate and compare an
+explicit expected version before applying the state-machine rule. The status/version
+update and audit row share one transaction, preventing a successful state change
+without history. Terminal outcomes require a new aggregate rather than an implicit
+reopen; the initial commercial transition graph remains a stakeholder-validation item.
+
 History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
 not unbounded reads or offset drift. Opportunities/runs use creation time and audit
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,

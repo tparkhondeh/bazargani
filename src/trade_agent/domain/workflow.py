@@ -29,6 +29,48 @@ class ResearchReviewDecision(StrEnum):
     REJECT = "REJECT"
 
 
+OPPORTUNITY_TRANSITIONS: dict[OpportunityStatus, frozenset[OpportunityStatus]] = {
+    OpportunityStatus.RESEARCHING: frozenset(
+        {OpportunityStatus.SOURCING, OpportunityStatus.ON_HOLD, OpportunityStatus.LOST}
+    ),
+    OpportunityStatus.SOURCING: frozenset(
+        {
+            OpportunityStatus.NEGOTIATING,
+            OpportunityStatus.EVALUATING,
+            OpportunityStatus.ON_HOLD,
+            OpportunityStatus.LOST,
+        }
+    ),
+    OpportunityStatus.NEGOTIATING: frozenset(
+        {
+            OpportunityStatus.EVALUATING,
+            OpportunityStatus.WON,
+            OpportunityStatus.LOST,
+            OpportunityStatus.ON_HOLD,
+        }
+    ),
+    OpportunityStatus.EVALUATING: frozenset(
+        {
+            OpportunityStatus.NEGOTIATING,
+            OpportunityStatus.WON,
+            OpportunityStatus.LOST,
+            OpportunityStatus.ON_HOLD,
+        }
+    ),
+    OpportunityStatus.ON_HOLD: frozenset(
+        {
+            OpportunityStatus.RESEARCHING,
+            OpportunityStatus.SOURCING,
+            OpportunityStatus.NEGOTIATING,
+            OpportunityStatus.EVALUATING,
+            OpportunityStatus.LOST,
+        }
+    ),
+    OpportunityStatus.WON: frozenset(),
+    OpportunityStatus.LOST: frozenset(),
+}
+
+
 RESEARCH_TRANSITIONS: dict[ResearchRunStatus, frozenset[ResearchRunStatus]] = {
     ResearchRunStatus.CREATED: frozenset({ResearchRunStatus.RUNNING, ResearchRunStatus.CANCELLED}),
     ResearchRunStatus.RUNNING: frozenset(
@@ -102,6 +144,14 @@ class VersionConflictError(RuntimeError):
 
 class IdempotencyConflictError(RuntimeError):
     pass
+
+
+def ensure_opportunity_transition(
+    current: OpportunityStatus,
+    target: OpportunityStatus,
+) -> None:
+    if target not in OPPORTUNITY_TRANSITIONS[current]:
+        raise InvalidTransitionError(f"invalid opportunity transition: {current} -> {target}")
 
 
 def ensure_research_transition(current: ResearchRunStatus, target: ResearchRunStatus) -> None:

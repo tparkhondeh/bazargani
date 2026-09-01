@@ -7,7 +7,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from trade_agent.domain.models import Confidence
-from trade_agent.domain.workflow import ResearchReviewDecision, ResearchRunStatus
+from trade_agent.domain.workflow import (
+    OpportunityStatus,
+    ResearchReviewDecision,
+    ResearchRunStatus,
+)
 
 
 class ValidationErrorDetail(BaseModel):
@@ -45,6 +49,11 @@ class OpportunityView(BaseModel):
 class OpportunityPageView(BaseModel):
     items: list[OpportunityView]
     next_cursor: str | None
+
+
+class OpportunityTransition(BaseModel):
+    target_status: OpportunityStatus
+    expected_version: int = Field(gt=0)
 
 
 class ResearchRunView(BaseModel):

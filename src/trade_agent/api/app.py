@@ -27,6 +27,7 @@ from trade_agent.api.schemas import (
     EvidenceBundleSubmit,
     OpportunityCreate,
     OpportunityPageView,
+    OpportunityTransition,
     OpportunityView,
     ParsedTradeRequestView,
     ParseRequestInput,
@@ -324,6 +325,25 @@ def create_app(
         return repository.get_opportunity(
             opportunity_id,
             tenant_id=authenticated.tenant_id,
+        )
+
+    @app.post(
+        "/api/v1/opportunities/{opportunity_id}/transitions",
+        response_model=OpportunityView,
+    )
+    def transition_opportunity(
+        opportunity_id: str,
+        payload: OpportunityTransition,
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.transition_opportunity(
+            opportunity_id=opportunity_id,
+            target=payload.target_status,
+            expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
         )
 
     @app.post(

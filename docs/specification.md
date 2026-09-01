@@ -34,6 +34,9 @@ unknown or requires human verification?
   `NEEDS_HUMAN_REVIEW`.
 - Completing or rejecting a review-required result records the authenticated actor,
   rationale, decision, tenant, and exact run version without rewriting evidence.
+- Opportunity lifecycle changes follow an explicit version-checked policy, preserve
+  actor/correlation attribution in an append-only audit event, and cannot silently
+  reopen a won or lost aggregate.
 
 ## Deferred from MVP
 

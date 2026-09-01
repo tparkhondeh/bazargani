@@ -65,6 +65,14 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(opportunity_response.status_code, 201)
         opportunity = opportunity_response.json()
 
+        opportunity_transition = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/transitions",
+            json={"target_status": "SOURCING", "expected_version": 1},
+        )
+        self.assertEqual(opportunity_transition.status_code, 200)
+        self.assertEqual(opportunity_transition.json()["status"], "SOURCING")
+        self.assertEqual(opportunity_transition.json()["version"], 2)
+
         run_response = self.client.post(
             f"/api/v1/opportunities/{opportunity['id']}/research-runs"
         )

@@ -17,6 +17,13 @@
 - **ResearchReview**: append-only approve/reject decision with rationale, actor
   fingerprint, tenant, and exact before/after run status and version.
 
+Opportunity lifecycle transitions are explicit: `RESEARCHING` can move to `SOURCING`,
+`ON_HOLD`, or `LOST`; sourcing can progress to negotiation or evaluation; negotiation
+and evaluation can move between each other and close as won/lost; and an on-hold item
+must resume into a named active stage. `WON` and `LOST` are terminal, and self-
+transitions are rejected. This is the initial workflow policy, not verified commercial
+fact; ADR 0007 records the assumptions requiring stakeholder validation.
+
 The current confidence policy starts at 100, subtracts 10 per warning and 30 per
 error, and clamps at zero. Any error produces `NEEDS_HUMAN_REVIEW`; warning-only
 results produce `NEEDS_VERIFICATION`; only an issue-free result is `PASSED`. The

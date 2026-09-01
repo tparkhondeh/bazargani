@@ -2,15 +2,44 @@ import unittest
 
 from trade_agent.domain.workflow import (
     InvalidTransitionError,
+    OpportunityStatus,
     ResearchReviewDecision,
     ResearchRunStatus,
     ensure_manual_research_transition,
+    ensure_opportunity_transition,
     ensure_research_transition,
     review_target_status,
 )
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_opportunity_progress_and_resume_transitions_are_explicit(self) -> None:
+        ensure_opportunity_transition(
+            OpportunityStatus.RESEARCHING,
+            OpportunityStatus.SOURCING,
+        )
+        ensure_opportunity_transition(
+            OpportunityStatus.EVALUATING,
+            OpportunityStatus.NEGOTIATING,
+        )
+        ensure_opportunity_transition(
+            OpportunityStatus.ON_HOLD,
+            OpportunityStatus.EVALUATING,
+        )
+
+    def test_opportunity_cannot_skip_policy_or_reopen_terminal_status(self) -> None:
+        for current, target in (
+            (OpportunityStatus.RESEARCHING, OpportunityStatus.WON),
+            (OpportunityStatus.SOURCING, OpportunityStatus.SOURCING),
+            (OpportunityStatus.WON, OpportunityStatus.NEGOTIATING),
+            (OpportunityStatus.LOST, OpportunityStatus.RESEARCHING),
+        ):
+            with self.subTest(current=current, target=target), self.assertRaisesRegex(
+                InvalidTransitionError,
+                "invalid opportunity transition",
+            ):
+                ensure_opportunity_transition(current, target)
+
     def test_valid_transition(self) -> None:
         ensure_research_transition(ResearchRunStatus.CREATED, ResearchRunStatus.RUNNING)
 

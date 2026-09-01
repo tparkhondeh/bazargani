@@ -146,6 +146,64 @@ class ApiTests(unittest.TestCase):
         self.assertEqual({item.tenant_id for item in audit_boundaries}, {"tenant-a"})
         self.assertTrue(all(item.actor_id.startswith("api-key:") for item in audit_boundaries))
 
+    def test_opportunity_transition_is_versioned_audited_and_tenant_scoped(self) -> None:
+        correlation_id = "22feb8c4-15ac-4f78-aeab-1d673ee80a30"
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={"product_name": "Pump", "quantity": 10, "target_market": "Tehran"},
+        ).json()
+
+        transitioned = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/transitions",
+            headers={"X-Correlation-ID": correlation_id},
+            json={"target_status": "SOURCING", "expected_version": 1},
+        )
+        stale = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/transitions",
+            json={"target_status": "NEGOTIATING", "expected_version": 1},
+        )
+        invalid = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/transitions",
+            json={"target_status": "WON", "expected_version": 2},
+        )
+        hidden = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/transitions",
+            headers={"X-API-Key": self.other_api_key},
+            json={"target_status": "NEGOTIATING", "expected_version": 2},
+        )
+
+        self.assertEqual(transitioned.status_code, 200)
+        self.assertEqual(transitioned.headers["X-Correlation-ID"], correlation_id)
+        self.assertEqual(transitioned.json()["status"], "SOURCING")
+        self.assertEqual(transitioned.json()["version"], 2)
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(invalid.status_code, 409)
+        self.assertEqual(invalid.json()["code"], "INVALID_TRANSITION")
+        self.assertEqual(hidden.status_code, 404)
+        self.assertEqual(hidden.json()["code"], "NOT_FOUND")
+
+        with self.engine.connect() as connection:
+            event = connection.execute(
+                select(
+                    AuditEventRecord.tenant_id,
+                    AuditEventRecord.actor_id,
+                    AuditEventRecord.correlation_id,
+                    AuditEventRecord.payload,
+                ).where(
+                    AuditEventRecord.aggregate_id == opportunity["id"],
+                    AuditEventRecord.action == "STATUS_CHANGED",
+                )
+            ).one()
+        key_fingerprint = hashlib.sha256(self.api_key.encode()).hexdigest()[:12]
+        self.assertEqual(event.tenant_id, "tenant-a")
+        self.assertEqual(event.actor_id, f"api-key:{key_fingerprint}")
+        self.assertEqual(event.correlation_id, correlation_id)
+        self.assertEqual(
+            event.payload,
+            {"from": "RESEARCHING", "to": "SOURCING", "version": 2},
+        )
+
     def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
         health = self.client.get("/health", headers={"X-API-Key": ""})
         readiness = self.client.get("/ready", headers={"X-API-Key": ""})
