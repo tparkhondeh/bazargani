@@ -179,7 +179,9 @@ payloads. PostgreSQL integration verifies the migrated columns and timestamp res
 Latest-decision tests prove that a newer empty run cannot hide the last evidence-backed
 result, scenario ordering is deterministic, all equal rank-1 offers survive the
 projection, cross-tenant access returns `404`, and tenant metadata is absent.
-PostgreSQL integration verifies the report hash and run identity across the joined view.
+They also require the embedded executive summary to preserve all leading candidates,
+BASE landed cost, and withheld benchmark fields. PostgreSQL integration verifies the
+report hash, run identity, and executive contract across the joined view.
 
 Supplier-offer read-model tests verify that ranking rows join to the correct original
 amount/currency, quantity, MOQ, Incoterm, source, evidence class, and confidence. Tie

@@ -21,7 +21,8 @@ candidate due diligence `UNVERIFIED`.
 Keep Iranian market price and potential gross-spread values null and set
 `WITHHELD_NO_APPROVED_BENCHMARK` until an approved, comparable benchmark provider and
 input contract exist. Use the same pure policy in the tenant-scoped API and newly
-generated Persian reports. Never interpret the summary as purchase authorization.
+generated Persian reports, and embed it in the latest opportunity decision using data
+from the same selected run. Never interpret the summary as purchase authorization.
 
 ## Consequences
 

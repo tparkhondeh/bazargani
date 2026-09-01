@@ -1067,6 +1067,36 @@ class TradeRepository:
                     .order_by(ResearchNoteRecord.text, ResearchNoteRecord.id)
                 )
             )
+            gap_summary = summarize_data_gaps(
+                tuple(
+                    DataGapIssue(
+                        code=issue.code,
+                        severity=issue.severity,
+                        message_fa=issue.message_fa,
+                        subject_type=issue.subject_type,
+                        subject_id=issue.subject_id,
+                        details=issue.details,
+                    )
+                    for issue in issues
+                ),
+                tuple(unknowns),
+            )
+            executive_candidates = tuple(
+                self._executive_supplier_candidate(ranking, observation, evidence)
+                for ranking, observation, evidence, _source in leading_rows
+            )
+            base_scenario = next(item for item in scenarios if item.name == "BASE")
+            executive_summary = build_executive_summary(
+                validation_disposition=validation.disposition,
+                confidence_score=validation.confidence_score,
+                confidence_label=validation.confidence_label,
+                base_landed_cost_per_unit=base_scenario.per_unit_amount,
+                base_landed_cost_currency=base_scenario.target_currency,
+                leading_supplier_candidates=executive_candidates,
+                data_gap_status=gap_summary.status,
+                data_gap_issue_count=gap_summary.issue_count,
+                declared_unknown_count=gap_summary.declared_unknown_count,
+            )
             for record in (run, report, *scenarios):
                 session.expunge(record)
             return {
@@ -1078,6 +1108,7 @@ class TradeRepository:
                 "assumptions": assumptions,
                 "unknowns": unknowns,
                 "leading_offers": leading_offers,
+                "executive_summary": asdict(executive_summary),
                 "report": report,
             }
 
@@ -1737,25 +1768,8 @@ class TradeRepository:
             ).all()
             candidates: list[ExecutiveSupplierCandidate] = []
             for ranking, observation, evidence in candidate_rows:
-                if (
-                    observation.supplier_name is None
-                    or ranking.normalized_amount is None
-                    or ranking.normalized_currency is None
-                ):
-                    raise KeyError("ranked supplier candidate is incomplete")
                 candidates.append(
-                    ExecutiveSupplierCandidate(
-                        observation_id=observation.external_observation_id,
-                        supplier_name=observation.supplier_name,
-                        original_amount=observation.original_amount,
-                        original_currency=observation.original_currency,
-                        normalized_amount=ranking.normalized_amount,
-                        normalized_currency=ranking.normalized_currency,
-                        total_score=ranking.total_score,
-                        source_url=evidence.source_url,
-                        evidence_classification=evidence.classification,
-                        evidence_confidence=evidence.confidence,
-                    )
+                    self._executive_supplier_candidate(ranking, observation, evidence)
                 )
             return asdict(
                 build_executive_summary(
@@ -1770,6 +1784,31 @@ class TradeRepository:
                     declared_unknown_count=gap_summary.declared_unknown_count,
                 )
             )
+
+    @staticmethod
+    def _executive_supplier_candidate(
+        ranking: SupplierOfferRankingRecord,
+        observation: PriceObservationRecord,
+        evidence: EvidenceRecord,
+    ) -> ExecutiveSupplierCandidate:
+        if (
+            observation.supplier_name is None
+            or ranking.normalized_amount is None
+            or ranking.normalized_currency is None
+        ):
+            raise KeyError("ranked supplier candidate is incomplete")
+        return ExecutiveSupplierCandidate(
+            observation_id=observation.external_observation_id,
+            supplier_name=observation.supplier_name,
+            original_amount=observation.original_amount,
+            original_currency=observation.original_currency,
+            normalized_amount=ranking.normalized_amount,
+            normalized_currency=ranking.normalized_currency,
+            total_score=ranking.total_score,
+            source_url=evidence.source_url,
+            evidence_classification=evidence.classification,
+            evidence_confidence=evidence.confidence,
+        )
 
     @staticmethod
     def _supplier_offer_view(

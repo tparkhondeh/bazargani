@@ -115,6 +115,11 @@ drift from evidence. Empty newer runs are skipped. The projection preserves rank
 and leaves report content unmodified; any future HTML UI must render it with a strict
 sanitization policy.
 
+The opportunity decision view also builds the executive summary from those same joined
+validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
+opportunity policy identical and prevents a client from combining a summary with a
+newer empty run or another tenant's result.
+
 Scenario sensitivity is a pure application calculation over the three immutable
 landed-cost summaries. The same function feeds report generation and the read-time
 latest-decision projection, preventing presentation-specific formulas from drifting.

@@ -149,6 +149,9 @@ Supplier ranking responses are evidence-backed offer views: they include the ori
 price/currency, quoted quantity, unit, MOQ, Incoterm, source identity/URL, retrieval
 time, evidence class/confidence, and transformation beside the deterministic score.
 Raw evidence bodies are not duplicated into these decision summaries.
+The same projection now embeds the conservative executive summary, so opportunity UIs
+receive review/recommendation codes, candidate state, BASE landed cost, data-gap context,
+and withheld Iranian benchmark/spread fields without rebuilding run policy client-side.
 
 Statuses derived from validation cannot be manually promoted to `COMPLETED` through
 the generic transition endpoint. An authenticated actor must record an `APPROVE` or

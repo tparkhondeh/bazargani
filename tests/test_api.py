@@ -365,6 +365,23 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(
             all("raw_value" not in offer for offer in body["leading_offers"])
         )
+        executive = body["executive_summary"]
+        self.assertEqual(executive["decision_status"], "VERIFICATION_REQUIRED")
+        self.assertEqual(
+            executive["supplier_candidate_status"],
+            "MULTIPLE_LEADING_UNVERIFIED_CANDIDATES",
+        )
+        self.assertEqual(
+            {item["supplier_name"] for item in executive["leading_supplier_candidates"]},
+            {"Demo Supplier — NOT REAL", "Demo Supplier Two — NOT REAL"},
+        )
+        self.assertEqual(Decimal(executive["base_landed_cost_per_unit"]), Decimal("630"))
+        self.assertEqual(
+            executive["iran_market_benchmark_status"],
+            "WITHHELD_NO_APPROVED_BENCHMARK",
+        )
+        self.assertIsNone(executive["potential_gross_spread_per_unit"])
+        self.assertNotIn("raw_value", json.dumps(executive))
         self.assertNotIn("tenant_id", decision.text)
         self.assertEqual(hidden.status_code, 404)
         self.assertEqual(hidden.json()["code"], "NOT_FOUND")

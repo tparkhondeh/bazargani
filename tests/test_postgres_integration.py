@@ -134,6 +134,17 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             completed["report_sha256"],
         )
         self.assertEqual(len(latest_decision.json()["scenarios"]), 3)
+        decision_executive = latest_decision.json()["executive_summary"]
+        self.assertEqual(decision_executive["decision_status"], "VERIFICATION_REQUIRED")
+        self.assertEqual(
+            decision_executive["supplier_candidate_status"],
+            "SINGLE_UNVERIFIED_CANDIDATE",
+        )
+        self.assertEqual(
+            Decimal(decision_executive["base_landed_cost_per_unit"]),
+            Decimal("630"),
+        )
+        self.assertIsNone(decision_executive["iran_market_unit_price"])
 
         cost_ledger = self.client.get(
             f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"

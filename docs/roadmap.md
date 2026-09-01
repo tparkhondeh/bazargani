@@ -66,7 +66,8 @@ Versioned opportunity workflow context (`next_action`, timezone-aware `deadline`
 assignment, reminders, and historical note revisions remain deferred.
 An evidence-backed latest-decision projection now joins each opportunity to its newest
 report-bearing run, validation, scenario summaries, and all leading tied offers for
-future result/history UI use.
+future result/history UI use. It also embeds the conservative executive summary so the
+UI does not reimplement recommendation, gap, candidate, or benchmark-withholding policy.
 A tenant-scoped structured landed-cost ledger now exposes scenario totals, every
 calculation component/formula/evidence class, and shared sensitivity without Markdown
 parsing; richer evidence drill-down and UI visualization remain later work.

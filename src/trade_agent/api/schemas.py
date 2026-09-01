@@ -547,6 +547,7 @@ class OpportunityDecisionView(BaseModel):
     assumptions: list[str]
     unknowns: list[str]
     leading_offers: list[EvidenceBackedSupplierOfferView]
+    executive_summary: ExecutiveDecisionSummaryView
     report: DecisionReportView
 
 
