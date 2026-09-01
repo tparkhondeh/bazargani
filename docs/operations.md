@@ -2,7 +2,7 @@
 
 ## Development
 
-Python 3.12+, PostgreSQL 17, and Docker Compose are the supported target. Start the
+Python 3.12+, PostgreSQL 17.11, and Docker Compose are the supported target. Start the
 database, install the package, migrate, then run the loopback API:
 
 ```powershell

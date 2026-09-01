@@ -51,3 +51,10 @@ invalid, and valid keys; public health; tenant/actor audit attribution; and iden
 verify that production cannot start with authentication disabled and credentials are
 configured as SHA-256 digests rather than raw keys. Migration `0007` is exercised in
 both upgrade and full rollback paths.
+
+The GitHub Actions quality workflow runs the deterministic suite on Python 3.12 and
+starts an ephemeral PostgreSQL 17 service. It upgrades every Alembic migration, checks
+model/migration parity, executes the authenticated evidence-to-report transaction
+against PostgreSQL (including Decimal, JSON, tenant, audit, and idempotency behavior),
+then verifies a complete rollback and re-upgrade. The PostgreSQL test skips locally
+unless `TRADE_AGENT_TEST_POSTGRES_URL` is explicitly configured.

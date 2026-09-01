@@ -17,12 +17,14 @@ PostgreSQL/Alembic repositories, append-only audit trail, FastAPI endpoints,
 idempotency, research-run state machine, structured logs/correlation IDs, Docker
 development environment, backup/restore procedure.
 
-Status: core foundation implemented. Remaining hardening includes PostgreSQL
-integration in CI, idempotency retention/cleanup policy, OIDC/role authorization,
+Status: core foundation implemented. Remaining hardening includes idempotency
+retention/cleanup policy, OIDC/role authorization,
 credential rotation automation, distributed rate limiting, and production backup
 rehearsal. Hashed API-key authentication, fail-closed production configuration,
 tenant-scoped repositories, and actor-aware audit events are implemented as the
 service-to-service baseline. Atomic bundle-submission idempotency is implemented.
+PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
+migration rollback/re-upgrade are enforced in CI.
 Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
 rate limiting remains part of authentication/production hardening.
 Deterministic data-quality validation, exact

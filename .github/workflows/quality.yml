@@ -1,0 +1,77 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
+        env:
+          POSTGRES_DB: trade_agent
+          POSTGRES_USER: trade_agent
+          POSTGRES_PASSWORD: ci-only-password
+        options: >-
+          --health-cmd "pg_isready -U trade_agent -d trade_agent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.lock
+          python -m pip install --disable-pip-version-check -e . --no-deps
+
+      - name: Run deterministic quality gates
+        run: |
+          python -m unittest discover -s tests
+          python -m ruff check .
+          python -m mypy
+          python -m compileall -q src tests
+          python -m pip check
+
+      - name: Upgrade PostgreSQL schema
+        env:
+          TRADE_AGENT_DATABASE_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent
+        run: python -m alembic upgrade head
+
+      - name: Check model and migration parity
+        env:
+          TRADE_AGENT_DATABASE_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent
+        run: python -m alembic check
+
+      - name: Run PostgreSQL vertical-slice integration
+        env:
+          TRADE_AGENT_TEST_POSTGRES_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent
+        run: python -m unittest tests.test_postgres_integration -v
+
+      - name: Verify full migration rollback and re-upgrade
+        env:
+          TRADE_AGENT_DATABASE_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent
+        run: |
+          python -m alembic downgrade base
+          python -m alembic upgrade head
