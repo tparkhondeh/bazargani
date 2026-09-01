@@ -115,6 +115,11 @@ explicit null clearing, timezone normalization, naive-datetime rejection, stale
 versions, cross-tenant hiding, and absence of commercial note content from audit
 payloads. PostgreSQL integration verifies the migrated columns and timestamp response.
 
+Latest-decision tests prove that a newer empty run cannot hide the last evidence-backed
+result, scenario ordering is deterministic, all equal rank-1 offers survive the
+projection, cross-tenant access returns `404`, and tenant metadata is absent.
+PostgreSQL integration verifies the report hash and run identity across the joined view.
+
 Pagination tests cover UTC/UUID cursor round trips, malformed and oversized cursors,
 maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite

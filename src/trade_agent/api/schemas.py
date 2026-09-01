@@ -228,6 +228,16 @@ class SupplierOfferRankingView(BaseModel):
     policy_version: str
 
 
+class LandedCostScenarioView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    quantity: int
+    target_currency: str
+    total_amount: Decimal
+    per_unit_amount: Decimal
+
+
 class DecisionReportView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -237,6 +247,15 @@ class DecisionReportView(BaseModel):
     content: str
     content_sha256: str
     generated_at: datetime
+
+
+class OpportunityDecisionView(BaseModel):
+    opportunity_id: str
+    research_run: ResearchRunView
+    validation: ResearchValidationView
+    scenarios: list[LandedCostScenarioView]
+    leading_offers: list[SupplierOfferRankingView]
+    report: DecisionReportView
 
 
 class ParseRequestInput(BaseModel):

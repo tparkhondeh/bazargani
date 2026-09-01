@@ -32,6 +32,9 @@ still requires commercial stakeholder validation before production activation.
 Versioned opportunity workflow context (`next_action`, timezone-aware `deadline`, and
 `notes`) is implemented with partial clearing and value-redacted audit metadata;
 assignment, reminders, and historical note revisions remain deferred.
+An evidence-backed latest-decision projection now joins each opportunity to its newest
+report-bearing run, validation, scenario summaries, and all leading tied offers for
+future result/history UI use.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

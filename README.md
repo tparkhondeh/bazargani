@@ -76,6 +76,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/opportunities/{id}`
 - `POST /api/v1/opportunities/{id}/transitions`
 - `PATCH /api/v1/opportunities/{id}/context`
+- `GET /api/v1/opportunities/{id}/latest-decision`
 - `POST /api/v1/opportunities/{id}/research-runs`
 - `GET /api/v1/opportunities/{id}/research-runs`
 - `POST /api/v1/research-runs/{id}/transitions`
@@ -113,6 +114,12 @@ The opportunity context endpoint partially updates `next_action`, timezone-aware
 can be explicitly cleared with JSON `null`. The audit event records only field names
 and the resulting version so commercial note content is not duplicated into the audit
 ledger.
+
+The latest-decision projection returns the newest research run under an opportunity
+that actually has an immutable report, together with validation, the three landed-cost
+summaries, and every rank-1 offer (including ties). A newer empty/in-progress run does
+not erase the last evidence-backed decision, and the endpoint never chooses one tied
+supplier arbitrarily.
 
 Statuses derived from validation cannot be manually promoted to `COMPLETED` through
 the generic transition endpoint. An authenticated actor must record an `APPROVE` or

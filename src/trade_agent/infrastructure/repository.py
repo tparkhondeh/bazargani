@@ -895,6 +895,113 @@ class TradeRepository:
             session.expunge(report)
             return report
 
+    def get_latest_opportunity_decision(
+        self,
+        opportunity_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            opportunity_exists = session.scalar(
+                select(OpportunityRecord.id).where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
+            if opportunity_exists is None:
+                raise KeyError("opportunity not found")
+
+            run = session.scalar(
+                select(ResearchRunRecord)
+                .join(
+                    DecisionReportRecord,
+                    DecisionReportRecord.research_run_id == ResearchRunRecord.id,
+                )
+                .where(
+                    ResearchRunRecord.opportunity_id == opportunity_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .order_by(
+                    ResearchRunRecord.created_at.desc(),
+                    ResearchRunRecord.id.desc(),
+                )
+                .limit(1)
+            )
+            if run is None:
+                raise KeyError("opportunity decision not found")
+
+            report = session.scalar(
+                select(DecisionReportRecord).where(
+                    DecisionReportRecord.research_run_id == run.id
+                )
+            )
+            validation = session.scalar(
+                select(ResearchValidationRecord).where(
+                    ResearchValidationRecord.research_run_id == run.id
+                )
+            )
+            scenarios = list(
+                session.scalars(
+                    select(LandedCostScenarioRecord).where(
+                        LandedCostScenarioRecord.research_run_id == run.id
+                    )
+                )
+            )
+            leading_offers = list(
+                session.scalars(
+                    select(SupplierOfferRankingRecord)
+                    .where(
+                        SupplierOfferRankingRecord.research_run_id == run.id,
+                        SupplierOfferRankingRecord.rank == 1,
+                    )
+                    .order_by(
+                        SupplierOfferRankingRecord.comparison_group,
+                        SupplierOfferRankingRecord.id,
+                    )
+                )
+            )
+            if report is None or validation is None or not scenarios:
+                raise KeyError("opportunity decision not found")
+
+            scenario_order = {"OPTIMISTIC": 0, "BASE": 1, "CONSERVATIVE": 2}
+            scenarios.sort(key=lambda item: (scenario_order.get(item.name, 99), item.id))
+            issues = list(
+                session.scalars(
+                    select(ValidationIssueRecord)
+                    .where(ValidationIssueRecord.research_run_id == run.id)
+                    .order_by(ValidationIssueRecord.severity, ValidationIssueRecord.code)
+                )
+            )
+            validation_view = {
+                "research_run_id": run.id,
+                "policy_version": validation.policy_version,
+                "disposition": validation.disposition,
+                "confidence_score": validation.confidence_score,
+                "confidence_label": validation.confidence_label,
+                "evaluated_at": validation.evaluated_at,
+                "issues": [
+                    {
+                        "code": issue.code,
+                        "severity": issue.severity,
+                        "message_fa": issue.message_fa,
+                        "subject_type": issue.subject_type,
+                        "subject_id": issue.subject_id,
+                        "details": issue.details,
+                    }
+                    for issue in issues
+                ],
+            }
+            for record in (run, report, *scenarios, *leading_offers):
+                session.expunge(record)
+            return {
+                "opportunity_id": opportunity_id,
+                "research_run": run,
+                "validation": validation_view,
+                "scenarios": scenarios,
+                "leading_offers": leading_offers,
+                "report": report,
+            }
+
     def get_research_validation(self, run_id: str, *, tenant_id: str) -> dict[str, Any]:
         with self._session_factory() as session:
             self._require_research_run(session, run_id, tenant_id)

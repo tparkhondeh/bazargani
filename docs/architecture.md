@@ -107,6 +107,13 @@ only explicitly supplied fields and supports explicit null clearing. Audit recor
 changed field names and resulting version but deliberately avoids duplicating sensitive
 commercial text; this is a change ledger, not a full historical snapshot store.
 
+The opportunity decision view is assembled at read time from the newest tenant-owned
+research run joined to an immutable report. Validation, scenario summaries, and all
+rank-1 rows belong to that same run, avoiding a denormalized recommendation that could
+drift from evidence. Empty newer runs are skipped. The projection preserves rank ties
+and leaves report content unmodified; any future HTML UI must render it with a strict
+sanitization policy.
+
 History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
 not unbounded reads or offset drift. Opportunities/runs use creation time and audit
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,

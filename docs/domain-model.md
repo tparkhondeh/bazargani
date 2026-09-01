@@ -29,6 +29,11 @@ timezone-aware deadline, and notes. Context changes increment the same aggregate
 version as status changes. The audit trail records which fields changed, but not their
 potentially sensitive values; the current row remains the source of truth for context.
 
+The current decision is a read projection, not independently editable state. It selects
+the newest research run with an immutable decision report and returns its validation,
+landed-cost summaries, and all leading offer rows. The run's current workflow status
+may reflect a later human review while the underlying validation/report stay immutable.
+
 The current confidence policy starts at 100, subtracts 10 per warning and 30 per
 error, and clamps at zero. Any error produces `NEEDS_HUMAN_REVIEW`; warning-only
 results produce `NEEDS_VERIFICATION`; only an issue-free result is `PASSED`. The

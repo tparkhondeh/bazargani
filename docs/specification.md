@@ -40,6 +40,8 @@ unknown or requires human verification?
 - Opportunity next action, deadline, and notes are tenant-scoped, partially editable,
   version-checked, and explicitly clearable without copying their commercial content
   into audit payloads.
+- An opportunity exposes its newest evidence-backed decision without treating a newer
+  empty run as a result or discarding equal first-ranked supplier offers.
 
 ## Deferred from MVP
 

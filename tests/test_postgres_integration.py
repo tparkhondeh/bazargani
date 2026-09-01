@@ -124,6 +124,17 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(review.status_code, 201)
         self.assertEqual(review.json()["resulting_status"], "COMPLETED")
 
+        latest_decision = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
+        )
+        self.assertEqual(latest_decision.status_code, 200)
+        self.assertEqual(latest_decision.json()["research_run"]["id"], run["id"])
+        self.assertEqual(
+            latest_decision.json()["report"]["content_sha256"],
+            completed["report_sha256"],
+        )
+        self.assertEqual(len(latest_decision.json()["scenarios"]), 3)
+
         additional_ids = {
             self.client.post(
                 "/api/v1/opportunities",

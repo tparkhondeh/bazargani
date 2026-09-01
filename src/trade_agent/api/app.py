@@ -28,6 +28,7 @@ from trade_agent.api.schemas import (
     EvidenceBundleSubmit,
     OpportunityContextUpdate,
     OpportunityCreate,
+    OpportunityDecisionView,
     OpportunityPageView,
     OpportunityTransition,
     OpportunityView,
@@ -372,6 +373,19 @@ def create_app(
             correlation_id=correlation_id,
             tenant_id=authenticated.tenant_id,
             actor_id=authenticated.actor_id,
+        )
+
+    @app.get(
+        "/api/v1/opportunities/{opportunity_id}/latest-decision",
+        response_model=OpportunityDecisionView,
+    )
+    def get_latest_opportunity_decision(
+        opportunity_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_latest_opportunity_decision(
+            opportunity_id,
+            tenant_id=authenticated.tenant_id,
         )
 
     @app.post(

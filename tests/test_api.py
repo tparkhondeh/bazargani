@@ -1,6 +1,7 @@
 import hashlib
 import json
 import unittest
+from copy import deepcopy
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -280,6 +281,75 @@ class ApiTests(unittest.TestCase):
             ],
         )
         self.assertNotIn(commercial_note, json.dumps(payloads))
+
+    def test_latest_opportunity_decision_is_evidence_backed_and_preserves_ties(self) -> None:
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": "محصول آزمایشی — داده ساختگی",
+                "quantity": 10,
+                "target_market": "تهران",
+            },
+        ).json()
+        missing = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
+        )
+
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        running = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        bundle["case_id"] = "LATEST-DECISION-TIE"
+        tied_observation = deepcopy(bundle["observations"][0])
+        tied_observation["observation_id"] = "demo-price-2"
+        tied_observation["supplier_name"] = "Demo Supplier Two — NOT REAL"
+        tied_observation["evidence"]["source_name"] = "Second synthetic source"
+        tied_observation["evidence"]["source_url"] = "https://example.com/demo-supplier-two"
+        tied_observation["evidence"]["raw_value"] = "Second synthetic test value: 5 USD"
+        bundle["observations"].append(tied_observation)
+        completed = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "latest-opportunity-decision"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        )
+        self.assertEqual(completed.status_code, 200)
+
+        newer_empty_run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        )
+        self.assertEqual(newer_empty_run.status_code, 201)
+        decision = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
+        )
+        hidden = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision",
+            headers={"X-API-Key": self.other_api_key},
+        )
+
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(missing.json()["code"], "NOT_FOUND")
+        self.assertEqual(decision.status_code, 200)
+        body = decision.json()
+        self.assertEqual(body["opportunity_id"], opportunity["id"])
+        self.assertEqual(body["research_run"]["id"], run["id"])
+        self.assertNotEqual(body["research_run"]["id"], newer_empty_run.json()["id"])
+        self.assertEqual(body["report"]["case_id"], "LATEST-DECISION-TIE")
+        self.assertEqual(
+            [scenario["name"] for scenario in body["scenarios"]],
+            ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
+        )
+        self.assertEqual(
+            {offer["supplier_name"] for offer in body["leading_offers"]},
+            {"Demo Supplier — NOT REAL", "Demo Supplier Two — NOT REAL"},
+        )
+        self.assertTrue(all(offer["rank"] == 1 for offer in body["leading_offers"]))
+        self.assertNotIn("tenant_id", decision.text)
+        self.assertEqual(hidden.status_code, 404)
+        self.assertEqual(hidden.json()["code"], "NOT_FOUND")
 
     def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
         health = self.client.get("/health", headers={"X-API-Key": ""})

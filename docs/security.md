@@ -67,6 +67,11 @@ the field values, reducing duplication of commercially sensitive text. Authorize
 clients can still read the current values, so future named-user roles and retention
 policy remain production requirements.
 
+Latest-decision reads first establish tenant ownership and select report, validation,
+scenarios, and offer rankings only through that tenant-owned run. The response exposes
+no tenant identifier. Report Markdown and source-linked content remain untrusted data;
+a future browser renderer must sanitize/encode them and must not execute embedded HTML.
+
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.
