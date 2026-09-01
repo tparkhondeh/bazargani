@@ -207,6 +207,7 @@ class TradeRepository:
         self,
         *,
         tenant_id: str,
+        status: OpportunityStatus | None,
         limit: int,
         after: PageCursor | None,
     ) -> tuple[list[OpportunityRecord], str | None]:
@@ -216,6 +217,8 @@ class TradeRepository:
             statement = select(OpportunityRecord).where(
                 OpportunityRecord.tenant_id == tenant_id
             )
+            if status is not None:
+                statement = statement.where(OpportunityRecord.status == status.value)
             if after is not None:
                 statement = statement.where(
                     or_(

@@ -57,6 +57,7 @@ from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
+    OpportunityStatus,
     VersionConflictError,
 )
 from trade_agent.infrastructure.database import Base, make_session_factory
@@ -296,11 +297,13 @@ def create_app(
     @app.get("/api/v1/opportunities", response_model=OpportunityPageView)
     def list_opportunities(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        status: Annotated[OpportunityStatus | None, Query()] = None,
         limit: Annotated[int, Query(ge=1, le=100)] = 50,
         after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
     ) -> Any:
         items, next_cursor = repository.list_opportunities(
             tenant_id=authenticated.tenant_id,
+            status=status,
             limit=limit,
             after=decode_cursor(after),
         )

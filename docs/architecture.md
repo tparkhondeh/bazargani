@@ -112,6 +112,10 @@ not unbounded reads or offset drift. Opportunities/runs use creation time and au
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,
 while tenant ownership remains an independent repository predicate.
 
+Opportunity history can add an exact lifecycle-status predicate before applying the
+same `(created_at, id)` keyset boundary. The query matches the existing tenant/status/
+creation index; cursors retain ordering state only and never carry filter authority.
+
 The ECB reference-rate application service constructs its HTTP adapter lazily and
 caches successful currency results for a bounded TTL. Cache misses are serialized to
 avoid an upstream request stampede. Adapter network, response-size, and format errors

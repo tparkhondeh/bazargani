@@ -70,6 +70,8 @@ policy remain production requirements.
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.
+Status filtering is applied as an additional enum predicate within that query; it
+cannot weaken tenant ownership and unrecognized status text is rejected.
 
 Audit history is read only through a bounded tenant-scoped query. The response omits
 `tenant_id` and never contains raw API keys; actor attribution remains the non-secret

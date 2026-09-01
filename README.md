@@ -129,6 +129,10 @@ oversized cursors fail with `422`. Audit responses expose the non-secret actor
 fingerprint, correlation/aggregate metadata, action, timestamp, and structured event
 payload, but omit `tenant_id`.
 
+Opportunity history accepts an optional exact `status` enum filter. Filtering remains
+inside the tenant-scoped indexed query and works with the same bounded cursor contract;
+an invalid status fails schema validation instead of being silently ignored.
+
 The authenticated ECB reference-rate endpoint exposes the latest supported EUR quote
 with its official source URL, retrieval/effective times, raw observation, confidence,
 and explicit informational rate type. A bounded in-process cache (default one hour)

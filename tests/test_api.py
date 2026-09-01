@@ -437,6 +437,72 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(excessive_limit.status_code, 422)
         self.assertEqual(excessive_limit.json()["code"], "REQUEST_VALIDATION_FAILED")
 
+    def test_opportunity_history_can_be_filtered_by_tenant_owned_status(self) -> None:
+        created = [
+            self.client.post(
+                "/api/v1/opportunities",
+                json={
+                    "product_name": f"Filtered product {index}",
+                    "quantity": index,
+                    "target_market": "Tehran",
+                },
+            ).json()
+            for index in range(1, 5)
+        ]
+        for opportunity in created[:2]:
+            response = self.client.post(
+                f"/api/v1/opportunities/{opportunity['id']}/transitions",
+                json={"target_status": "SOURCING", "expected_version": 1},
+            )
+            self.assertEqual(response.status_code, 200)
+        other = self.client.post(
+            "/api/v1/opportunities",
+            headers={"X-API-Key": self.other_api_key},
+            json={"product_name": "Hidden sourcing", "quantity": 1, "target_market": "Shiraz"},
+        ).json()
+        self.client.post(
+            f"/api/v1/opportunities/{other['id']}/transitions",
+            headers={"X-API-Key": self.other_api_key},
+            json={"target_status": "SOURCING", "expected_version": 1},
+        )
+
+        sourcing = self.client.get(
+            "/api/v1/opportunities",
+            params={"status": "SOURCING"},
+        )
+        first_researching = self.client.get(
+            "/api/v1/opportunities",
+            params={"status": "RESEARCHING", "limit": 1},
+        ).json()
+        second_researching = self.client.get(
+            "/api/v1/opportunities",
+            params={
+                "status": "RESEARCHING",
+                "limit": 1,
+                "after": first_researching["next_cursor"],
+            },
+        ).json()
+        invalid = self.client.get(
+            "/api/v1/opportunities",
+            params={"status": "sourcing"},
+        )
+
+        self.assertEqual(sourcing.status_code, 200)
+        self.assertEqual(
+            {item["id"] for item in sourcing.json()["items"]},
+            {item["id"] for item in created[:2]},
+        )
+        research_ids = {
+            first_researching["items"][0]["id"],
+            second_researching["items"][0]["id"],
+        }
+        self.assertEqual(research_ids, {item["id"] for item in created[2:]})
+        self.assertIsNotNone(first_researching["next_cursor"])
+        self.assertIsNone(second_researching["next_cursor"])
+        self.assertNotIn(other["id"], research_ids)
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(invalid.json()["code"], "REQUEST_VALIDATION_FAILED")
+
     def test_audit_history_is_paginated_and_tenant_scoped(self) -> None:
         created = [
             self.client.post(

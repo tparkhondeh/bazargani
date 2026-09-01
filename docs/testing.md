@@ -120,6 +120,10 @@ maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite
 date encoding cannot conceal a production ordering bug.
 
+Opportunity-history filter tests combine exact lifecycle status, multi-page cursors,
+invalid enum input, and a second tenant to prove filtering cannot expose unrelated
+aggregates or silently broaden a query.
+
 Audit-history integration tests create events for two tenants, traverse multiple
 pages without duplicates, verify actor/action/aggregate fields, reject malformed or
 excessive pagination, and prove that one tenant never receives the other's event or a
