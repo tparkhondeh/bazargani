@@ -83,8 +83,12 @@ def _decimal(value: Any) -> Decimal:
         raise PublicInputError("decimal values must contain a valid base-10 number") from None
 
 
-def _optional_text(value: Any) -> str | None:
-    return str(value) if value is not None else None
+def _optional_text(value: Any, label: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise PublicInputError(f"{label} must be a string or null")
+    return value
 
 
 def _optional_positive_int(value: Any, label: str) -> int | None:
@@ -160,13 +164,24 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
             quantity=int(item["quantity"]),
             unit=str(item["unit"]),
             evidence=_evidence(_object(item["evidence"], "observation evidence")),
-            supplier_name=_optional_text(item.get("supplier_name")),
+            supplier_name=_optional_text(item.get("supplier_name"), "supplier_name"),
             minimum_order_quantity=_optional_positive_int(
                 item.get("minimum_order_quantity"),
                 "minimum_order_quantity",
             ),
-            incoterm=_optional_text(item.get("incoterm")),
-            product_variant=_optional_text(item.get("product_variant")),
+            incoterm=_optional_text(item.get("incoterm"), "incoterm"),
+            incoterm_named_place=_optional_text(
+                item.get("incoterm_named_place"),
+                "incoterm_named_place",
+            ),
+            incoterm_version=_optional_text(
+                item.get("incoterm_version"),
+                "incoterm_version",
+            ),
+            product_variant=_optional_text(
+                item.get("product_variant"),
+                "product_variant",
+            ),
             product_attributes=_attributes(
                 item.get("product_attributes", {}),
                 "observation product_attributes",

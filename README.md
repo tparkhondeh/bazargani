@@ -32,6 +32,8 @@ Trade-cost coverage compares recorded scenario component codes with a transparen
 reference vocabulary without inferring applicability or missing amounts.
 Incoterm coverage groups only declared offer codes against the Incoterms 2020
 reference vocabulary and withholds route-specific comparison when scenarios are absent.
+Price observations now retain an optional Incoterm named place and declared version;
+partial declarations become explicit validation and ranking gaps.
 Evidence freshness applies the validation run's immutable evaluation timestamp and
 policy thresholds to every deduplicated evidence item and its exact usage count.
 
@@ -277,10 +279,12 @@ automatically required or applicable, and the system never fills it with an esti
 
 Incoterm coverage normalizes declared codes for grouping, identifies codes present in
 the Incoterms 2020 reference vocabulary, lists unrecognized declarations and offers
-with no declared code, and reports exact offer/supplier/source coverage. Its comparison
-status remains `WITHHELD_NO_INCOTERM_SCENARIOS`: the current model does not capture a
-named place, asserted edition, or route-specific cost/control/risk scenarios, so the
-system does not recommend a “best” Incoterm from offer metadata alone.
+with no declared code, and reports exact offer/supplier/source, named-place, version,
+and complete-terms coverage. The original named place and declared version are retained
+without assuming a default. Its comparison status remains
+`WITHHELD_NO_INCOTERM_SCENARIOS`: the current model does not capture comparable route-
+specific cost/control/risk scenarios, so the system does not recommend a “best”
+Incoterm from offer metadata alone.
 
 Evidence freshness reports each deduplicated item's retrieval time, exact age in seconds,
 classification/confidence, fingerprint, provenance, and usage count against the stored

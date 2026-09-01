@@ -82,6 +82,8 @@ class PriceObservation:
     supplier_name: str | None = None
     minimum_order_quantity: int | None = None
     incoterm: str | None = None
+    incoterm_named_place: str | None = None
+    incoterm_version: str | None = None
     product_variant: str | None = None
     product_attributes: dict[str, str] = field(default_factory=dict)
     market_layer: str = "UNKNOWN"
@@ -101,6 +103,43 @@ class PriceObservation:
         if not unit or len(unit) > 50 or any(ord(character) < 32 for character in unit):
             raise ValueError("price observation unit must be a non-empty safe value")
         object.__setattr__(self, "unit", unit)
+        incoterm = self.incoterm.strip().upper() if self.incoterm is not None else None
+        if incoterm == "":
+            incoterm = None
+        if incoterm is not None and (
+            len(incoterm) > 10 or any(ord(character) < 32 for character in incoterm)
+        ):
+            raise ValueError("incoterm must be a safe code of at most 10 characters")
+        object.__setattr__(self, "incoterm", incoterm)
+        named_place = (
+            self.incoterm_named_place.strip()
+            if self.incoterm_named_place is not None
+            else None
+        )
+        if named_place == "":
+            named_place = None
+        if named_place is not None and (
+            len(named_place) > 300
+            or any(ord(character) < 32 for character in named_place)
+        ):
+            raise ValueError(
+                "incoterm_named_place must be a safe value of at most 300 characters"
+            )
+        object.__setattr__(self, "incoterm_named_place", named_place)
+        version = (
+            self.incoterm_version.strip()
+            if self.incoterm_version is not None
+            else None
+        )
+        if version == "":
+            version = None
+        if version is not None and (
+            len(version) > 20 or any(ord(character) < 32 for character in version)
+        ):
+            raise ValueError(
+                "incoterm_version must be a safe value of at most 20 characters"
+            )
+        object.__setattr__(self, "incoterm_version", version)
         invalid_attributes = (
             not str(key).strip() or not str(value).strip()
             for key, value in self.product_attributes.items()

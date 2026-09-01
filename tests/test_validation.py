@@ -85,6 +85,50 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(duplicate_issue.subject_id, "demo-price-copy")
         self.assertEqual(duplicate_issue.details, {"duplicate_of": "demo-price-1"})
 
+    def test_incomplete_incoterm_terms_require_verification(self) -> None:
+        case = demo_case()
+        observation = replace(
+            case.observations[0],
+            incoterm_named_place=None,
+            incoterm_version=None,
+        )
+
+        _, validation = validate_research_case(
+            replace(case, observations=(observation,)),
+            evaluated_at=EVALUATED_AT,
+        )
+
+        issue = next(
+            item
+            for item in validation.issues
+            if item.code == "INCOMPLETE_INCOTERM_TERMS"
+        )
+        self.assertEqual(
+            issue.details,
+            {"missing_fields": ["incoterm_named_place", "incoterm_version"]},
+        )
+        self.assertEqual(validation.disposition, ValidationDisposition.NEEDS_VERIFICATION)
+
+    def test_incoterm_place_and_version_participate_in_deduplication(self) -> None:
+        case = demo_case()
+        original = case.observations[0]
+        different_place = replace(
+            original,
+            observation_id="different-incoterm-place",
+            incoterm_named_place="Another Fixture Gate",
+        )
+
+        cleaned, validation = validate_research_case(
+            replace(case, observations=(original, different_place)),
+            evaluated_at=EVALUATED_AT,
+        )
+
+        self.assertEqual(len(cleaned.observations), 2)
+        self.assertNotIn(
+            "DUPLICATE_PRICE_OBSERVATION",
+            {issue.code for issue in validation.issues},
+        )
+
     def test_stale_and_outlier_prices_require_verification(self) -> None:
         case = demo_case()
         original = case.observations[0]

@@ -111,8 +111,9 @@ separate. Verified supplier profiles, source independence, capacity/certificatio
 evidence, and multi-tier quote history remain Phase 3/5 work.
 A run-level Incoterm evidence-coverage view now groups exact declarations against the
 Incoterms 2020 reference vocabulary, preserves unknown/missing codes, and explicitly
-withholds comparison. Named-place capture and comparable route-specific cost, control,
-and risk scenarios remain Phase 5 work.
+withholds comparison. Structured named-place and declared-version capture is now
+persisted and included in completeness validation; comparable route-specific cost,
+control, and risk scenarios remain Phase 5 work.
 
 ## Phase 3 — First approved real providers
 

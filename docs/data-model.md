@@ -70,6 +70,12 @@ shared rate rows are expanded across their three historical scenarios during upg
 New writes preserve different rate values and provenance per scenario; the downgrade
 collapses scenario multiplicity because the legacy schema cannot represent it.
 
+Migration `20260901_0011` adds nullable `incoterm_named_place` and
+`incoterm_version` columns to price observations. Existing rows remain null instead of
+receiving an invented place or edition. New domain inputs normalize safe whitespace and
+case for the code while retaining the submitted named place and version as distinct
+immutable terms; downgrade removes only these two additive fields.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

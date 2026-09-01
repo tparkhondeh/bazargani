@@ -30,6 +30,9 @@ unknown or requires human verification?
   visible, and freshness is never presented as source trust or correctness.
 - A price requires source URL, retrieval timestamp, currency, unit, quantity or
   tier context, product variant, and confidence label.
+- When any Incoterm term is declared, code, named place, and declared version are
+  preserved as separate fields; partial terms are surfaced for verification and no
+  missing field receives a default.
 - Original values remain immutable; normalized values record transformation.
 - Structured price observations keep original offer/product/source context beside the
   BASE-scenario normalized comparison and product-match result.
@@ -50,8 +53,9 @@ unknown or requires human verification?
   currency group, and declared market layer; excluded prices and source coverage remain
   explicit, and no layer label is treated as proof of a market benchmark.
 - Incoterm coverage distinguishes recognized declarations, unrecognized codes, and
-  observations with no declared code. It withholds comparison until named-place and
-  route-specific cost, control, and risk scenarios are captured and comparable.
+  observations with no declared code. It counts named-place/version completeness but
+  withholds comparison until route-specific cost, control, and risk scenarios are
+  captured and comparable.
 - Scenario sensitivity exposes exact per-unit deltas and percentages only when all
   three scenarios share quantity and target currency; it never masquerades as EOQ.
 - Provider failure produces partial results and explicit data gaps.

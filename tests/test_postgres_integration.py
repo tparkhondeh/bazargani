@@ -51,7 +51,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0010")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0011")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity_response = self.client.post(
@@ -259,6 +259,11 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(price_observations.status_code, 200)
         self.assertEqual(len(price_observations.json()), completed["price_observation_count"])
         self.assertEqual(price_observations.json()[0]["normalized_currency"], "IRR")
+        self.assertEqual(
+            price_observations.json()[0]["incoterm_named_place"],
+            "Demo Factory Gate — NOT REAL",
+        )
+        self.assertEqual(price_observations.json()[0]["incoterm_version"], "2020")
         incoterm_coverage = self.client.get(
             f"/api/v1/research-runs/{run['id']}/incoterm-coverage"
         )
@@ -274,6 +279,10 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(
             incoterm_coverage.json()["comparison_status"],
             "WITHHELD_NO_INCOTERM_SCENARIOS",
+        )
+        self.assertEqual(
+            incoterm_coverage.json()["groups"][0]["complete_terms_observation_count"],
+            1,
         )
         self.assertNotIn("raw_value", json.dumps(incoterm_coverage.json()))
         quantity_analysis = self.client.get(

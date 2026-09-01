@@ -349,6 +349,8 @@ class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
     unit: str
     minimum_order_quantity: int | None
     incoterm: str | None
+    incoterm_named_place: str | None
+    incoterm_version: str | None
     source_name: str
     source_url: str
     retrieved_at: AwareDatetime
@@ -390,9 +392,14 @@ class IncotermEvidenceGroupView(BaseModel):
     observation_ids: tuple[str, ...]
     supplier_names: tuple[str, ...]
     source_urls: tuple[str, ...]
+    named_places: tuple[str, ...]
+    declared_versions: tuple[str, ...]
     offer_count: int = Field(ge=1)
     named_supplier_count: int = Field(ge=0)
     distinct_source_count: int = Field(ge=1)
+    named_place_observation_count: int = Field(ge=0)
+    version_observation_count: int = Field(ge=0)
+    complete_terms_observation_count: int = Field(ge=0)
 
 
 class IncotermCoverageSummaryView(BaseModel):
@@ -403,6 +410,8 @@ class IncotermCoverageSummaryView(BaseModel):
     unrecognized_declared_codes: tuple[str, ...]
     groups: tuple[IncotermEvidenceGroupView, ...]
     missing_incoterm_observation_ids: tuple[str, ...]
+    missing_named_place_observation_ids: tuple[str, ...]
+    missing_version_observation_ids: tuple[str, ...]
     comparison_status: str
     limitations: tuple[str, ...]
 
@@ -452,6 +461,8 @@ class EvidenceBackedPriceObservationView(BaseModel):
     unit: str
     minimum_order_quantity: int | None
     incoterm: str | None
+    incoterm_named_place: str | None
+    incoterm_version: str | None
     market_layer: str
     normalized_amount: Decimal | None
     normalized_currency: str | None

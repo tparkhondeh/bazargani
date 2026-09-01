@@ -204,8 +204,10 @@ calculation; raw evidence remains outside both outputs.
 Incoterm coverage uses a shared versioned code vocabulary also consumed by validation.
 The repository projects only tenant-owned observation/evidence rows into a pure
 calculator; the report uses the same point contract from its immutable result. Both
-surfaces expose recognized/unrecognized/missing declarations and source coverage, while
-the comparison status remains withheld because no route-specific scenario model exists.
+surfaces expose recognized/unrecognized/missing declarations, original named-place and
+version values, complete-terms counts, and source coverage. Nullable columns preserve
+legacy rows without inventing defaults; comparison remains withheld because no route-
+specific cost/control/risk scenario model exists.
 
 The executive-summary application policy consumes persisted validation, BASE scenario,
 rank-1 evidence-backed offers, and the shared data-gap summary. It emits conservative

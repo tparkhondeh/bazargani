@@ -104,8 +104,11 @@ observation IDs without merging. API/report and PostgreSQL tests require the exp
 
 Incoterm-coverage tests lock case-normalized grouping, reference-code order,
 recognized/unrecognized separation, missing declarations, exact supplier/source counts,
-empty versus undeclared status, and duplicate-ID rejection. API/report and PostgreSQL
-tests require the explicit comparison-withheld status, tenant hiding, and no raw data.
+named-place/version values and completeness, empty versus undeclared status, and
+duplicate-ID rejection. Domain/parser/validation/ranking tests cover normalization,
+length bounds, partial-term warnings, fingerprint separation, and split completeness
+scoring. API/report and PostgreSQL tests require persisted terms, explicit comparison-
+withheld status, tenant hiding, and no raw data; migration CI checks parity and rollback.
 
 Executive-summary tests cover validation-to-action mapping, missing/single/tied supplier
 candidate states, deterministic ordering, invalid confidence/disposition rejection, and

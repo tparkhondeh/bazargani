@@ -455,6 +455,8 @@ def render_markdown(result: ResearchResult) -> str:
             IncotermEvidencePoint(
                 observation_id=observation.observation_id,
                 incoterm=observation.incoterm,
+                incoterm_named_place=observation.incoterm_named_place,
+                incoterm_version=observation.incoterm_version,
                 supplier_name=observation.supplier_name,
                 source_url=observation.evidence.source_url,
             )
@@ -475,14 +477,45 @@ def render_markdown(result: ResearchResult) -> str:
             f"- {_code(incoterm_group.code)} ({recognition}): "
             f"{incoterm_group.offer_count} پیشنهاد، "
             f"{incoterm_group.named_supplier_count} تأمین‌کننده نام‌دار، "
-            f"{incoterm_group.distinct_source_count} نشانی منبع متمایز"
+            f"{incoterm_group.distinct_source_count} نشانی منبع متمایز، "
+            f"محل نام‌برده‌شده {incoterm_group.named_place_observation_count}/"
+            f"{incoterm_group.offer_count}، نسخه "
+            f"{incoterm_group.version_observation_count}/{incoterm_group.offer_count}، "
+            f"terms کامل {incoterm_group.complete_terms_observation_count}/"
+            f"{incoterm_group.offer_count}"
         )
+        if incoterm_group.named_places:
+            lines.append(
+                "  - محل‌های نام‌برده‌شده: "
+                + "، ".join(_text(item) for item in incoterm_group.named_places)
+            )
+        if incoterm_group.declared_versions:
+            lines.append(
+                "  - نسخه‌های اعلام‌شده: "
+                + "، ".join(_code(item) for item in incoterm_group.declared_versions)
+            )
     if incoterm_coverage.missing_incoterm_observation_ids:
         lines.append(
             "- مشاهدات فاقد Incoterm: "
             + "، ".join(
                 _code(item)
                 for item in incoterm_coverage.missing_incoterm_observation_ids
+            )
+        )
+    if incoterm_coverage.missing_named_place_observation_ids:
+        lines.append(
+            "- مشاهدات دارای کد ولی فاقد محل نام‌برده‌شده: "
+            + "، ".join(
+                _code(item)
+                for item in incoterm_coverage.missing_named_place_observation_ids
+            )
+        )
+    if incoterm_coverage.missing_version_observation_ids:
+        lines.append(
+            "- مشاهدات دارای کد ولی فاقد نسخه Incoterm: "
+            + "، ".join(
+                _code(item)
+                for item in incoterm_coverage.missing_version_observation_ids
             )
         )
     lines.extend(f"- محدودیت: {_text(item)}" for item in incoterm_coverage.limitations)

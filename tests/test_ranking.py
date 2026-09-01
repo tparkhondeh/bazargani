@@ -125,6 +125,33 @@ class SupplierOfferRankingTests(unittest.TestCase):
         self.assertEqual(ranking.rank, 1)
         self.assertEqual(ranking.component_scores["price_competitiveness"], 12)
 
+    def test_incoterm_completeness_scores_code_place_and_version_separately(self) -> None:
+        complete = rank_supplier_offers(
+            self.case,
+            match_research_case(self.case),
+        )[0]
+        incomplete_observation = replace(
+            self.observation,
+            incoterm_named_place=None,
+            incoterm_version=None,
+        )
+        incomplete_case = replace(
+            self.case,
+            observations=(incomplete_observation,),
+        )
+        incomplete = rank_supplier_offers(
+            incomplete_case,
+            match_research_case(incomplete_case),
+        )[0]
+
+        self.assertEqual(
+            complete.component_scores["commercial_completeness"]
+            - incomplete.component_scores["commercial_completeness"],
+            2,
+        )
+        self.assertIn("incoterm_named_place", incomplete.unknown_factors)
+        self.assertIn("incoterm_version", incomplete.unknown_factors)
+
 
 if __name__ == "__main__":
     unittest.main()

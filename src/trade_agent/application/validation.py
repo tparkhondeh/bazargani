@@ -23,7 +23,7 @@ from trade_agent.domain.models import (
     SupplierOfferRanking,
 )
 
-VALIDATION_POLICY_VERSION = "2026-08-31.1"
+VALIDATION_POLICY_VERSION = "2026-09-01.1"
 OUTLIER_FACTOR = Decimal("3")
 KNOWN_INCOTERMS = frozenset(INCOTERMS_2020_CODES)
 
@@ -74,6 +74,8 @@ def _observation_fingerprint(observation: PriceObservation) -> tuple[object, ...
         observation.unit,
         observation.minimum_order_quantity,
         _normal(observation.incoterm),
+        _normal(observation.incoterm_named_place),
+        _normal(observation.incoterm_version),
         observation.market_layer.casefold(),
         observation.evidence.source_url,
         observation.evidence.retrieved_at,
@@ -227,6 +229,37 @@ def validate_research_case(
                     details={"incoterm": observation.incoterm},
                 )
             )
+        incoterm_fields_declared = any(
+            (
+                observation.incoterm,
+                observation.incoterm_named_place,
+                observation.incoterm_version,
+            )
+        )
+        if incoterm_fields_declared:
+            missing_incoterm_fields = tuple(
+                field_name
+                for field_name, value in (
+                    ("incoterm", observation.incoterm),
+                    ("incoterm_named_place", observation.incoterm_named_place),
+                    ("incoterm_version", observation.incoterm_version),
+                )
+                if value is None
+            )
+            if missing_incoterm_fields:
+                issues.append(
+                    ValidationIssue(
+                        code="INCOMPLETE_INCOTERM_TERMS",
+                        severity=ValidationSeverity.WARNING,
+                        message_fa=(
+                            "کد، محل نام‌برده‌شده و نسخه Incoterm باید کنار هم "
+                            "ثبت شوند."
+                        ),
+                        subject_type="PRICE_OBSERVATION",
+                        subject_id=observation.observation_id,
+                        details={"missing_fields": list(missing_incoterm_fields)},
+                    )
+                )
         if (
             observation.minimum_order_quantity is None
             or case.quantity >= observation.minimum_order_quantity

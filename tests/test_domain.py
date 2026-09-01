@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -52,6 +53,36 @@ class DomainTests(unittest.TestCase):
                 unit=" ",
                 evidence=evidence,
             )
+
+    def test_price_observation_normalizes_structured_incoterm_terms(self) -> None:
+        evidence = Evidence(
+            EvidenceClass.FACT,
+            "source",
+            "https://example.com/item",
+            datetime(2026, 8, 31, tzinfo=UTC),
+            "10 USD",
+            Confidence.HIGH,
+        )
+        observation = PriceObservation(
+            observation_id="price-terms",
+            product_name="item",
+            unit_price=Money(Decimal("10"), "USD"),
+            quantity=1,
+            unit="device",
+            evidence=evidence,
+            incoterm=" fob ",
+            incoterm_named_place=" Port of Fixture ",
+            incoterm_version=" 2020 ",
+        )
+
+        self.assertEqual(observation.incoterm, "FOB")
+        self.assertEqual(observation.incoterm_named_place, "Port of Fixture")
+        self.assertEqual(observation.incoterm_version, "2020")
+
+        with self.assertRaisesRegex(ValueError, "incoterm_named_place"):
+            replace(observation, incoterm_named_place="x" * 301)
+        with self.assertRaisesRegex(ValueError, "incoterm_named_place"):
+            replace(observation, incoterm_named_place="Port\nforged")
 
 
 if __name__ == "__main__":

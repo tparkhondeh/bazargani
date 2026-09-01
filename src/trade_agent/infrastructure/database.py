@@ -241,6 +241,8 @@ class PriceObservationRecord(Base):
     unit: Mapped[str] = mapped_column(String(50))
     minimum_order_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     incoterm: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    incoterm_named_place: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    incoterm_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     product_variant: Mapped[str | None] = mapped_column(String(300), nullable=True)
     product_attributes: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     market_layer: Mapped[str] = mapped_column(String(50))

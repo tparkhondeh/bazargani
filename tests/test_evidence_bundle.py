@@ -31,6 +31,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("راستی‌آزمایی `UNVERIFIED`", report)
         self.assertIn("پوشش شواهد Incoterm", report)
         self.assertIn("WITHHELD_NO_INCOTERM_SCENARIOS", report)
+        self.assertIn("Demo Factory Gate — NOT REAL", report)
+        self.assertIn("نسخه‌های اعلام‌شده: `2020`", report)
         self.assertIn(r"supplier\_reliability", report)
         self.assertIn("حساسیت سناریوها", report)
         self.assertIn("پوشش اجزای هزینه", report)
@@ -74,6 +76,22 @@ class EvidenceBundleTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "unit_price must be an object"):
             parse_evidence_bundle(bundle)
+
+    def test_optional_observation_terms_reject_non_string_values(self) -> None:
+        for field in (
+            "supplier_name",
+            "incoterm",
+            "incoterm_named_place",
+            "incoterm_version",
+            "product_variant",
+        ):
+            with self.subTest(field=field):
+                bundle = json.loads(
+                    Path("examples/demo_case.json").read_text(encoding="utf-8")
+                )
+                bundle["observations"][0][field] = {"not": "text"}
+                with self.assertRaisesRegex(PublicInputError, rf"{field} must be"):
+                    parse_evidence_bundle(bundle)
 
     def test_assumptions_and_unknowns_require_bounded_nonempty_strings(self) -> None:
         invalid_values = [

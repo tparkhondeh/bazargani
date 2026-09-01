@@ -1215,6 +1215,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(observation["product_variant"], "DEMO")
         self.assertEqual(observation["product_attributes"], {"variant": "DEMO"})
         self.assertEqual(observation["market_layer"], "DEMO")
+        self.assertEqual(
+            observation["incoterm_named_place"],
+            "Demo Factory Gate — NOT REAL",
+        )
+        self.assertEqual(observation["incoterm_version"], "2020")
         self.assertEqual(observation["product_match_classification"], "EXACT_VARIANT")
         self.assertEqual(observation["product_match_score"], 100)
         self.assertNotIn("raw_value", json.dumps(observations))
@@ -1289,6 +1294,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(rankings[0]["quoted_quantity"], 10)
         self.assertEqual(rankings[0]["minimum_order_quantity"], 10)
         self.assertEqual(rankings[0]["incoterm"], "EXW")
+        self.assertEqual(
+            rankings[0]["incoterm_named_place"],
+            "Demo Factory Gate — NOT REAL",
+        )
+        self.assertEqual(rankings[0]["incoterm_version"], "2020")
         self.assertEqual(rankings[0]["source_name"], "Demo supplier — synthetic fixture")
         self.assertEqual(rankings[0]["source_url"], "https://example.com/demo-supplier")
         self.assertEqual(rankings[0]["retrieved_at"], "2026-08-31T00:00:00Z")
@@ -1338,6 +1348,17 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(incoterm_coverage["groups"][0]["recognized"])
         self.assertEqual(incoterm_coverage["groups"][0]["offer_count"], 1)
         self.assertEqual(incoterm_coverage["groups"][0]["named_supplier_count"], 1)
+        self.assertEqual(
+            incoterm_coverage["groups"][0]["named_places"],
+            ["Demo Factory Gate — NOT REAL"],
+        )
+        self.assertEqual(incoterm_coverage["groups"][0]["declared_versions"], ["2020"])
+        self.assertEqual(
+            incoterm_coverage["groups"][0]["complete_terms_observation_count"],
+            1,
+        )
+        self.assertEqual(incoterm_coverage["missing_named_place_observation_ids"], [])
+        self.assertEqual(incoterm_coverage["missing_version_observation_ids"], [])
         self.assertNotIn("raw_value", json.dumps(incoterm_coverage))
 
         with self.engine.connect() as connection:

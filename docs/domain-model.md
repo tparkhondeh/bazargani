@@ -95,9 +95,12 @@ source independence, certifications, capacity, payment behavior, or legal standi
 Incoterm evidence coverage is a run-level projection over submitted price observations.
 It normalizes non-empty declarations to uppercase, groups them against a shared
 Incoterms 2020 code vocabulary, and preserves unrecognized codes and missing observation
-IDs. Offer, named-supplier, and distinct-URL counts describe only retained metadata.
-The current schema has no structured named place, asserted edition, cost allocation,
-control, or risk-transfer scenario; comparison is therefore
+IDs. Each observation can separately retain the named place and declared version;
+coverage exposes their distinct values, per-group counts, and complete-terms count.
+Missing fields create one validation warning and reduce commercial-completeness scoring
+without being defaulted. Offer, named-supplier, and distinct-URL counts describe only
+retained metadata. The current schema still has no route-specific cost allocation,
+operational-control, or risk-transfer scenario; comparison is therefore
 `WITHHELD_NO_INCOTERM_SCENARIOS`, and no code is recommended as “best.”
 
 The executive decision summary is a derived run view, not an authorization or mutable

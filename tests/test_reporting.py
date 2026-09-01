@@ -20,6 +20,9 @@ class MarkdownReportingTests(unittest.TestCase):
         hostile_observation = replace(
             observation,
             supplier_name='<img src=x onerror="steal()">',
+            incoterm_named_place=(
+                "</li><script>incoterm()</script> [forged](https://evil.example)"
+            ),
             evidence=hostile_evidence,
         )
         hostile_scenarios = tuple(
@@ -56,6 +59,7 @@ class MarkdownReportingTests(unittest.TestCase):
         self.assertNotIn("<script", report)
         self.assertNotIn("<img", report)
         self.assertNotIn("<iframe", report)
+        self.assertNotIn("<script>incoterm", report)
         self.assertNotIn("\n# forged", report)
         self.assertIn(
             r"&lt;script&gt;steal\(\)&lt;/script&gt; \# forged title",
@@ -71,6 +75,11 @@ class MarkdownReportingTests(unittest.TestCase):
         )
         self.assertNotIn("[click](https://evil.example)", report)
         self.assertIn("``case`id``", report)
+        self.assertIn(
+            r"&lt;/li&gt;&lt;script&gt;incoterm\(\)&lt;/script&gt; "
+            r"\[forged\]\(https://evil.example\)",
+            report,
+        )
 
 
 if __name__ == "__main__":

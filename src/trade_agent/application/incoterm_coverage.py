@@ -13,6 +13,8 @@ from trade_agent.domain.errors import PublicInputError
 class IncotermEvidencePoint:
     observation_id: str
     incoterm: str | None
+    incoterm_named_place: str | None
+    incoterm_version: str | None
     supplier_name: str | None
     source_url: str
 
@@ -24,9 +26,14 @@ class IncotermEvidenceGroup:
     observation_ids: tuple[str, ...]
     supplier_names: tuple[str, ...]
     source_urls: tuple[str, ...]
+    named_places: tuple[str, ...]
+    declared_versions: tuple[str, ...]
     offer_count: int
     named_supplier_count: int
     distinct_source_count: int
+    named_place_observation_count: int
+    version_observation_count: int
+    complete_terms_observation_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +45,8 @@ class IncotermCoverageSummary:
     unrecognized_declared_codes: tuple[str, ...]
     groups: tuple[IncotermEvidenceGroup, ...]
     missing_incoterm_observation_ids: tuple[str, ...]
+    missing_named_place_observation_ids: tuple[str, ...]
+    missing_version_observation_ids: tuple[str, ...]
     comparison_status: str
     limitations: tuple[str, ...]
 
@@ -52,12 +61,18 @@ def summarize_incoterm_coverage(
     reference_set = set(INCOTERMS_2020_CODES)
     grouped: dict[str, list[IncotermEvidencePoint]] = {}
     missing: list[str] = []
+    missing_named_place: list[str] = []
+    missing_version: list[str] = []
     for point in points:
         code = (point.incoterm or "").strip().upper()
         if not code:
             missing.append(point.observation_id)
             continue
         grouped.setdefault(code, []).append(point)
+        if not point.incoterm_named_place or not point.incoterm_named_place.strip():
+            missing_named_place.append(point.observation_id)
+        if not point.incoterm_version or not point.incoterm_version.strip():
+            missing_version.append(point.observation_id)
 
     code_order = {code: index for index, code in enumerate(INCOTERMS_2020_CODES)}
     groups: list[IncotermEvidenceGroup] = []
@@ -76,6 +91,25 @@ def summarize_incoterm_coverage(
             )
         )
         source_urls = tuple(sorted({point.source_url for point in ordered}))
+        named_places = tuple(
+            sorted(
+                {
+                    point.incoterm_named_place.strip()
+                    for point in ordered
+                    if point.incoterm_named_place
+                    and point.incoterm_named_place.strip()
+                }
+            )
+        )
+        declared_versions = tuple(
+            sorted(
+                {
+                    point.incoterm_version.strip()
+                    for point in ordered
+                    if point.incoterm_version and point.incoterm_version.strip()
+                }
+            )
+        )
         groups.append(
             IncotermEvidenceGroup(
                 code=code,
@@ -83,9 +117,31 @@ def summarize_incoterm_coverage(
                 observation_ids=tuple(point.observation_id for point in ordered),
                 supplier_names=supplier_names,
                 source_urls=source_urls,
+                named_places=named_places,
+                declared_versions=declared_versions,
                 offer_count=len(ordered),
                 named_supplier_count=len(supplier_names),
                 distinct_source_count=len(source_urls),
+                named_place_observation_count=sum(
+                    bool(
+                        point.incoterm_named_place
+                        and point.incoterm_named_place.strip()
+                    )
+                    for point in ordered
+                ),
+                version_observation_count=sum(
+                    bool(point.incoterm_version and point.incoterm_version.strip())
+                    for point in ordered
+                ),
+                complete_terms_observation_count=sum(
+                    bool(
+                        point.incoterm_named_place
+                        and point.incoterm_named_place.strip()
+                        and point.incoterm_version
+                        and point.incoterm_version.strip()
+                    )
+                    for point in ordered
+                ),
             )
         )
 
@@ -105,12 +161,13 @@ def summarize_incoterm_coverage(
         ),
         groups=tuple(groups),
         missing_incoterm_observation_ids=tuple(sorted(missing)),
+        missing_named_place_observation_ids=tuple(sorted(missing_named_place)),
+        missing_version_observation_ids=tuple(sorted(missing_version)),
         comparison_status="WITHHELD_NO_INCOTERM_SCENARIOS",
         limitations=(
             "coverage summarizes submitted declarations and does not verify contract "
             "wording or execution",
-            "the current data model records a code only; named place, edition, cost "
-            "allocation, control, and risk-transfer details are not structured fields",
+            "declared code, named place, and version do not prove agreed contract terms",
             "distinct source URLs do not prove source independence",
             "no best Incoterm is selected without comparable route-specific cost, "
             "control, and risk scenarios",

@@ -16,6 +16,8 @@
       "supplier_name": "Demo Supplier — NOT REAL",
       "minimum_order_quantity": 10,
       "incoterm": "EXW",
+      "incoterm_named_place": "Demo Factory Gate — NOT REAL",
+      "incoterm_version": "2020",
       "product_variant": "DEMO",
       "product_attributes": {"variant": "DEMO"},
       "market_layer": "DEMO",

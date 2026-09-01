@@ -74,7 +74,9 @@ def _terms_score(observation: PriceObservation) -> int:
     return sum(
         (
             4 if observation.supplier_name else 0,
-            3 if observation.incoterm else 0,
+            1 if observation.incoterm else 0,
+            1 if observation.incoterm_named_place else 0,
+            1 if observation.incoterm_version else 0,
             2 if observation.minimum_order_quantity is not None else 0,
             1 if observation.product_variant or observation.product_attributes else 0,
         )
@@ -112,6 +114,12 @@ def rank_supplier_offers(
         if not observation.incoterm:
             unknown_factors.append("incoterm")
             explanations.append("Incoterm اعلام نشده است.")
+        if not observation.incoterm_named_place:
+            unknown_factors.append("incoterm_named_place")
+            explanations.append("محل نام‌برده‌شده Incoterm اعلام نشده است.")
+        if not observation.incoterm_version:
+            unknown_factors.append("incoterm_version")
+            explanations.append("نسخه Incoterm اعلام نشده است.")
 
         normalized_price: Money | None
         try:
