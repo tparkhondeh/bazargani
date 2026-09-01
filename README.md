@@ -58,7 +58,7 @@ strategy, open-source evaluation, testing strategy, and roadmap.
 
 ## API foundation
 
-Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
+Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 `docs/operations.md` for local commands. Initial endpoints are:
 
 - `GET /health` and `GET /ready`
@@ -72,6 +72,12 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 - `GET /api/v1/research-runs/{id}/validation`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
+
+`/health` and `/ready` are public for orchestration. Every `/api/v1` endpoint is
+authenticated when `TRADE_AGENT_AUTH_ENABLED=true` and requires `X-API-Key`. Only
+SHA-256 key digests are configured; the resolved tenant and a non-secret key
+fingerprint are propagated into tenant-scoped repository queries and audit events.
+Production configuration fails at startup if authentication is disabled.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

@@ -55,12 +55,15 @@ class TradeRepository:
         quantity: int,
         target_market: str,
         correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
     ) -> OpportunityRecord:
         if quantity <= 0:
             raise ValueError("quantity must be positive")
         now = datetime.now(UTC)
         record = OpportunityRecord(
             id=str(uuid4()),
+            tenant_id=tenant_id,
             product_name=product_name.strip(),
             quantity=quantity,
             target_market=target_market.strip(),
@@ -72,31 +75,68 @@ class TradeRepository:
             raise ValueError("product_name and target_market are required")
         with self._session_factory.begin() as session:
             session.add(record)
-            self._audit(session, correlation_id, "Opportunity", record.id, "CREATED", {})
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "Opportunity",
+                record.id,
+                "CREATED",
+                {},
+            )
         return record
 
-    def get_opportunity(self, opportunity_id: str) -> OpportunityRecord:
+    def get_opportunity(self, opportunity_id: str, *, tenant_id: str) -> OpportunityRecord:
         with self._session_factory() as session:
-            record = session.get(OpportunityRecord, opportunity_id)
+            record = session.scalar(
+                select(OpportunityRecord).where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
             if record is None:
                 raise KeyError("opportunity not found")
             session.expunge(record)
             return record
 
-    def create_research_run(self, *, opportunity_id: str, correlation_id: str) -> ResearchRunRecord:
+    def create_research_run(
+        self,
+        *,
+        opportunity_id: str,
+        correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> ResearchRunRecord:
         now = datetime.now(UTC)
         with self._session_factory.begin() as session:
-            if session.get(OpportunityRecord, opportunity_id) is None:
+            opportunity = session.scalar(
+                select(OpportunityRecord).where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
+            if opportunity is None:
                 raise KeyError("opportunity not found")
             record = ResearchRunRecord(
                 id=str(uuid4()),
+                tenant_id=tenant_id,
                 opportunity_id=opportunity_id,
                 status=ResearchRunStatus.CREATED.value,
                 created_at=now,
                 updated_at=now,
             )
             session.add(record)
-            self._audit(session, correlation_id, "ResearchRun", record.id, "CREATED", {})
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "ResearchRun",
+                record.id,
+                "CREATED",
+                {},
+            )
         return record
 
     def transition_research_run(
@@ -106,10 +146,17 @@ class TradeRepository:
         target: ResearchRunStatus,
         expected_version: int,
         correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
     ) -> ResearchRunRecord:
         with self._session_factory.begin() as session:
             statement = (
-                select(ResearchRunRecord).where(ResearchRunRecord.id == run_id).with_for_update()
+                select(ResearchRunRecord)
+                .where(
+                    ResearchRunRecord.id == run_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
             )
             record = session.scalar(statement)
             if record is None:
@@ -126,6 +173,8 @@ class TradeRepository:
             self._audit(
                 session,
                 correlation_id,
+                tenant_id,
+                actor_id,
                 "ResearchRun",
                 record.id,
                 "STATUS_CHANGED",
@@ -143,8 +192,10 @@ class TradeRepository:
         correlation_id: str,
         idempotency_key: str,
         request_hash: str,
+        tenant_id: str,
+        actor_id: str,
     ) -> ResearchCompletion:
-        scope = f"research-result:{run_id}"
+        scope = f"research-result:{tenant_id}:{run_id}"
         try:
             return self._persist_research_result_once(
                 run_id=run_id,
@@ -155,12 +206,15 @@ class TradeRepository:
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
                 scope=scope,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
             )
         except IntegrityError:
             replay = self._load_idempotent_completion(
                 scope=scope,
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
+                tenant_id=tenant_id,
             )
             if replay is None:
                 raise
@@ -172,11 +226,13 @@ class TradeRepository:
         run_id: str,
         idempotency_key: str,
         request_hash: str,
+        tenant_id: str,
     ) -> ResearchCompletion | None:
         return self._load_idempotent_completion(
-            scope=f"research-result:{run_id}",
+            scope=f"research-result:{tenant_id}:{run_id}",
             idempotency_key=idempotency_key,
             request_hash=request_hash,
+            tenant_id=tenant_id,
         )
 
     def _persist_research_result_once(
@@ -190,6 +246,8 @@ class TradeRepository:
         idempotency_key: str,
         request_hash: str,
         scope: str,
+        tenant_id: str,
+        actor_id: str,
     ) -> ResearchCompletion:
         if not idempotency_key.strip() or len(idempotency_key) > 128:
             raise ValueError("idempotency_key must contain 1 to 128 characters")
@@ -198,12 +256,18 @@ class TradeRepository:
                 select(IdempotencyRecord).where(
                     IdempotencyRecord.scope == scope,
                     IdempotencyRecord.idempotency_key == idempotency_key,
+                    IdempotencyRecord.tenant_id == tenant_id,
                 )
             )
             if idempotency is not None:
                 return self._completion_from_idempotency(idempotency, request_hash)
             statement = (
-                select(ResearchRunRecord).where(ResearchRunRecord.id == run_id).with_for_update()
+                select(ResearchRunRecord)
+                .where(
+                    ResearchRunRecord.id == run_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
             )
             run = session.scalar(statement)
             if run is None:
@@ -220,7 +284,12 @@ class TradeRepository:
             if existing_report is not None:
                 raise VersionConflictError("research results are append-only and already exist")
 
-            opportunity = session.get(OpportunityRecord, run.opportunity_id)
+            opportunity = session.scalar(
+                select(OpportunityRecord).where(
+                    OpportunityRecord.id == run.opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
             if opportunity is None:
                 raise KeyError("opportunity not found")
             if opportunity.quantity != result.case.quantity:
@@ -429,6 +498,8 @@ class TradeRepository:
             self._audit(
                 session,
                 correlation_id,
+                tenant_id,
+                actor_id,
                 "ResearchRun",
                 run.id,
                 "RESULTS_PERSISTED",
@@ -469,6 +540,7 @@ class TradeRepository:
             session.add(
                 IdempotencyRecord(
                     id=str(uuid4()),
+                    tenant_id=tenant_id,
                     scope=scope,
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
@@ -479,8 +551,11 @@ class TradeRepository:
 
         return completion
 
-    def get_research_report(self, run_id: str) -> DecisionReportRecord:
+    def get_research_report(
+        self, run_id: str, *, tenant_id: str
+    ) -> DecisionReportRecord:
         with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
             report = session.scalar(
                 select(DecisionReportRecord).where(DecisionReportRecord.research_run_id == run_id)
             )
@@ -489,8 +564,9 @@ class TradeRepository:
             session.expunge(report)
             return report
 
-    def get_research_validation(self, run_id: str) -> dict[str, Any]:
+    def get_research_validation(self, run_id: str, *, tenant_id: str) -> dict[str, Any]:
         with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
             validation = session.scalar(
                 select(ResearchValidationRecord).where(
                     ResearchValidationRecord.research_run_id == run_id
@@ -523,11 +599,11 @@ class TradeRepository:
                 ],
             }
 
-    def get_product_matches(self, run_id: str) -> list[ProductMatchRecord]:
+    def get_product_matches(
+        self, run_id: str, *, tenant_id: str
+    ) -> list[ProductMatchRecord]:
         with self._session_factory() as session:
-            run = session.get(ResearchRunRecord, run_id)
-            if run is None:
-                raise KeyError("research run not found")
+            self._require_research_run(session, run_id, tenant_id)
             records = list(
                 session.scalars(
                     select(ProductMatchRecord)
@@ -539,11 +615,11 @@ class TradeRepository:
                 session.expunge(record)
             return records
 
-    def get_supplier_offer_rankings(self, run_id: str) -> list[SupplierOfferRankingRecord]:
+    def get_supplier_offer_rankings(
+        self, run_id: str, *, tenant_id: str
+    ) -> list[SupplierOfferRankingRecord]:
         with self._session_factory() as session:
-            run = session.get(ResearchRunRecord, run_id)
-            if run is None:
-                raise KeyError("research run not found")
+            self._require_research_run(session, run_id, tenant_id)
             records = list(
                 session.scalars(
                     select(SupplierOfferRankingRecord)
@@ -565,17 +641,35 @@ class TradeRepository:
         scope: str,
         idempotency_key: str,
         request_hash: str,
+        tenant_id: str,
     ) -> ResearchCompletion | None:
         with self._session_factory() as session:
             record = session.scalar(
                 select(IdempotencyRecord).where(
                     IdempotencyRecord.scope == scope,
                     IdempotencyRecord.idempotency_key == idempotency_key,
+                    IdempotencyRecord.tenant_id == tenant_id,
                 )
             )
             if record is None:
                 return None
             return self._completion_from_idempotency(record, request_hash)
+
+    @staticmethod
+    def _require_research_run(
+        session: Session,
+        run_id: str,
+        tenant_id: str,
+    ) -> ResearchRunRecord:
+        run = session.scalar(
+            select(ResearchRunRecord).where(
+                ResearchRunRecord.id == run_id,
+                ResearchRunRecord.tenant_id == tenant_id,
+            )
+        )
+        if run is None:
+            raise KeyError("research run not found")
+        return run
 
     @staticmethod
     def _completion_from_idempotency(
@@ -648,6 +742,8 @@ class TradeRepository:
     def _audit(
         session: Session,
         correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
         aggregate_type: str,
         aggregate_id: str,
         action: str,
@@ -656,6 +752,8 @@ class TradeRepository:
         session.add(
             AuditEventRecord(
                 id=str(uuid4()),
+                tenant_id=tenant_id,
+                actor_id=actor_id,
                 correlation_id=correlation_id,
                 aggregate_type=aggregate_type,
                 aggregate_id=aggregate_id,

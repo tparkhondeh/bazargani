@@ -42,9 +42,16 @@ class OpportunityRecord(Base):
         CheckConstraint("quantity > 0", name="ck_opportunities_quantity_positive"),
         CheckConstraint("version > 0", name="ck_opportunities_version_positive"),
         Index("ix_opportunities_status_created_at", "status", "created_at"),
+        Index(
+            "ix_opportunities_tenant_status_created",
+            "tenant_id",
+            "status",
+            "created_at",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
     product_name: Mapped[str] = mapped_column(String(300))
     quantity: Mapped[int] = mapped_column(Integer)
     target_market: Mapped[str] = mapped_column(String(200))
@@ -62,9 +69,11 @@ class ResearchRunRecord(Base):
     __table_args__ = (
         CheckConstraint("version > 0", name="ck_research_runs_version_positive"),
         Index("ix_research_runs_opportunity_created_at", "opportunity_id", "created_at"),
+        Index("ix_research_runs_tenant_created_at", "tenant_id", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
     opportunity_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("opportunities.id", ondelete="CASCADE")
     )
@@ -80,9 +89,12 @@ class AuditEventRecord(Base):
     __table_args__ = (
         Index("ix_audit_aggregate_time", "aggregate_type", "aggregate_id", "occurred_at"),
         Index("ix_audit_correlation_id", "correlation_id"),
+        Index("ix_audit_tenant_time", "tenant_id", "occurred_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[str] = mapped_column(String(100))
     correlation_id: Mapped[str] = mapped_column(String(64))
     aggregate_type: Mapped[str] = mapped_column(String(50))
     aggregate_id: Mapped[str] = mapped_column(String(36))
@@ -96,9 +108,11 @@ class IdempotencyRecord(Base):
     __table_args__ = (
         UniqueConstraint("scope", "idempotency_key", name="uq_idempotency_scope_key"),
         Index("ix_idempotency_created_at", "created_at"),
+        Index("ix_idempotency_tenant_created", "tenant_id", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
     scope: Mapped[str] = mapped_column(String(120))
     idempotency_key: Mapped[str] = mapped_column(String(128))
     request_hash: Mapped[str] = mapped_column(String(64))

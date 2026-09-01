@@ -7,7 +7,7 @@ database, scraper, or model dependencies. Application services orchestrate ports
 adapters implement acquisition, persistence, LLM, and delivery concerns.
 
 ```text
-CLI / future FastAPI / future RTL UI
+CLI / authenticated FastAPI / future RTL UI
                  |
         application services
         /        |         \
@@ -28,7 +28,8 @@ CLI / future FastAPI / future RTL UI
   supplier reliability without evidence and never compares incompatible units.
 - `providers`: acquisition contracts and adapters; no business decisions.
 - `reporting`: presentation from an already-computed result.
-- future `infrastructure`: PostgreSQL, queues, telemetry, HTTP clients.
+- `infrastructure`: SQLAlchemy/PostgreSQL repositories and tenant-scoped persistence.
+  Queues and expanded telemetry remain future adapters.
 
 ## Options rejected for now
 
@@ -53,6 +54,12 @@ streamed body above the configured maximum before validation/use-case execution 
 replays accepted chunks unchanged to FastAPI. Independent structural limits prevent a
 small but combinatorially excessive evidence bundle from exhausting calculation or
 database resources.
+
+The API authenticates a secret key at the boundary, resolves it to an immutable
+tenant/actor principal, and passes that principal explicitly through application
+ports. Aggregate reads and writes include tenant predicates; an identifier owned by
+another tenant is deliberately indistinguishable from a missing identifier (`404`).
+Health/readiness remain public and expose no tenant data.
 
 ## Configuration
 

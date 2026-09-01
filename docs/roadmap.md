@@ -18,8 +18,11 @@ idempotency, research-run state machine, structured logs/correlation IDs, Docker
 development environment, backup/restore procedure.
 
 Status: core foundation implemented. Remaining hardening includes PostgreSQL
-integration in CI, authentication/tenant scope, idempotency retention/cleanup policy,
-and production backup rehearsal. Atomic bundle-submission idempotency is implemented.
+integration in CI, idempotency retention/cleanup policy, OIDC/role authorization,
+credential rotation automation, distributed rate limiting, and production backup
+rehearsal. Hashed API-key authentication, fail-closed production configuration,
+tenant-scoped repositories, and actor-aware audit events are implemented as the
+service-to-service baseline. Atomic bundle-submission idempotency is implemented.
 Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
 rate limiting remains part of authentication/production hardening.
 Deterministic data-quality validation, exact
@@ -43,9 +46,9 @@ for new research, progress, result, assumptions, and opportunity history.
 
 ## Phase 5 — MVP hardening
 
-Authentication/authorization, human review workflow, supplier ranking, incoterm and
-quantity analysis, security/load/failure testing, operational runbooks, dependency
-notices, production migration and rollback rehearsal.
+OIDC/role authorization, human review workflow, verified supplier profiles, incoterm
+and quantity analysis, security/load/failure testing, operational runbooks,
+dependency notices, production migration and rollback rehearsal.
 
 ### Quality gate per phase
 

@@ -18,6 +18,8 @@ def complete_research_run_from_bundle(
     expected_version: int,
     correlation_id: str,
     idempotency_key: str,
+    tenant_id: str,
+    actor_id: str,
 ) -> ResearchCompletion:
     canonical_request = json.dumps(
         {"bundle": bundle, "expected_version": expected_version, "run_id": run_id},
@@ -31,6 +33,7 @@ def complete_research_run_from_bundle(
         run_id=run_id,
         idempotency_key=idempotency_key,
         request_hash=request_hash,
+        tenant_id=tenant_id,
     )
     if replay is not None:
         return replay
@@ -45,4 +48,6 @@ def complete_research_run_from_bundle(
         correlation_id=correlation_id,
         idempotency_key=idempotency_key,
         request_hash=request_hash,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
     )

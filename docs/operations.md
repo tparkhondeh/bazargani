@@ -13,12 +13,37 @@ python -m alembic upgrade head
 python -m trade_agent.api.run
 ```
 
+For authenticated local or staging operation, generate a random key, configure only
+its SHA-256 digest, and send the original key as `X-API-Key`. Keep the raw key in an
+approved secret manager, not in `.env`, shell history, source control, or logs.
+
+```powershell
+$apiKey = [Convert]::ToHexString(
+  [Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+).ToLowerInvariant()
+$sha256 = [Security.Cryptography.SHA256]::Create()
+$digest = [Convert]::ToHexString(
+  $sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($apiKey))
+).ToLowerInvariant()
+$env:TRADE_AGENT_AUTH_ENABLED = "true"
+$env:TRADE_AGENT_API_KEY_CREDENTIALS = "{`"$digest`":`"tenant-name`"}"
+```
+
+The displayed `$apiKey` value is the only usable credential; transmit it once through
+the selected secret channel. Credential values must be 32–128 characters. Tenant IDs
+accept letters, digits, `_`, and `-`, up to 64 characters. A second credential can
+map to the same tenant during rotation; deploy the new digest, move clients, then
+remove the old digest.
+
 `TRADE_AGENT_MAX_REQUEST_BODY_BYTES` defaults to `2000000` and is constrained to
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
 the application limit remains a required defense for direct/internal traffic.
 
 SQLite auto-schema mode is allowed only for local development and tests. Production
-requires PostgreSQL and Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`).
+requires PostgreSQL, Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`), and enabled
+authentication. Migration `0007` assigns pre-existing rows to the quarantined
+`legacy` tenant; reconcile those rows to approved tenants before issuing production
+credentials, and back up the database before the migration.
 
 ## Backup and restore baseline
 

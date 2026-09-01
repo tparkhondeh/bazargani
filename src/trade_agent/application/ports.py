@@ -32,6 +32,7 @@ class ResearchResultWriter(Protocol):
         run_id: str,
         idempotency_key: str,
         request_hash: str,
+        tenant_id: str,
     ) -> ResearchCompletion | None: ...
 
     def persist_research_result(
@@ -44,4 +45,6 @@ class ResearchResultWriter(Protocol):
         correlation_id: str,
         idempotency_key: str,
         request_hash: str,
+        tenant_id: str,
+        actor_id: str,
     ) -> ResearchCompletion: ...

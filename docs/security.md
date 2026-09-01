@@ -24,6 +24,25 @@ user identity, reports, and production infrastructure.
   tenant-aware repositories, auditable state transitions, and human approval before
   external communication or purchasing.
 
+## Authentication and tenant boundary
+
+The current service-to-service baseline accepts `X-API-Key` only on `/api/v1`.
+Configuration stores SHA-256 digests mapped to stable tenant identifiers; raw keys
+are neither stored in the database nor written to application logs. Comparison uses
+constant-time digest matching, and audit rows contain the tenant plus a short,
+non-secret digest fingerprint as actor identity.
+
+Every aggregate lookup is tenant-scoped. Cross-tenant reads and mutations return the
+same `404` contract as nonexistent records to avoid confirming identifiers. Research
+result idempotency scopes also include the tenant. Production settings fail closed
+unless authentication is enabled with at least one valid hashed credential.
+
+Disabling authentication is a local-development convenience only and maps requests
+to `local-development`; it is rejected in production. API keys are a bootstrap
+control, not the final user authorization model: OIDC/SSO, roles, key rotation,
+revocation, distributed rate limits, and secret-manager delivery remain required
+before public production exposure.
+
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.
 

@@ -1,16 +1,20 @@
-from __future__ import annotations
-
 import logging
 import time
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from trade_agent.api.auth import (
+    AuthenticatedPrincipal,
+    AuthenticationError,
+    authenticate_api_key,
+)
 from trade_agent.api.logging import configure_logging
 from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
 from trade_agent.api.schemas import (
@@ -58,13 +62,14 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.7.0",
+        version="0.8.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
     app.state.engine = database_engine
     app.state.sessions = sessions
     app.state.repository = repository
+    api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
     app.add_middleware(
         RequestBodyLimitMiddleware,
         max_body_bytes=resolved.max_request_body_bytes,
@@ -101,6 +106,14 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     async def not_found(request: Request, exc: KeyError) -> JSONResponse:
         return error(request, 404, "NOT_FOUND", str(exc).strip("'"))
 
+    @app.exception_handler(AuthenticationError)
+    async def authentication_failed(
+        request: Request, exc: AuthenticationError
+    ) -> JSONResponse:
+        response = error(request, 401, "AUTHENTICATION_REQUIRED", str(exc))
+        response.headers["WWW-Authenticate"] = "ApiKey"
+        return response
+
     @app.exception_handler(VersionConflictError)
     async def version_conflict(request: Request, exc: VersionConflictError) -> JSONResponse:
         return error(request, 409, "VERSION_CONFLICT", str(exc))
@@ -126,6 +139,11 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     def correlation(request: Request) -> str:
         return str(request.state.correlation_id)
 
+    def principal(
+        api_key: Annotated[str | None, Security(api_key_header)],
+    ) -> AuthenticatedPrincipal:
+        return authenticate_api_key(resolved, api_key)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -137,7 +155,10 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         return {"status": "ready", "persistence": "database"}
 
     @app.post("/api/v1/requests/parse", response_model=ParsedTradeRequestView)
-    def parse_request(payload: ParseRequestInput) -> Any:
+    def parse_request(
+        payload: ParseRequestInput,
+        _principal: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
         parsed = parse_trade_request(payload.text)
         return {
             "original_text": parsed.original_text,
@@ -156,18 +177,27 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     @app.post("/api/v1/opportunities", response_model=OpportunityView, status_code=201)
     def create_opportunity(
         payload: OpportunityCreate,
-        correlation_id: str = Depends(correlation),
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.create_opportunity(
             product_name=payload.product_name,
             quantity=payload.quantity,
             target_market=payload.target_market,
             correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
         )
 
     @app.get("/api/v1/opportunities/{opportunity_id}", response_model=OpportunityView)
-    def get_opportunity(opportunity_id: str) -> Any:
-        return repository.get_opportunity(opportunity_id)
+    def get_opportunity(
+        opportunity_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_opportunity(
+            opportunity_id,
+            tenant_id=authenticated.tenant_id,
+        )
 
     @app.post(
         "/api/v1/opportunities/{opportunity_id}/research-runs",
@@ -176,10 +206,14 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     )
     def create_run(
         opportunity_id: str,
-        correlation_id: str = Depends(correlation),
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.create_research_run(
-            opportunity_id=opportunity_id, correlation_id=correlation_id
+            opportunity_id=opportunity_id,
+            correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
         )
 
     @app.post(
@@ -189,13 +223,16 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     def transition_run(
         run_id: str,
         payload: ResearchRunTransition,
-        correlation_id: str = Depends(correlation),
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.transition_research_run(
             run_id=run_id,
             target=payload.target_status,
             expected_version=payload.expected_version,
             correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
         )
 
     @app.post(
@@ -205,13 +242,17 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     def submit_evidence_bundle(
         run_id: str,
         payload: EvidenceBundleSubmit,
-        idempotency_key: str = Header(
-            alias="Idempotency-Key",
-            min_length=1,
-            max_length=128,
-            pattern=r"^[A-Za-z0-9._:-]+$",
-        ),
-        correlation_id: str = Depends(correlation),
+        idempotency_key: Annotated[
+            str,
+            Header(
+                alias="Idempotency-Key",
+                min_length=1,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9._:-]+$",
+            ),
+        ],
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return complete_research_run_from_bundle(
             repository,
@@ -220,35 +261,61 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             expected_version=payload.expected_version,
             correlation_id=correlation_id,
             idempotency_key=idempotency_key,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
         )
 
     @app.get(
         "/api/v1/research-runs/{run_id}/report",
         response_model=DecisionReportView,
     )
-    def get_research_report(run_id: str) -> Any:
-        return repository.get_research_report(run_id)
+    def get_research_report(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_research_report(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
 
     @app.get(
         "/api/v1/research-runs/{run_id}/validation",
         response_model=ResearchValidationView,
     )
-    def get_research_validation(run_id: str) -> Any:
-        return repository.get_research_validation(run_id)
+    def get_research_validation(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_research_validation(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
 
     @app.get(
         "/api/v1/research-runs/{run_id}/product-matches",
         response_model=list[ProductMatchView],
     )
-    def get_product_matches(run_id: str) -> Any:
-        return repository.get_product_matches(run_id)
+    def get_product_matches(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_product_matches(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
 
     @app.get(
         "/api/v1/research-runs/{run_id}/supplier-offer-rankings",
         response_model=list[SupplierOfferRankingView],
     )
-    def get_supplier_offer_rankings(run_id: str) -> Any:
-        return repository.get_supplier_offer_rankings(run_id)
+    def get_supplier_offer_rankings(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_supplier_offer_rankings(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
 
     return app
 

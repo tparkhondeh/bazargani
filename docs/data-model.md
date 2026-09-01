@@ -46,3 +46,9 @@ Migration `20260831_0006` adds `idempotency_records`, uniquely keyed by operatio
 scope and client key. It stores only the canonical request hash and immutable response
 payload, not a duplicate raw evidence bundle. Result and idempotency writes share one
 transaction so a failed result cannot leave a false successful replay marker.
+
+Migration `20260831_0007` adds `tenant_id` to opportunities, research runs, audit
+events, and idempotency records, plus `actor_id` on audit events. Repository aggregate
+access always resolves through the tenant-owned opportunity/run. Existing rows are
+backfilled into a quarantined `legacy` tenant for explicit reconciliation rather than
+being discarded or silently assigned to a live customer.

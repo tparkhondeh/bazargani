@@ -1,3 +1,4 @@
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -15,8 +16,10 @@ from trade_agent.infrastructure.database import (
     FXRateRecord,
     IdempotencyRecord,
     LandedCostScenarioRecord,
+    OpportunityRecord,
     PriceObservationRecord,
     ProductMatchRecord,
+    ResearchRunRecord,
     ResearchValidationRecord,
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
@@ -24,6 +27,9 @@ from trade_agent.infrastructure.database import (
 
 
 class ApiTests(unittest.TestCase):
+    api_key = "tenant-a-test-key-0000000000000001"
+    other_api_key = "tenant-b-test-key-0000000000000002"
+
     def setUp(self) -> None:
         self.engine = create_engine(
             "sqlite+pysqlite://",
@@ -35,9 +41,15 @@ class ApiTests(unittest.TestCase):
             database_url="sqlite+pysqlite://",
             auto_create_schema=True,
             log_level="CRITICAL",
+            auth_enabled=True,
+            api_key_credentials={
+                hashlib.sha256(self.api_key.encode()).hexdigest(): "tenant-a",
+                hashlib.sha256(self.other_api_key.encode()).hexdigest(): "tenant-b",
+            },
         )
         self.client_context = TestClient(create_app(settings=settings, engine=self.engine))
         self.client = self.client_context.__enter__()
+        self.client.headers.update({"X-API-Key": self.api_key})
 
     def tearDown(self) -> None:
         self.client_context.__exit__(None, None, None)
@@ -72,7 +84,93 @@ class ApiTests(unittest.TestCase):
 
         with self.engine.connect() as connection:
             audit_count = connection.scalar(select(func.count()).select_from(AuditEventRecord))
+            opportunity_tenant = connection.scalar(
+                select(OpportunityRecord.tenant_id).where(
+                    OpportunityRecord.id == opportunity["id"]
+                )
+            )
+            run_tenant = connection.scalar(
+                select(ResearchRunRecord.tenant_id).where(ResearchRunRecord.id == run["id"])
+            )
+            audit_boundaries = connection.execute(
+                select(AuditEventRecord.tenant_id, AuditEventRecord.actor_id)
+            ).all()
         self.assertEqual(audit_count, 3)
+        self.assertEqual(opportunity_tenant, "tenant-a")
+        self.assertEqual(run_tenant, "tenant-a")
+        self.assertEqual({item.tenant_id for item in audit_boundaries}, {"tenant-a"})
+        self.assertTrue(all(item.actor_id.startswith("api-key:") for item in audit_boundaries))
+
+    def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
+        health = self.client.get("/health", headers={"X-API-Key": ""})
+        missing = self.client.post(
+            "/api/v1/requests/parse",
+            headers={"X-API-Key": ""},
+            json={"text": "100 pumps to Tehran"},
+        )
+        invalid = self.client.post(
+            "/api/v1/requests/parse",
+            headers={"X-API-Key": "x" * 32},
+            json={"text": "100 pumps to Tehran"},
+        )
+
+        self.assertEqual(health.status_code, 200)
+        for response in (missing, invalid):
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.json()["code"], "AUTHENTICATION_REQUIRED")
+            self.assertEqual(response.headers["WWW-Authenticate"], "ApiKey")
+            self.assertIn("correlation_id", response.json())
+
+    def test_openapi_declares_api_key_security_on_protected_routes(self) -> None:
+        document = self.client.get("/openapi.json").json()
+
+        scheme = document["components"]["securitySchemes"]["APIKeyHeader"]
+        self.assertEqual(scheme, {"type": "apiKey", "in": "header", "name": "X-API-Key"})
+        self.assertEqual(
+            document["paths"]["/api/v1/opportunities"]["post"]["security"],
+            [{"APIKeyHeader": []}],
+        )
+        self.assertNotIn("security", document["paths"]["/health"]["get"])
+
+    def test_tenant_cannot_read_or_mutate_another_tenants_aggregate(self) -> None:
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={"product_name": "Pump", "quantity": 10, "target_market": "Tehran"},
+        ).json()
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        other_headers = {"X-API-Key": self.other_api_key}
+
+        opportunity_read = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}",
+            headers=other_headers,
+        )
+        run_create = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs",
+            headers=other_headers,
+        )
+        run_transition = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            headers=other_headers,
+            json={"target_status": "RUNNING", "expected_version": 1},
+        )
+        result_reads = [
+            self.client.get(
+                f"/api/v1/research-runs/{run['id']}/{resource}",
+                headers=other_headers,
+            )
+            for resource in (
+                "report",
+                "validation",
+                "product-matches",
+                "supplier-offer-rankings",
+            )
+        ]
+
+        for response in (opportunity_read, run_create, run_transition, *result_reads):
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.json()["code"], "NOT_FOUND")
 
     def test_parse_request_returns_only_critical_questions(self) -> None:
         response = self.client.post(

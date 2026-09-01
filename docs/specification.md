@@ -36,8 +36,9 @@ unknown or requires human verification?
 ## Deferred from MVP
 
 Full CRM/ERP, autonomous purchasing, negotiation, RFQ messaging, shipment
-tracking, accounting, inventory, automatic customs classification, and universal
-scraping. Authentication is designed for but introduced with the network API.
+tracking, accounting, inventory, automatic customs classification, universal
+scraping, and end-user OIDC/role management. Hashed API-key authentication and tenant
+isolation are included with the current network API baseline.
 
 ## Missing decisions and risks
 
@@ -49,8 +50,10 @@ scraping. Authentication is designed for but introduced with the network API.
   uses ISO-like currency codes and never conflates the two.
 - Production retention, backup RPO/RTO, user roles, and model-provider policy
   need stakeholder decisions before launch.
-- Server inventory is unavailable because SSH currently times out; no production
-  deployment is authorized until it is reconciled.
+- Initial server inventory found an empty target project directory, an unrelated PM2
+  application that must remain untouched, and a system Python version below the
+  project requirement. No production deployment is authorized until an isolated
+  runtime, proxy/TLS settings, backups, and rollback are approved and reconciled.
 
 ## Definition of done
 
@@ -58,4 +61,3 @@ The full MVP is done when a real request can execute against multiple compliant
 sources, preserve evidence, match products, rank supplier candidates, calculate
 tested scenarios, compare an Iranian benchmark, expose assumptions/unknowns and
 confidence, persist an audit trail, and render a usable Persian report.
-
