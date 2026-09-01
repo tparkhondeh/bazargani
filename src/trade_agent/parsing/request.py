@@ -21,6 +21,17 @@ _ORIGIN_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\bfrom\s+(?:uae|dubai)\b", re.IGNORECASE), "UAE"),
     (re.compile(r"\bfrom\s+turkey\b", re.IGNORECASE), "Turkey"),
 )
+_EXPLICIT_ORIGIN_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?:از\s+کشور|مبدا|مبدأ)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:،|,|؛|;|\.|\b(?:به|برای|جهت|تحویل|تهیه|خرید|و)\b|$))"
+    ),
+    re.compile(
+        r"\b(?:from|origin(?:\s+market)?)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:,|;|\.|\b(?:to|delivered|for|with|and)\b|$))",
+        re.IGNORECASE,
+    ),
+)
 _DESTINATION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(
         r"(?:به\s+مقصد|مقصد|کف\s+انبار|تحویل\s+در|به)\s*"
@@ -32,6 +43,35 @@ _DESTINATION_PATTERNS: tuple[re.Pattern[str], ...] = (
         re.IGNORECASE,
     ),
 )
+_EXPLICIT_DESTINATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?:به\s+مقصد|مقصد|کف\s+انبار|تحویل\s+در)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:،|,|؛|;|\.|\b(?:را|برای|جهت|با|و)\b|$))"
+    ),
+    re.compile(
+        r"\b(?:delivered\s+to|destination)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:,|;|\.|\b(?:for|with|and)\b|$))",
+        re.IGNORECASE,
+    ),
+)
+_ORIGIN_ALIASES = {
+    "china": "China",
+    "uae": "UAE",
+    "dubai": "UAE",
+    "turkey": "Turkey",
+    "چین": "چین",
+    "امارات": "امارات",
+    "دبی": "امارات",
+    "ترکیه": "ترکیه",
+}
+_DESTINATION_ALIASES = {
+    "tehran": "Tehran",
+    "mashhad": "Mashhad",
+    "isfahan": "Isfahan",
+    "shiraz": "Shiraz",
+    "tabriz": "Tabriz",
+    "iran": "Iran",
+}
 _PRODUCT_STOP = re.compile(
     r"(?:^|\s+)(?:از|مبدا|مبدأ|به|برای|جهت|با|تحویل|تهیه|خرید|سفارش|و\s+می|و\s+بهای|"
     r"from|to|for|with|delivered|and)\b",
@@ -54,6 +94,7 @@ class ParsedTradeRequest:
     origin_market: str | None
     destination: str | None
     field_confidence: dict[str, Confidence]
+    field_conflicts: dict[str, tuple[str, ...]]
     assumptions: tuple[str, ...]
     critical_questions: tuple[str, ...]
 
@@ -98,6 +139,62 @@ def _extract_product(text: str, quantity_match: re.Match[str] | None) -> str | N
     return candidate
 
 
+def _normalize_location(value: str, aliases: dict[str, str]) -> str:
+    normalized = _SPACE.sub(" ", value).strip(" \t\r\n،,:؛;.-")
+    if not normalized:
+        raise PublicInputError("explicit location cannot be empty")
+    if len(normalized) > 100:
+        raise PublicInputError("explicit location exceeds 100 characters")
+    return aliases.get(normalized.casefold(), normalized)
+
+
+def _ordered_unique_locations(values: list[tuple[int, str]]) -> tuple[str, ...]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for _, value in sorted(values, key=lambda item: item[0]):
+        key = value.casefold()
+        if key not in seen:
+            seen.add(key)
+            unique.append(value)
+    return tuple(unique)
+
+
+def _extract_origin_candidates(text: str) -> tuple[str, ...]:
+    matches: list[tuple[int, str]] = []
+    for pattern, canonical in _ORIGIN_PATTERNS:
+        matches.extend((match.start(), canonical) for match in pattern.finditer(text))
+    for pattern in _EXPLICIT_ORIGIN_PATTERNS:
+        matches.extend(
+            (
+                match.start(),
+                _normalize_location(match.group("value"), _ORIGIN_ALIASES),
+            )
+            for match in pattern.finditer(text)
+        )
+    return _ordered_unique_locations(matches)
+
+
+def _extract_destination_candidates(text: str) -> tuple[str, ...]:
+    matches: list[tuple[int, str]] = []
+    for pattern in _DESTINATION_PATTERNS:
+        matches.extend(
+            (
+                match.start(),
+                _normalize_location(match.group("value"), _DESTINATION_ALIASES),
+            )
+            for match in pattern.finditer(text)
+        )
+    for pattern in _EXPLICIT_DESTINATION_PATTERNS:
+        matches.extend(
+            (
+                match.start(),
+                _normalize_location(match.group("value"), _DESTINATION_ALIASES),
+            )
+            for match in pattern.finditer(text)
+        )
+    return _ordered_unique_locations(matches)
+
+
 def parse_trade_request(text: str) -> ParsedTradeRequest:
     if not text or not text.strip():
         raise PublicInputError("request text is required")
@@ -113,18 +210,17 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
             raise PublicInputError("quantity must be positive")
         quantity_unit = quantity_match.group("unit")
 
-    origin = next(
-        (value for pattern, value in _ORIGIN_PATTERNS if pattern.search(normalized)), None
-    )
-    destination = next(
-        (
-            match.group("value")
-            for pattern in _DESTINATION_PATTERNS
-            if (match := pattern.search(normalized)) is not None
-        ),
-        None,
-    )
+    origin_candidates = _extract_origin_candidates(normalized)
+    destination_candidates = _extract_destination_candidates(normalized)
+    origin = origin_candidates[0] if len(origin_candidates) == 1 else None
+    destination = destination_candidates[0] if len(destination_candidates) == 1 else None
     product = _extract_product(normalized, quantity_match)
+
+    field_conflicts: dict[str, tuple[str, ...]] = {}
+    if len(origin_candidates) > 1:
+        field_conflicts["origin_market"] = origin_candidates
+    if len(destination_candidates) > 1:
+        field_conflicts["destination"] = destination_candidates
 
     confidence = {
         "product_name": Confidence.HIGH if product else Confidence.UNKNOWN,
@@ -132,13 +228,17 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
         "origin_market": Confidence.HIGH if origin else Confidence.UNKNOWN,
         "destination": Confidence.HIGH if destination else Confidence.UNKNOWN,
     }
-    assumptions = () if origin else ("بازار مبدأ هنوز مشخص نشده است.",)
+    assumptions = ("بازار مبدأ هنوز مشخص نشده است.",) if not origin_candidates else ()
     questions: list[str] = []
     if product is None:
         questions.append("نام و مشخصات اصلی کالای موردنظر چیست؟")
     if quantity is None:
         questions.append("چه تعداد از کالا را می‌خواهید بررسی کنید؟")
-    if destination is None:
+    if "origin_market" in field_conflicts:
+        questions.append("چند مبدأ متفاوت تشخیص داده شد؛ مبدأ نهایی کدام است؟")
+    if "destination" in field_conflicts:
+        questions.append("چند مقصد متفاوت تشخیص داده شد؛ مقصد نهایی کدام است؟")
+    elif destination is None:
         questions.append("مقصد نهایی محاسبه بهای تمام‌شده کجاست؟")
     return ParsedTradeRequest(
         original_text=text,
@@ -149,6 +249,7 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
         origin_market=origin,
         destination=destination,
         field_confidence=confidence,
+        field_conflicts=field_conflicts,
         assumptions=assumptions,
         critical_questions=tuple(questions),
     )

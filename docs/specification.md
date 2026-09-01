@@ -23,6 +23,9 @@ unknown or requires human verification?
 
 - Every material value is `FACT`, `ESTIMATE`, `ASSUMPTION`,
   `DERIVED_CALCULATION`, or `AI_INFERENCE`.
+- Deterministic intake preserves bounded, explicitly marked origin/destination text
+  without claiming geographic verification; conflicting mentions remain visible and
+  require clarification instead of first-match selection.
 - Evidence metadata remains traceable to every price/FX use through a content
   fingerprint, while decision-oriented API views avoid duplicating raw source bodies.
 - Evidence freshness is measured against the immutable validation timestamp with the

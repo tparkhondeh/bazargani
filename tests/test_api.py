@@ -1043,8 +1043,22 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(parsed["can_start_research"])
         self.assertEqual(parsed["quantity"], 300)
         self.assertEqual(parsed["destination"], "شیراز")
+        self.assertEqual(parsed["field_conflicts"], {})
         self.assertEqual(parsed["critical_questions"], [])
         self.assertEqual(len(parsed["assumptions"]), 1)
+
+        conflict_response = self.client.post(
+            "/api/v1/requests/parse",
+            json={
+                "text": "100 دستگاه پمپ از کشور چین و از کشور ترکیه به مقصد چابهار"
+            },
+        )
+        self.assertEqual(conflict_response.status_code, 200)
+        conflict = conflict_response.json()
+        self.assertIsNone(conflict["origin_market"])
+        self.assertEqual(conflict["field_conflicts"], {"origin_market": ["چین", "ترکیه"]})
+        self.assertFalse(conflict["can_start_research"])
+        self.assertEqual(len(conflict["critical_questions"]), 1)
 
     def test_ecb_reference_rate_preserves_provenance_and_stable_errors(self) -> None:
         unauthenticated = self.client.get(

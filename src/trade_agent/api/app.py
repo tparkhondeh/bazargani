@@ -314,6 +314,7 @@ def create_app(
             "origin_market": parsed.origin_market,
             "destination": parsed.destination,
             "field_confidence": parsed.field_confidence,
+            "field_conflicts": parsed.field_conflicts,
             "assumptions": parsed.assumptions,
             "critical_questions": parsed.critical_questions,
             "can_start_research": parsed.can_start_research,

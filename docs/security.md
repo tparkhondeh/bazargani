@@ -203,6 +203,12 @@ messages can contain cost codes, observation identifiers, currencies, or other i
 Only explicitly reviewed `PublicInputError` messages built from controlled labels may
 cross the API boundary; all other values collapse to a generic `INVALID_INPUT` reason.
 
+Open-vocabulary intake locations are capped at 100 normalized characters and accepted
+only after explicit location markers. They remain untrusted user text, are not proof of
+a real geography, and require normal UI output encoding. Distinct repeated mentions are
+returned as bounded conflict candidates and cannot be silently promoted to a selected
+origin or destination. The parser does not call a geocoder or external service.
+
 All application responses disable storage and legacy caching, MIME sniffing, framing,
 referrers, camera, microphone, and geolocation. Tenant API responses also include
 `Vary: X-API-Key`. HSTS is deliberately not emitted by the loopback-capable app: the

@@ -164,6 +164,12 @@ and approved manufacturing/wholesale and Iranian benchmark providers remain.
 LLM-assisted request parsing/matching with evals and cost telemetry; Persian RTL UI
 for new research, progress, result, assumptions, and opportunity history.
 
+Status: the deterministic intake baseline now handles Persian/English digits, product
+placement, known location aliases, and bounded open-vocabulary locations following
+explicit markers. Conflicting origin/destination mentions are disclosed and block
+automatic start rather than being resolved by first-match order. Constraint extraction,
+LLM assistance, eval/cost telemetry, and the RTL UI remain future work.
+
 ## Phase 5 — MVP hardening
 
 OIDC/role authorization, queue assignment/escalation, verified supplier profiles,

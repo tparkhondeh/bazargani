@@ -185,6 +185,14 @@ immutable snapshot so a UI does not need to parse report Markdown. Input parsing
 requires bounded non-empty strings; audit events retain counts and run lineage rather
 than duplicating commercial note contents.
 
+Deterministic intake location extraction combines a small canonical alias vocabulary
+with bounded values captured only after explicit origin/destination markers. Matches are
+ordered by source position and deduplicated case-insensitively after alias normalization.
+One distinct value is returned as syntactically extracted user input; multiple values
+clear the selected field, populate `field_conflicts`, and add a clarification question.
+The parser performs no geocoding or geographic verification, and generic unknown `to`/
+`به` phrases remain unparsed to avoid manufacturing a destination from product text.
+
 The data-gap application projection combines persisted validation issues with the
 individual unknown-note snapshot. A pure deterministic function orders issues, counts
 severity and unknown coverage, and derives the review status for both API and report.

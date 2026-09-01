@@ -863,6 +863,7 @@ class ParsedTradeRequestView(BaseModel):
     origin_market: str | None
     destination: str | None
     field_confidence: dict[str, Confidence]
+    field_conflicts: dict[str, tuple[str, ...]]
     assumptions: tuple[str, ...]
     critical_questions: tuple[str, ...]
     can_start_research: bool

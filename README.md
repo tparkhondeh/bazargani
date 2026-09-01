@@ -38,6 +38,11 @@ Offer-terms coverage exposes exact per-offer presence for ten structured commerc
 fields while separately naming important terms outside the current schema.
 Evidence freshness applies the validation run's immutable evaluation timestamp and
 policy thresholds to every deduplicated evidence item and its exact usage count.
+The deterministic Persian/English intake parser also accepts bounded open-vocabulary
+origins and destinations after explicit location markers. It returns normalized user
+text rather than claiming geographic verification. Multiple distinct location mentions
+clear the selected field, expose `field_conflicts`, and require clarification instead
+of silently choosing the first value.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,

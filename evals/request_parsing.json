@@ -58,6 +58,25 @@
     "id": "fa_critical_fields_missing",
     "input": "برای واردات از چین قیمت می خواهم",
     "expected": {"product_name": null, "quantity": null, "origin_market": "چین", "destination": null, "can_start_research": false}
+  },
+  {
+    "id": "fa_explicit_open_locations",
+    "input": "100 دستگاه پمپ صنعتی از کشور آلمان به مقصد چابهار",
+    "expected": {"product_name": "پمپ صنعتی", "quantity": 100, "origin_market": "آلمان", "destination": "چابهار", "field_conflicts": {}, "can_start_research": true}
+  },
+  {
+    "id": "en_explicit_open_locations",
+    "input": "Source 120 units industrial valve from South Korea delivered to Bandar Abbas",
+    "expected": {"product_name": "industrial valve", "quantity": 120, "origin_market": "South Korea", "destination": "Bandar Abbas", "field_conflicts": {}, "can_start_research": true}
+  },
+  {
+    "id": "fa_conflicting_origins",
+    "input": "100 دستگاه پمپ از کشور چین و از کشور ترکیه به مقصد چابهار",
+    "expected": {"product_name": "پمپ", "quantity": 100, "origin_market": null, "destination": "چابهار", "field_conflicts": {"origin_market": ["چین", "ترکیه"]}, "can_start_research": false}
+  },
+  {
+    "id": "fa_conflicting_destinations",
+    "input": "100 دستگاه پمپ از چین به مقصد چابهار و تحویل در تهران",
+    "expected": {"product_name": "پمپ", "quantity": 100, "origin_market": "چین", "destination": null, "field_conflicts": {"destination": ["چابهار", "تهران"]}, "can_start_research": false}
   }
 ]
-
