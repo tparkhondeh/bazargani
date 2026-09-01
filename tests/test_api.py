@@ -348,6 +348,8 @@ class ApiTests(unittest.TestCase):
             body["scenario_sensitivity"]["range_percent_of_base"],
             "25.51",
         )
+        self.assertEqual(body["assumptions"], bundle["assumptions"])
+        self.assertEqual(body["unknowns"], bundle["unknowns"])
         self.assertEqual(
             {offer["supplier_name"] for offer in body["leading_offers"]},
             {"Demo Supplier — NOT REAL", "Demo Supplier Two — NOT REAL"},
@@ -435,6 +437,7 @@ class ApiTests(unittest.TestCase):
                 "validation",
                 "landed-cost-scenarios",
                 "fx-rates",
+                "assumptions",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -1016,6 +1019,15 @@ class ApiTests(unittest.TestCase):
             all(item["evidence_classification"] == "ASSUMPTION" for item in persisted_rates)
         )
         self.assertNotIn("raw_value", json.dumps(persisted_rates))
+
+        assumptions_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/assumptions"
+        )
+        self.assertEqual(assumptions_response.status_code, 200)
+        decision_notes = assumptions_response.json()
+        self.assertEqual(decision_notes["research_run_id"], run["id"])
+        self.assertEqual(decision_notes["assumptions"], bundle["assumptions"])
+        self.assertEqual(decision_notes["unknowns"], bundle["unknowns"])
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

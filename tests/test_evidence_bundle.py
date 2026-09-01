@@ -59,6 +59,21 @@ class EvidenceBundleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unit_price must be an object"):
             parse_evidence_bundle(bundle)
 
+    def test_assumptions_and_unknowns_require_bounded_nonempty_strings(self) -> None:
+        invalid_values = [
+            ([{"not": "text"}], "must be a string"),
+            (["   "], "cannot be empty"),
+            (["x" * 5001], "cannot exceed 5000"),
+        ]
+        for assumptions, expected in invalid_values:
+            with self.subTest(expected=expected):
+                bundle = json.loads(
+                    Path("examples/demo_case.json").read_text(encoding="utf-8")
+                )
+                bundle["assumptions"] = assumptions
+                with self.assertRaisesRegex(PublicInputError, expected):
+                    parse_evidence_bundle(bundle)
+
 
 if __name__ == "__main__":
     unittest.main()

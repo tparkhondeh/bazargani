@@ -157,6 +157,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             [item["scenario_name"] for item in persisted_rates.json()],
             ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
         )
+        decision_notes = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/assumptions"
+        )
+        self.assertEqual(decision_notes.status_code, 200)
+        self.assertEqual(decision_notes.json()["assumptions"], bundle["assumptions"])
+        self.assertEqual(latest_decision.json()["unknowns"], bundle["unknowns"])
 
         additional_ids = {
             self.client.post(

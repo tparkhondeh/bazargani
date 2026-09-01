@@ -49,6 +49,8 @@ unknown or requires human verification?
   empty run as a result or discarding equal first-ranked supplier offers.
 - Supplier ranking output retains the original commercial offer context and source
   provenance alongside normalized score data, without copying raw evidence bodies.
+- Assumptions and unknowns remain distinct, bounded, tenant-scoped run snapshots and
+  are visible in the current decision without permitting historical mutation.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,
   headings, or additional links; client rendering remains separately sanitized.
 - Every automated provider exposes controlled scope/limitations/terms status and a

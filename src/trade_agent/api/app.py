@@ -39,6 +39,7 @@ from trade_agent.api.schemas import (
     ProductMatchView,
     ProviderView,
     ReferenceRateView,
+    ResearchAssumptionsView,
     ResearchCompletionView,
     ResearchReviewSubmit,
     ResearchReviewView,
@@ -569,6 +570,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_research_fx_rates(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/assumptions",
+        response_model=ResearchAssumptionsView,
+    )
+    def get_research_assumptions(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_research_assumptions(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

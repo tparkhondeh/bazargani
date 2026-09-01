@@ -1029,6 +1029,26 @@ class TradeRepository:
                     for issue in issues
                 ],
             }
+            assumptions = list(
+                session.scalars(
+                    select(ResearchNoteRecord.text)
+                    .where(
+                        ResearchNoteRecord.research_run_id == run.id,
+                        ResearchNoteRecord.kind == "ASSUMPTION",
+                    )
+                    .order_by(ResearchNoteRecord.text, ResearchNoteRecord.id)
+                )
+            )
+            unknowns = list(
+                session.scalars(
+                    select(ResearchNoteRecord.text)
+                    .where(
+                        ResearchNoteRecord.research_run_id == run.id,
+                        ResearchNoteRecord.kind == "UNKNOWN",
+                    )
+                    .order_by(ResearchNoteRecord.text, ResearchNoteRecord.id)
+                )
+            )
             for record in (run, report, *scenarios):
                 session.expunge(record)
             return {
@@ -1037,6 +1057,8 @@ class TradeRepository:
                 "validation": validation_view,
                 "scenarios": scenarios,
                 "scenario_sensitivity": asdict(sensitivity),
+                "assumptions": assumptions,
+                "unknowns": unknowns,
                 "leading_offers": leading_offers,
                 "report": report,
             }
@@ -1211,6 +1233,31 @@ class TradeRepository:
                 }
                 for rate, scenario, evidence, source in rows
             ]
+
+    def get_research_assumptions(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            notes = list(
+                session.scalars(
+                    select(ResearchNoteRecord)
+                    .where(ResearchNoteRecord.research_run_id == run_id)
+                    .order_by(
+                        ResearchNoteRecord.kind,
+                        ResearchNoteRecord.text,
+                        ResearchNoteRecord.id,
+                    )
+                )
+            )
+            return {
+                "research_run_id": run_id,
+                "assumptions": [note.text for note in notes if note.kind == "ASSUMPTION"],
+                "unknowns": [note.text for note in notes if note.kind == "UNKNOWN"],
+            }
 
     def get_product_matches(
         self, run_id: str, *, tenant_id: str

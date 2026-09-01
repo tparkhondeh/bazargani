@@ -25,6 +25,7 @@ MAX_FX_RATES = 100
 MAX_SCENARIOS = 3
 MAX_COSTS_PER_SCENARIO = 100
 MAX_NOTES_PER_KIND = 200
+MAX_NOTE_LENGTH = 5000
 MAX_PRODUCT_ATTRIBUTES = 100
 
 
@@ -49,7 +50,19 @@ def _text_list(value: Any, label: str) -> tuple[str, ...]:
         raise PublicInputError(
             f"{label} cannot contain more than {MAX_NOTES_PER_KIND} items"
         )
-    return tuple(map(str, value))
+    normalized: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str):
+            raise PublicInputError(f"{label}[{index}] must be a string")
+        text = item.strip()
+        if not text:
+            raise PublicInputError(f"{label}[{index}] cannot be empty")
+        if len(text) > MAX_NOTE_LENGTH:
+            raise PublicInputError(
+                f"{label}[{index}] cannot exceed {MAX_NOTE_LENGTH} characters"
+            )
+        normalized.append(text)
+    return tuple(normalized)
 
 
 def _attributes(value: Any, label: str) -> dict[str, str]:

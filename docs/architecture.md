@@ -134,6 +134,12 @@ joins scenario, rate, evidence, and source under the tenant-owned run; it delibe
 omits raw evidence bodies while retaining the provenance needed to reproduce the
 conversion decision.
 
+The assumption read model queries only the authenticated tenant's run and separates
+`ASSUMPTION` from `UNKNOWN` rows. The latest-decision projection reads the same
+immutable snapshot so a UI does not need to parse report Markdown. Input parsing
+requires bounded non-empty strings; audit events retain counts and run lineage rather
+than duplicating commercial note contents.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

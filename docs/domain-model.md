@@ -111,6 +111,12 @@ time must be unique inside a scenario, including when effective time is absent. 
 exact rate and evidence remain distinct across scenarios, so a scenario assumption is
 never silently relabelled as a shared fact.
 
+Research assumptions and unknowns are separate immutable note collections. API views
+normalize them into deterministic text order and expose them both at run level and in
+the latest opportunity decision. They are not opportunity workflow notes and cannot be
+patched in place. A correction belongs to a new research run whose dependant results
+are explicitly recalculated.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

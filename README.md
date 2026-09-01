@@ -7,8 +7,8 @@ reproducible landed-cost decision report.
 
 The first slice accepts a JSON research case containing the user's request,
 source-backed price observations with explicit units, scenario-linked point-in-time
-FX rates, and explicit cost assumptions. It validates provenance and freshness, removes exact
-duplicates, flags conflicts and price outliers, calculates optimistic/base/
+FX rates, and explicit cost assumptions. It validates provenance and freshness,
+removes exact duplicates, flags conflicts and price outliers, calculates optimistic/base/
 conservative landed-cost scenarios with `Decimal`, and emits a Persian Markdown
 report with an explainable confidence score. Each retained price is also classified
 as an exact product, exact variant, comparable, similar, or substitute using a
@@ -91,6 +91,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/validation`
 - `GET /api/v1/research-runs/{id}/landed-cost-scenarios`
 - `GET /api/v1/research-runs/{id}/fx-rates`
+- `GET /api/v1/research-runs/{id}/assumptions`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -186,6 +187,12 @@ evidence bodies. Duplicate pair/type/effective-time identities inside one scenar
 rejected instead of relying on graph traversal order. New Persian reports include the
 same scenario/rate/source lineage with escaped source labels and links.
 
+Assumptions and unknowns are available as a tenant-scoped structured run snapshot and
+are embedded in the latest-decision projection for result UI use. Notes must be
+non-empty strings, are limited to 5,000 characters each and 200 per kind, and are
+whitespace-normalized before persistence. Completed research runs remain immutable;
+correction requires a new run and an explicit recalculation rather than history edits.
+
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain
 text, Markdown control characters are escaped, and link targets are percent-encoded.
@@ -202,7 +209,8 @@ Mutating HTTP requests are capped at 2,000,000 bytes by default, including chunk
 requests without `Content-Length`; oversized requests receive `413 REQUEST_TOO_LARGE`.
 The evidence parser also caps observations (500), each shared or scenario FX-rate
 collection (100), scenarios (3),
-costs per scenario (100), notes per kind (200), and product attributes (100).
+costs per scenario (100), notes per kind (200, 5,000 characters each), and product
+attributes (100).
 
 Schema-validation failures return `422 REQUEST_VALIDATION_FAILED` with at most 50
 safe details containing an allowlisted field location, validation type, and generic

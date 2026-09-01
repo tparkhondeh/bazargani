@@ -36,6 +36,11 @@ input shape, reject ambiguous duplicate identities within one scenario, omit raw
 evidence from API views, and enforce cross-tenant `404`. PostgreSQL CI upgrades and
 rolls back the scenario foreign-key migration and exercises the resulting read path.
 
+Assumption-ledger tests cover structured run reads, inclusion in the evidence-backed
+latest decision, deterministic separation from unknowns, cross-tenant `404`, and
+PostgreSQL persistence. Parser tests reject nested objects, blank notes, and individual
+values beyond 5,000 characters before report generation or storage.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

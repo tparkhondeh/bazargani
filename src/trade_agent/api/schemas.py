@@ -342,6 +342,12 @@ class LandedCostLedgerView(BaseModel):
     scenario_sensitivity: ScenarioSensitivityView
 
 
+class ResearchAssumptionsView(BaseModel):
+    research_run_id: str
+    assumptions: list[str]
+    unknowns: list[str]
+
+
 class DecisionReportView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -359,6 +365,8 @@ class OpportunityDecisionView(BaseModel):
     validation: ResearchValidationView
     scenarios: list[LandedCostScenarioView]
     scenario_sensitivity: ScenarioSensitivityView
+    assumptions: list[str]
+    unknowns: list[str]
     leading_offers: list[EvidenceBackedSupplierOfferView]
     report: DecisionReportView
 

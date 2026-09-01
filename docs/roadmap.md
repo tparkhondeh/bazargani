@@ -18,6 +18,9 @@ remain deferred until supported commercial inputs exist.
 Scenario-specific point-in-time FX overrides and persisted scenario lineage are also
 implemented. A provenance-rich run endpoint exposes the exact rates used without raw
 evidence bodies; automated Iran-market FX sources remain blocked on source approval.
+Structured assumption/unknown snapshots are implemented at run and latest-decision
+level. A correction/recalculation workflow that creates a successor run remains future
+work; immutable completed runs are not edited in place.
 
 ## Phase 2 — Persistence and service boundary
 
