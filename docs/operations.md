@@ -48,6 +48,12 @@ remove the old digest.
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
 the application limit remains a required defense for direct/internal traffic.
 
+`TRADE_AGENT_API_RATE_LIMIT_REQUESTS` defaults to `120` and is bounded to 1–100,000;
+`TRADE_AGENT_API_RATE_LIMIT_WINDOW_SECONDS` defaults to `60` and is bounded to
+1–3,600. This budget is per tenant **and per application process**. Configure a
+trusted reverse proxy/shared limiter for the approved global tenant and source-IP
+budgets; do not trust client-supplied forwarding headers inside the application.
+
 `TRADE_AGENT_ECB_CACHE_TTL_SECONDS` defaults to `3600` and accepts 60–86,400 seconds.
 The cache is per process; production egress/rate controls must still apply across all
 workers. Monitor `502 UPSTREAM_UNAVAILABLE` without logging response bodies or

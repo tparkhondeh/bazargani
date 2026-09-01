@@ -44,6 +44,12 @@ control, not the final user authorization model: OIDC/SSO, roles, key rotation,
 revocation, distributed rate limits, and secret-manager delivery remain required
 before public production exposure.
 
+Every authenticated `/api/v1` request consumes a fixed-window budget keyed by the
+resolved tenant, so multiple active credentials for rotation share the same allowance.
+The default is 120 requests per 60 seconds per process. Exhaustion returns `429` with
+`Retry-After` and does not expose the tenant identifier. Health/readiness remain
+public; invalid-key and multi-worker abuse require rate controls at the trusted edge.
+
 Review decisions require a non-empty rationale and optimistic version, lock the
 tenant-owned run, and atomically record the actor, decision, before/after state, and
 audit event. The generic status endpoint cannot mark a run completed or fabricate a

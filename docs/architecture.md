@@ -61,6 +61,11 @@ ports. Aggregate reads and writes include tenant predicates; an identifier owned
 another tenant is deliberately indistinguishable from a missing identifier (`404`).
 Health/readiness remain public and expose no tenant data.
 
+After authentication, the HTTP boundary applies a thread-safe fixed-window budget by
+resolved tenant rather than raw credential. This prevents multiple or rotating keys
+from multiplying the in-process allowance. The limiter deliberately has no database
+dependency; it is a single-process defense and does not replace a shared edge limiter.
+
 System-derived research outcomes and operator actions use separate paths. The generic
 transition route permits only operational lifecycle changes; a review-required result
 can reach `COMPLETED` or `CANCELLED` only through an append-only review decision. The

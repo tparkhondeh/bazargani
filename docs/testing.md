@@ -52,6 +52,11 @@ verify that production cannot start with authentication disabled and credentials
 configured as SHA-256 digests rather than raw keys. Migration `0007` is exercised in
 both upgrade and full rollback paths.
 
+Rate-limit tests use a deterministic monotonic clock to cover allowance, retry timing,
+window reset, and tenant isolation. API tests prove that rotated keys for one tenant
+share a budget, health remains public, invalid credentials remain `401`, and rejected
+traffic receives a correlation-preserving `429` plus `Retry-After` without tenant data.
+
 The GitHub Actions quality workflow runs the deterministic suite on Python 3.12 and
 starts an ephemeral PostgreSQL 17 service. It upgrades every Alembic migration, checks
 model/migration parity, executes the authenticated evidence-to-report transaction

@@ -10,6 +10,7 @@ from fastapi.security import APIKeyHeader
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from trade_agent import __version__
 from trade_agent.api.auth import (
     AuthenticatedPrincipal,
     AuthenticationError,
@@ -17,6 +18,7 @@ from trade_agent.api.auth import (
 )
 from trade_agent.api.logging import configure_logging
 from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
+from trade_agent.api.rate_limit import RateLimitExceeded, TenantRateLimiter
 from trade_agent.api.schemas import (
     DecisionReportView,
     ErrorBody,
@@ -62,6 +64,7 @@ def create_app(
     settings: Settings | None = None,
     engine: Engine | None = None,
     reference_rates: ReferenceRateProvider | None = None,
+    api_rate_limiter: TenantRateLimiter | None = None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(resolved.log_level)
@@ -71,6 +74,10 @@ def create_app(
     rate_service: ReferenceRateProvider = reference_rates or CachedReferenceRateService(
         EcbFxProvider,
         ttl_seconds=resolved.ecb_cache_ttl_seconds,
+    )
+    request_limiter = api_rate_limiter or TenantRateLimiter(
+        requests_per_window=resolved.api_rate_limit_requests,
+        window_seconds=resolved.api_rate_limit_window_seconds,
     )
 
     @asynccontextmanager
@@ -82,13 +89,14 @@ def create_app(
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.10.0",
+        version=__version__,
         lifespan=lifespan,
     )
     app.state.settings = resolved
     app.state.engine = database_engine
     app.state.sessions = sessions
     app.state.repository = repository
+    app.state.api_rate_limiter = request_limiter
     api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
     app.add_middleware(
         RequestBodyLimitMiddleware,
@@ -134,6 +142,14 @@ def create_app(
         response.headers["WWW-Authenticate"] = "ApiKey"
         return response
 
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_exceeded(
+        request: Request, exc: RateLimitExceeded
+    ) -> JSONResponse:
+        response = error(request, 429, "RATE_LIMIT_EXCEEDED", str(exc))
+        response.headers["Retry-After"] = str(exc.retry_after_seconds)
+        return response
+
     @app.exception_handler(VersionConflictError)
     async def version_conflict(request: Request, exc: VersionConflictError) -> JSONResponse:
         return error(request, 409, "VERSION_CONFLICT", str(exc))
@@ -168,7 +184,9 @@ def create_app(
     def principal(
         api_key: Annotated[str | None, Security(api_key_header)],
     ) -> AuthenticatedPrincipal:
-        return authenticate_api_key(resolved, api_key)
+        authenticated = authenticate_api_key(resolved, api_key)
+        request_limiter.check(authenticated.tenant_id)
+        return authenticated
 
     @app.get("/health")
     def health() -> dict[str, str]:

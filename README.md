@@ -90,6 +90,12 @@ SHA-256 key digests are configured; the resolved tenant and a non-secret key
 fingerprint are propagated into tenant-scoped repository queries and audit events.
 Production configuration fails at startup if authentication is disabled.
 
+Authenticated API traffic has a per-tenant, per-process fixed-window limit (default
+120 requests per 60 seconds). Every key mapped to a tenant shares its budget;
+exhaustion returns `429 RATE_LIMIT_EXCEEDED` with `Retry-After`. Health/readiness are
+excluded. A trusted edge/distributed limiter is still required for production because
+budgets multiply across workers and reset with the process.
+
 Statuses derived from validation cannot be manually promoted to `COMPLETED` through
 the generic transition endpoint. An authenticated actor must record an `APPROVE` or
 `REJECT` review with a rationale and expected version. The decision, status/version
