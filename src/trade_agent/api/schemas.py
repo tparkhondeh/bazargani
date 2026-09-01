@@ -285,6 +285,19 @@ class LandedCostScenarioView(BaseModel):
     per_unit_amount: Decimal
 
 
+class LandedCostComponentView(BaseModel):
+    code: str
+    label_fa: str
+    amount: Decimal
+    currency: str
+    evidence_class: str
+    formula: str
+
+
+class LandedCostScenarioDetailView(LandedCostScenarioView):
+    components: list[LandedCostComponentView]
+
+
 class ScenarioSensitivityView(BaseModel):
     status: str
     quantity: int | None
@@ -299,6 +312,12 @@ class ScenarioSensitivityView(BaseModel):
     range_per_unit: Decimal | None
     range_percent_of_base: Decimal | None
     limitations: tuple[str, ...]
+
+
+class LandedCostLedgerView(BaseModel):
+    research_run_id: str
+    scenarios: list[LandedCostScenarioDetailView]
+    scenario_sensitivity: ScenarioSensitivityView
 
 
 class DecisionReportView(BaseModel):

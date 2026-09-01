@@ -121,6 +121,12 @@ latest-decision projection, preventing presentation-specific formulas from drift
 It fails closed to `MIXED_BASIS` when quantities or target currencies differ and never
 fills missing comparison values with estimates.
 
+The run-level landed-cost ledger is assembled from tenant-owned persisted scenario and
+component rows. Scenario ordering is optimistic/base/conservative; component ordering
+keeps product cost first, named costs deterministic, and contingency last. The JSON
+view exposes formulas and evidence classes for auditability, omits raw evidence bodies,
+and derives sensitivity through the shared application function.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

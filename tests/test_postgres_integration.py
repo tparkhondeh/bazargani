@@ -135,6 +135,21 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(len(latest_decision.json()["scenarios"]), 3)
 
+        cost_ledger = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"
+        )
+        self.assertEqual(cost_ledger.status_code, 200)
+        base_scenario = cost_ledger.json()["scenarios"][1]
+        self.assertEqual(base_scenario["name"], "BASE")
+        self.assertEqual(
+            sum(Decimal(item["amount"]) for item in base_scenario["components"]),
+            Decimal(base_scenario["total_amount"]),
+        )
+        self.assertEqual(
+            cost_ledger.json()["scenario_sensitivity"]["status"],
+            "COMPARABLE",
+        )
+
         additional_ids = {
             self.client.post(
                 "/api/v1/opportunities",

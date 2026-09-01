@@ -28,6 +28,8 @@ unknown or requires human verification?
 - Original values remain immutable; normalized values record transformation.
 - FX is point-in-time and tied to a source and rate type.
 - Calculations expose every component and use decimal arithmetic.
+- Structured run results expose scenario totals, component amounts, currency,
+  evidence class, and formula without requiring Markdown parsing or copying raw evidence.
 - Three scenarios are supported without silently changing evidence.
 - Scenario sensitivity exposes exact per-unit deltas and percentages only when all
   three scenarios share quantity and target currency; it never masquerades as EOQ.

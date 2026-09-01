@@ -433,6 +433,7 @@ class ApiTests(unittest.TestCase):
             for resource in (
                 "report",
                 "validation",
+                "landed-cost-scenarios",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -967,6 +968,39 @@ class ApiTests(unittest.TestCase):
             "INSUFFICIENT_SUPPLIER_COMPARISON",
             {item["code"] for item in validation["issues"]},
         )
+
+        ledger_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"
+        )
+        self.assertEqual(ledger_response.status_code, 200)
+        ledger = ledger_response.json()
+        self.assertEqual(ledger["research_run_id"], run["id"])
+        self.assertEqual(
+            [scenario["name"] for scenario in ledger["scenarios"]],
+            ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
+        )
+        base_scenario = ledger["scenarios"][1]
+        self.assertEqual(base_scenario["total_amount"], "6300.00000000")
+        self.assertEqual(base_scenario["per_unit_amount"], "630.00000000")
+        self.assertEqual(
+            [component["code"] for component in base_scenario["components"]],
+            ["product_cost", "freight", "unexpected_cost"],
+        )
+        self.assertEqual(base_scenario["components"][0]["amount"], "5000.00000000")
+        self.assertEqual(
+            base_scenario["components"][0]["evidence_class"],
+            "DERIVED_CALCULATION",
+        )
+        self.assertEqual(
+            base_scenario["components"][0]["formula"],
+            "converted unit price × purchase multiplier × quantity",
+        )
+        self.assertEqual(
+            sum(Decimal(component["amount"]) for component in base_scenario["components"]),
+            Decimal(base_scenario["total_amount"]),
+        )
+        self.assertEqual(ledger["scenario_sensitivity"]["range_percent_of_base"], "25.51")
+        self.assertNotIn("raw_value", json.dumps(ledger))
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

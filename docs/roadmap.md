@@ -40,6 +40,9 @@ assignment, reminders, and historical note revisions remain deferred.
 An evidence-backed latest-decision projection now joins each opportunity to its newest
 report-bearing run, validation, scenario summaries, and all leading tied offers for
 future result/history UI use.
+A tenant-scoped structured landed-cost ledger now exposes scenario totals, every
+calculation component/formula/evidence class, and shared sensitivity without Markdown
+parsing; richer evidence drill-down and UI visualization remain later work.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

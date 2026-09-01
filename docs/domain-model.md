@@ -99,6 +99,11 @@ percentages. These deltas combine every submitted price, cost, and contingency
 assumption; they are not an economic order quantity calculation or an independently
 observed market range.
 
+The landed-cost ledger is a read model over persisted scenarios and calculated
+components. It preserves the scenario basis, total/per-unit values, component currency,
+evidence class, and formula. It does not embed raw source bodies, and it does not permit
+clients to mutate or recalculate an immutable research run.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

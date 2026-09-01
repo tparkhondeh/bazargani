@@ -89,6 +89,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `POST /api/v1/research-runs/{id}/evidence-bundle`
 - `GET /api/v1/research-runs/{id}/report`
 - `GET /api/v1/research-runs/{id}/validation`
+- `GET /api/v1/research-runs/{id}/landed-cost-scenarios`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -168,6 +169,12 @@ landed-cost scenarios, validation summary/issues, assumptions/unknowns, an immut
 report snapshot, and an audit event in one transaction. A result with warnings is
 marked `NEEDS_VERIFICATION`; material conflicts are marked `NEEDS_HUMAN_REVIEW`
 instead of being silently reported as complete.
+
+The landed-cost-scenarios endpoint exposes the ordered calculation ledger rather than
+requiring clients to parse Markdown. Every scenario includes total and per-unit
+amounts plus each component's code, Persian label, amount, currency, evidence class,
+and formula. It also returns the same deterministic scenario sensitivity used by the
+latest-decision projection. Access is tenant-scoped and raw evidence bodies are omitted.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

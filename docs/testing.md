@@ -24,6 +24,11 @@ no comparison numbers, a zero base emits no percentages, and missing or duplicat
 scenario names are rejected. API and report tests lock the same derived result across
 both presentation paths.
 
+Calculation-ledger API tests verify semantic scenario/component ordering, exact stored
+`Decimal` totals, component-sum reconciliation, formula and evidence-class visibility,
+absence of raw evidence, and cross-tenant `404` behavior. The PostgreSQL integration
+path repeats component reconciliation against migrated production types.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

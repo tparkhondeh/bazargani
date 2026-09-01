@@ -1070,6 +1070,85 @@ class TradeRepository:
                 ],
             }
 
+    def get_landed_cost_scenarios(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            scenarios = list(
+                session.scalars(
+                    select(LandedCostScenarioRecord).where(
+                        LandedCostScenarioRecord.research_run_id == run_id
+                    )
+                )
+            )
+            if not scenarios:
+                raise KeyError("landed cost scenarios not found")
+
+            scenario_order = {"OPTIMISTIC": 0, "BASE": 1, "CONSERVATIVE": 2}
+            scenarios.sort(key=lambda item: (scenario_order.get(item.name, 99), item.id))
+            scenario_ids = [scenario.id for scenario in scenarios]
+            components = list(
+                session.scalars(
+                    select(LandedCostComponentRecord).where(
+                        LandedCostComponentRecord.scenario_id.in_(scenario_ids)
+                    )
+                )
+            )
+            component_order = {"product_cost": 0, "unexpected_cost": 2}
+            components.sort(
+                key=lambda item: (
+                    item.scenario_id,
+                    component_order.get(item.code, 1),
+                    item.code,
+                    item.id,
+                )
+            )
+            components_by_scenario: dict[str, list[dict[str, Any]]] = {
+                scenario_id: [] for scenario_id in scenario_ids
+            }
+            for component in components:
+                components_by_scenario[component.scenario_id].append(
+                    {
+                        "code": component.code,
+                        "label_fa": component.label_fa,
+                        "amount": component.amount,
+                        "currency": component.currency,
+                        "evidence_class": component.evidence_class,
+                        "formula": component.formula,
+                    }
+                )
+
+            sensitivity = analyze_scenario_sensitivity(
+                tuple(
+                    ScenarioCostPoint(
+                        name=scenario.name,
+                        quantity=scenario.quantity,
+                        target_currency=scenario.target_currency,
+                        per_unit_amount=scenario.per_unit_amount,
+                    )
+                    for scenario in scenarios
+                )
+            )
+            return {
+                "research_run_id": run_id,
+                "scenarios": [
+                    {
+                        "name": scenario.name,
+                        "quantity": scenario.quantity,
+                        "target_currency": scenario.target_currency,
+                        "total_amount": scenario.total_amount,
+                        "per_unit_amount": scenario.per_unit_amount,
+                        "components": components_by_scenario[scenario.id],
+                    }
+                    for scenario in scenarios
+                ],
+                "scenario_sensitivity": asdict(sensitivity),
+            }
+
     def get_product_matches(
         self, run_id: str, *, tenant_id: str
     ) -> list[ProductMatchRecord]:

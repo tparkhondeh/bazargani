@@ -27,6 +27,7 @@ from trade_agent.api.schemas import (
     ErrorBody,
     EvidenceBackedSupplierOfferView,
     EvidenceBundleSubmit,
+    LandedCostLedgerView,
     OpportunityContextUpdate,
     OpportunityCreate,
     OpportunityDecisionView,
@@ -541,6 +542,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_research_validation(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/landed-cost-scenarios",
+        response_model=LandedCostLedgerView,
+    )
+    def get_landed_cost_scenarios(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_landed_cost_scenarios(
             run_id,
             tenant_id=authenticated.tenant_id,
         )
