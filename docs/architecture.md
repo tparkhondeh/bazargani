@@ -142,6 +142,12 @@ avoid an upstream request stampede. Adapter network, response-size, and format e
 become a stable upstream-unavailable error; failed fetches and stale values are not
 cached or relabelled as current facts.
 
+Provider governance metadata lives in a typed provider registry outside the HTTP
+layer. It exposes only controlled operational facts and explicit unknowns. The ECB kill
+switch is checked before lazy provider construction, so disabling it cannot trigger a
+network request; adding a provider requires a new descriptor rather than ad-hoc API
+metadata.
+
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated

@@ -151,3 +151,7 @@ verify lazy construction, case-insensitive hits, expiry/refetch, and no stale fa
 API tests verify the evidence-rich response plus stable `422` and `502` contracts; a
 separate read-only smoke check confirmed the documented official endpoint on
 2026-09-01 without turning the live value into a test fixture.
+
+Provider-registry tests require authentication, verify the controlled ECB descriptor
+and explicit pending/unknown governance fields, toggle the kill switch, and prove a
+disabled request returns before the injected provider receives any call.

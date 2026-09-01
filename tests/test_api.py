@@ -696,6 +696,57 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(unavailable.json()["code"], "UPSTREAM_UNAVAILABLE")
         self.assertIn("correlation_id", unavailable.json())
 
+    def test_provider_registry_is_authenticated_and_ecb_has_a_kill_switch(self) -> None:
+        unauthenticated = self.client.get(
+            "/api/v1/providers",
+            headers={"X-API-Key": ""},
+        )
+        catalog_response = self.client.get("/api/v1/providers")
+
+        self.assertEqual(unauthenticated.status_code, 401)
+        self.assertEqual(catalog_response.status_code, 200)
+        catalog = catalog_response.json()
+        self.assertEqual(len(catalog), 1)
+        self.assertEqual(catalog[0]["id"], "ecb-fx-reference")
+        self.assertTrue(catalog[0]["enabled"])
+        self.assertEqual(catalog[0]["retrieval_method"], "OFFICIAL_API")
+        self.assertEqual(catalog[0]["terms_review_status"], "PENDING_FORMAL_REVIEW")
+        self.assertEqual(catalog[0]["fixed_hosts"], ["data-api.ecb.europa.eu"])
+        self.assertIsNone(catalog[0]["declared_rate_limit"])
+
+        disabled_engine = create_engine(
+            "sqlite+pysqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        disabled_rates = StubReferenceRateProvider()
+        disabled_settings = Settings(
+            environment="test",
+            database_url="sqlite+pysqlite://",
+            auto_create_schema=True,
+            log_level="CRITICAL",
+            ecb_enabled=False,
+            auth_enabled=True,
+            api_key_credentials={
+                hashlib.sha256(self.api_key.encode()).hexdigest(): "tenant-a",
+            },
+        )
+        with TestClient(
+            create_app(
+                settings=disabled_settings,
+                engine=disabled_engine,
+                reference_rates=disabled_rates,
+            )
+        ) as disabled_client:
+            disabled_client.headers.update({"X-API-Key": self.api_key})
+            disabled_catalog = disabled_client.get("/api/v1/providers")
+            disabled_rate = disabled_client.get("/api/v1/reference-rates/ecb/USD")
+
+        self.assertFalse(disabled_catalog.json()[0]["enabled"])
+        self.assertEqual(disabled_rate.status_code, 502)
+        self.assertEqual(disabled_rate.json()["code"], "UPSTREAM_UNAVAILABLE")
+        self.assertEqual(disabled_rates.calls, 0)
+
     def test_review_outcome_requires_an_atomic_tenant_scoped_decision(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity = self.client.post(

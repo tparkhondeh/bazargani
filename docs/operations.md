@@ -85,6 +85,12 @@ The cache is per process; production egress/rate controls must still apply acros
 workers. Monitor `502 UPSTREAM_UNAVAILABLE` without logging response bodies or
 misrepresenting cached ECB reference rates as Iranian transaction rates.
 
+`TRADE_AGENT_ECB_ENABLED` defaults to `true` for the current development slice. Set it
+to `false` as the provider kill switch; requests then return `502` before any provider
+construction or network call. Inspect authenticated `GET /api/v1/providers` during
+deployment verification. Do not enable production egress while its descriptor reports
+`PENDING_FORMAL_REVIEW` without an explicit terms/authorization decision.
+
 SQLite auto-schema mode is allowed only for local development and tests. Production
 requires PostgreSQL, Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`), and enabled
 authentication. Migration `0007` assigns pre-existing rows to the quarantined

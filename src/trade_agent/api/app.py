@@ -36,6 +36,7 @@ from trade_agent.api.schemas import (
     ParsedTradeRequestView,
     ParseRequestInput,
     ProductMatchView,
+    ProviderView,
     ReferenceRateView,
     ResearchCompletionView,
     ResearchReviewSubmit,
@@ -71,6 +72,7 @@ from trade_agent.infrastructure.repository import TradeRepository
 from trade_agent.parsing.request import parse_trade_request
 from trade_agent.providers.ecb_fx import EcbFxProvider
 from trade_agent.providers.errors import ProviderUnavailableError
+from trade_agent.providers.registry import provider_catalog
 
 logger = logging.getLogger("trade_agent.http")
 
@@ -278,7 +280,18 @@ def create_app(
         quote_currency: str,
         _principal: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
+        if not resolved.ecb_enabled:
+            raise ProviderUnavailableError("ECB reference-rate provider is disabled")
         return rate_service.latest_reference_rate(quote_currency)
+
+    @app.get("/api/v1/providers", response_model=list[ProviderView])
+    def list_providers(
+        _principal: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return provider_catalog(
+            ecb_enabled=resolved.ecb_enabled,
+            ecb_cache_ttl_seconds=resolved.ecb_cache_ttl_seconds,
+        )
 
     @app.post("/api/v1/opportunities", response_model=OpportunityView, status_code=201)
     def create_opportunity(

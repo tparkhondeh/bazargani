@@ -27,3 +27,9 @@ evidence class/confidence, and transformation. Successful results use a configur
 60–86,400 second cache (default 3,600); failures return `502 UPSTREAM_UNAVAILABLE` and
 never fall back to silently stale data. This endpoint does not provide an Iranian
 transaction, remittance, sanctions, customs, or settlement rate.
+
+`GET /api/v1/providers` exposes the governed descriptor for authenticated operators.
+The ECB descriptor declares its narrow scope, fixed host, cache TTL, limitations,
+enabled state, and `PENDING_FORMAL_REVIEW` terms status. An unknown official rate limit
+is represented as `null`, never guessed. `TRADE_AGENT_ECB_ENABLED=false` is the shutdown
+path and prevents provider construction/network use.

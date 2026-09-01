@@ -100,6 +100,11 @@ server failures. The API requires authentication to limit anonymous abuse. Only
 successful parsed observations enter the TTL cache; a provider failure returns `502`
 without serving a stale value as if it were current.
 
+The authenticated provider registry exposes scope and fixed-host policy without
+credentials. ECB has a configuration kill switch checked before adapter construction;
+disabled requests cannot reach the network. `PENDING_FORMAL_REVIEW` is a production
+gate, not an approval, and an undocumented upstream rate limit remains explicit null.
+
 `pip-audit` checks the exact Python lock in every CI run and fails on known published
 advisories. The lock and `THIRD_PARTY_NOTICES.md` are reviewed together whenever a
 dependency changes. A clean advisory result is point-in-time evidence, not a guarantee

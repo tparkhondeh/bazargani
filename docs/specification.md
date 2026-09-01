@@ -46,6 +46,8 @@ unknown or requires human verification?
   provenance alongside normalized score data, without copying raw evidence bodies.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,
   headings, or additional links; client rendering remains separately sanitized.
+- Every automated provider exposes controlled scope/limitations/terms status and a
+  tested kill switch; unknown operational policy is represented explicitly, not guessed.
 
 ## Deferred from MVP
 

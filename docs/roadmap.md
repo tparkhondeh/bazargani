@@ -76,6 +76,8 @@ Status: the official ECB adapter is exposed through the authenticated API with
 provenance, bounded safe HTTP, TTL caching, and stable failure behavior. It remains an
 informational EUR reference only. Approved manufacturing/wholesale and Iranian
 benchmark sources, shared provider telemetry, and distributed rate control remain.
+The provider now has a typed authenticated governance descriptor and configuration kill
+switch; formal ECB terms/authorization review is still a production prerequisite.
 
 ## Phase 4 — Assisted intelligence and RTL UI
 

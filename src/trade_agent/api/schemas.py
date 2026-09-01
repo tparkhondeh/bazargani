@@ -164,6 +164,23 @@ class ReferenceRateView(BaseModel):
     evidence: EvidenceView
 
 
+class ProviderView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    category: str
+    enabled: bool
+    retrieval_method: str
+    evidence_classification: str
+    terms_review_status: str
+    supported_scope: tuple[str, ...]
+    fixed_hosts: tuple[str, ...]
+    cache_ttl_seconds: int
+    declared_rate_limit: str | None
+    limitations: tuple[str, ...]
+
+
 class ResearchCompletionView(BaseModel):
     research_run_id: str
     status: str
