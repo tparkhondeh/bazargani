@@ -159,8 +159,11 @@ Authentication integration tests run with authentication enabled and cover missi
 invalid, and valid keys; public health; tenant/actor audit attribution; and identical
 `404` responses for cross-tenant aggregate reads and mutations. Configuration tests
 verify that production cannot start with authentication disabled and credentials are
-configured as SHA-256 digests rather than raw keys. Migration `0007` is exercised in
-both upgrade and full rollback paths.
+configured as SHA-256 digests rather than raw keys. Role tests cover normalized digest
+assignments, unknown/orphan/empty-role rejection, development behavior, authorized
+access, generic `403` denial for a valid no-role credential, and continued tenant-hiding
+`404` behavior after authorization. Migration `0007` is exercised in both upgrade and
+full rollback paths.
 
 Rate-limit tests use a deterministic monotonic clock to cover allowance, retry timing,
 window reset, and tenant isolation. API tests prove that rotated keys for one tenant
@@ -293,4 +296,10 @@ states, expose the current expected version and immutable report/validation line
 filter exact status, and paginate without duplicates. Approval removes a run from the
 projection. Tenant isolation and omission of report content, raw evidence, unknown text,
 rationale, reviewer identity, and opportunity notes are regression-checked; PostgreSQL
-integration confirms entry and atomic exit after approval.
+integration confirms entry and atomic exit after approval. API tests require
+`RESEARCH_REVIEWER` for queue/history/write access and preserve the security-header
+contract on `403`.
+
+Supplier identity review API tests likewise require `SUPPLIER_IDENTITY_REVIEWER` for
+queue/history/write access while proving that an authorized credential from another
+tenant still receives an empty queue or tenant-hiding `404`, never an ownership signal.

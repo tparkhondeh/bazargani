@@ -43,6 +43,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             api_key_credentials={
                 hashlib.sha256(cls.api_key.encode()).hexdigest(): "postgres-ci",
             },
+            api_key_roles={
+                hashlib.sha256(cls.api_key.encode()).hexdigest(): [
+                    "RESEARCH_REVIEWER",
+                    "SUPPLIER_IDENTITY_REVIEWER",
+                ],
+            },
         )
         cls.client_context = TestClient(create_app(settings=settings, engine=cls.engine))
         cls.client = cls.client_context.__enter__()

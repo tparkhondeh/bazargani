@@ -40,9 +40,12 @@ unless authentication is enabled with at least one valid hashed credential.
 
 Disabling authentication is a local-development convenience only and maps requests
 to `local-development`; it is rejected in production. API keys are a bootstrap
-control, not the final user authorization model: OIDC/SSO, roles, key rotation,
-revocation, distributed rate limits, and secret-manager delivery remain required
-before public production exposure.
+control, not the final user identity model. Review queues, histories, and writes require
+an explicit digest-bound `RESEARCH_REVIEWER` or `SUPPLIER_IDENTITY_REVIEWER` role. A
+valid credential without the required role receives generic `403`; role-authorized
+cross-tenant access still receives the same `404` as a missing identifier. OIDC/SSO,
+named-user roles, key rotation, revocation, distributed rate limits, and secret-manager
+delivery remain required before public production exposure.
 
 Every authenticated `/api/v1` request consumes a fixed-window budget keyed by the
 resolved tenant, so multiple active credentials for rotation share the same allowance.
@@ -54,7 +57,8 @@ Review decisions require a non-empty rationale and optimistic version, lock the
 tenant-owned run, and atomically record the actor, decision, before/after state, and
 audit event. The generic status endpoint cannot mark a run completed or fabricate a
 validation/review status. The current actor is a non-secret API-key fingerprint; it
-must not be represented as verified human identity until OIDC and roles are enabled.
+must not be represented as verified human identity. Its credential role authorizes the
+operation but does not identify the person operating the credential.
 
 Opportunity transitions use the same tenant predicate, row lock, optimistic version,
 and atomic audit boundary. Invalid stage changes return `409`, stale writers cannot
@@ -142,7 +146,8 @@ dependency changes. A clean advisory result is point-in-time evidence, not a gua
 that a dependency is defect-free; repeat the gate for every change and release.
 
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
-logging retention, authorization roles, and server reconciliation are verified.
+logging retention, named-user authorization roles, and server reconciliation are
+verified.
 
 The public readiness response reveals only the expected migration revision after a
 successful check. Connectivity failures, missing metadata tables, stale/multiple
@@ -167,14 +172,16 @@ metadata already available to an authorized tenant, but omits raw evidence, revi
 rationale, reviewer actor identity, and audit metadata. Collection reads return an empty
 page rather than revealing whether another tenant has matching review work. Column-level
 loading also prevents raw evidence, rationale, and opportunity notes from being fetched
-for the projection.
+for the projection. Queue, history, and write endpoints require the
+`SUPPLIER_IDENTITY_REVIEWER` credential role.
 
 The research review queue applies the tenant predicate at the owning run and requires an
 immutable report plus validation row. It omits report content, raw evidence, individual
 unknown text, review rationale, reviewer identity, opportunity notes, and audit metadata.
 Its least-data queries retrieve only issue severities and unknown counts. It supplies the
 current run version so the separate review write can fail closed on a stale operator
-view. An empty collection reveals nothing about another tenant.
+view. An empty collection reveals nothing about another tenant. Queue, history, and
+write endpoints require the `RESEARCH_REVIEWER` credential role.
 
 POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length` is
 missing. The default application limit is 2 MB and the reverse proxy must enforce an

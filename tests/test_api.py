@@ -68,6 +68,7 @@ class StubReferenceRateProvider:
 class ApiTests(unittest.TestCase):
     api_key = "tenant-a-test-key-0000000000000001"
     other_api_key = "tenant-b-test-key-0000000000000002"
+    limited_api_key = "tenant-c-test-key-0000000000000003"
 
     def setUp(self) -> None:
         self.engine = create_engine(
@@ -84,6 +85,17 @@ class ApiTests(unittest.TestCase):
             api_key_credentials={
                 hashlib.sha256(self.api_key.encode()).hexdigest(): "tenant-a",
                 hashlib.sha256(self.other_api_key.encode()).hexdigest(): "tenant-b",
+                hashlib.sha256(self.limited_api_key.encode()).hexdigest(): "tenant-c",
+            },
+            api_key_roles={
+                hashlib.sha256(self.api_key.encode()).hexdigest(): [
+                    "RESEARCH_REVIEWER",
+                    "SUPPLIER_IDENTITY_REVIEWER",
+                ],
+                hashlib.sha256(self.other_api_key.encode()).hexdigest(): [
+                    "RESEARCH_REVIEWER",
+                    "SUPPLIER_IDENTITY_REVIEWER",
+                ],
             },
         )
         self.reference_rates = StubReferenceRateProvider()
@@ -1202,6 +1214,10 @@ class ApiTests(unittest.TestCase):
             "/api/v1/research-review-queue",
             headers={"X-API-Key": self.other_api_key},
         )
+        unauthorized_queue = self.client.get(
+            "/api/v1/research-review-queue",
+            headers={"X-API-Key": self.limited_api_key},
+        )
         invalid_queue_status = self.client.get(
             "/api/v1/research-review-queue",
             params={"status": "COMPLETED"},
@@ -1214,6 +1230,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(verification_queue.json()["included_statuses"], ["NEEDS_VERIFICATION"])
         self.assertEqual(human_review_queue.json()["items"], [])
         self.assertEqual(other_tenant_queue.json()["items"], [])
+        self.assertEqual(unauthorized_queue.status_code, 403)
+        self.assertEqual(unauthorized_queue.json()["code"], "AUTHORIZATION_DENIED")
         self.assertEqual(invalid_queue_status.status_code, 422)
         self.assertEqual(malformed_queue_cursor.status_code, 422)
         self.assertEqual(malformed_queue_cursor.json()["code"], "INVALID_INPUT")
@@ -1242,12 +1260,23 @@ class ApiTests(unittest.TestCase):
                 "expected_version": completed["version"],
             },
         )
+        unauthorized_review = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            headers={"X-API-Key": self.limited_api_key},
+            json={
+                "decision": "APPROVE",
+                "rationale": "Credential without reviewer role must be rejected",
+                "expected_version": completed["version"],
+            },
+        )
 
         self.assertEqual(bypass.status_code, 409)
         self.assertEqual(bypass.json()["code"], "INVALID_TRANSITION")
         self.assertEqual(wrong_version.status_code, 409)
         self.assertEqual(wrong_version.json()["code"], "VERSION_CONFLICT")
         self.assertEqual(cross_tenant.status_code, 404)
+        self.assertEqual(unauthorized_review.status_code, 403)
+        self.assertEqual(unauthorized_review.json()["code"], "AUTHORIZATION_DENIED")
 
         approval = self.client.post(
             f"/api/v1/research-runs/{run['id']}/reviews",
@@ -1275,6 +1304,10 @@ class ApiTests(unittest.TestCase):
             f"/api/v1/research-runs/{run['id']}/reviews",
             headers={"X-API-Key": self.other_api_key},
         )
+        unauthorized_reviews = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            headers={"X-API-Key": self.limited_api_key},
+        )
         self.assertEqual(reviews.status_code, 200)
         retrieved_decisions = reviews.json()
         self.assertEqual(len(retrieved_decisions), 1)
@@ -1293,6 +1326,7 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(retrieved[field], decision[field])
         datetime.fromisoformat(retrieved["created_at"].replace("Z", "+00:00"))
         self.assertEqual(hidden_reviews.status_code, 404)
+        self.assertEqual(unauthorized_reviews.status_code, 403)
 
         with self.engine.connect() as connection:
             persisted_run = connection.execute(
@@ -1970,6 +2004,10 @@ class ApiTests(unittest.TestCase):
             "/api/v1/supplier-identity-review-queue",
             headers={"X-API-Key": self.other_api_key},
         )
+        unauthorized_identity_queue = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            headers={"X-API-Key": self.limited_api_key},
+        )
 
         self.assertEqual(completed_response.status_code, 200)
         completed = completed_response.json()
@@ -2009,6 +2047,11 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("supplier_identity_claim_reviews.rationale as", identity_queue_sql)
         self.assertEqual(other_tenant_queue.status_code, 200)
         self.assertEqual(other_tenant_queue.json()["items"], [])
+        self.assertEqual(unauthorized_identity_queue.status_code, 403)
+        self.assertEqual(
+            unauthorized_identity_queue.json()["code"],
+            "AUTHORIZATION_DENIED",
+        )
 
         evidence_catalog = self.client.get(
             f"/api/v1/research-runs/{run['id']}/evidence"
@@ -2035,12 +2078,25 @@ class ApiTests(unittest.TestCase):
             review_path,
             headers={"X-API-Key": self.other_api_key},
         )
+        unauthorized_identity_review_read = self.client.get(
+            review_path,
+            headers={"X-API-Key": self.limited_api_key},
+        )
         hidden_review_write = self.client.post(
             review_path,
             headers={"X-API-Key": self.other_api_key},
             json={
                 "decision": "EVIDENCE_SUPPORTED",
                 "rationale": "Cross-tenant review must be rejected",
+                "expected_version": 0,
+            },
+        )
+        unauthorized_identity_review = self.client.post(
+            review_path,
+            headers={"X-API-Key": self.limited_api_key},
+            json={
+                "decision": "EVIDENCE_SUPPORTED",
+                "rationale": "Credential without identity reviewer role must fail",
                 "expected_version": 0,
             },
         )
@@ -2088,7 +2144,13 @@ class ApiTests(unittest.TestCase):
         ).json()
 
         self.assertEqual(hidden_review_read.status_code, 404)
+        self.assertEqual(unauthorized_identity_review_read.status_code, 403)
         self.assertEqual(hidden_review_write.status_code, 404)
+        self.assertEqual(unauthorized_identity_review.status_code, 403)
+        self.assertEqual(
+            unauthorized_identity_review.json()["code"],
+            "AUTHORIZATION_DENIED",
+        )
         self.assertEqual(invalid_decision.status_code, 422)
         self.assertEqual(invalid_claim_path.status_code, 422)
         self.assertEqual(first_review.status_code, 201)

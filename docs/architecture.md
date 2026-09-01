@@ -81,10 +81,13 @@ only exception type and request metadata, ensuring unexpected errors cannot bypa
 normal correlation or security-header pipeline.
 
 The API authenticates a secret key at the boundary, resolves it to an immutable
-tenant/actor principal, and passes that principal explicitly through application
-ports. Aggregate reads and writes include tenant predicates; an identifier owned by
-another tenant is deliberately indistinguishable from a missing identifier (`404`).
-Health/readiness remain public and expose no tenant data.
+tenant/actor/role principal, and passes that principal explicitly through application
+ports. Review queue, review-history, and review-write dependencies require the matching
+credential-level reviewer role before repository access. Aggregate reads and writes
+include tenant predicates; an identifier owned by another tenant is deliberately
+indistinguishable from a missing identifier (`404`) after authorization. A missing role
+fails earlier with a generic `403`. Health/readiness remain public and expose no tenant
+data.
 
 After authentication, the HTTP boundary applies a thread-safe fixed-window budget by
 resolved tenant rather than raw credential. This prevents multiple or rotating keys

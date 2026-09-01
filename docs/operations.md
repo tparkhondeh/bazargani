@@ -36,13 +36,25 @@ $digest = [Convert]::ToHexString(
 ).ToLowerInvariant()
 $env:TRADE_AGENT_AUTH_ENABLED = "true"
 $env:TRADE_AGENT_API_KEY_CREDENTIALS = "{`"$digest`":`"tenant-name`"}"
+$env:TRADE_AGENT_API_KEY_ROLES = "{`"$digest`": [`"RESEARCH_REVIEWER`", `"SUPPLIER_IDENTITY_REVIEWER`"]}"
 ```
 
 The value held in `$apiKey` is the only usable credential; transmit it once through
 the selected secret channel. Credential values must be 32–128 characters. Tenant IDs
 accept letters, digits, `_`, and `-`, up to 64 characters. A second credential can
 map to the same tenant during rotation; deploy the new digest, move clients, then
-remove the old digest.
+remove the old digest. Role assignments use the same lowercase SHA-256 digest keys and
+accept only `RESEARCH_REVIEWER` and `SUPPLIER_IDENTITY_REVIEWER`. Assign only the roles
+the credential needs; a credential with no matching assignment can use ordinary tenant
+endpoints but receives `403 AUTHORIZATION_DENIED` for review queues, review history,
+and review writes.
+
+Before upgrading to version 0.52.0 or later, add `TRADE_AGENT_API_KEY_ROLES` for every
+credential that performs reviews. The application intentionally does not infer roles
+from tenant membership. Authentication-disabled local development receives both roles
+for usability, but production already rejects that mode. Credential roles identify a
+service credential, not a human; retain OIDC/SSO and named-user authorization as a
+production launch requirement.
 
 Operational audit consumers should traverse `GET /api/v1/audit-events` with its
 opaque `next_cursor`; never decode a cursor for authorization or request an unbounded

@@ -72,7 +72,10 @@ unknown or requires human verification?
   as proof of commercial completeness.
 - Completing or rejecting a review-required result records the authenticated actor,
   rationale, decision, tenant, and exact run version without rewriting evidence; the
-  audit event omits rationale while the authorized review ledger retains it.
+  audit event omits rationale while the role-authorized review ledger retains it.
+- Review queues, review histories, and review writes fail closed unless the calling
+  credential has the exact reviewer role; role authorization never replaces the
+  independent tenant predicate or claims a named human identity.
 - Opportunity lifecycle changes follow an explicit version-checked policy, preserve
   actor/correlation attribution in an append-only audit event, and cannot silently
   reopen a won or lost aggregate.
@@ -123,8 +126,9 @@ unknown or requires human verification?
 
 Full CRM/ERP, autonomous purchasing, negotiation, RFQ messaging, shipment
 tracking, accounting, inventory, automatic customs classification, universal
-scraping, and end-user OIDC/role management. Hashed API-key authentication and tenant
-isolation are included with the current network API baseline.
+scraping, and end-user OIDC/named-user role management. Hashed API-key authentication,
+credential-level reviewer roles, and tenant isolation are included with the current
+network API baseline.
 
 ## Missing decisions and risks
 
@@ -134,7 +138,7 @@ isolation are included with the current network API baseline.
   domain specialists; the system must represent them as unknown until supplied.
 - A canonical money display policy (IRR versus toman) must be approved; storage
   uses ISO-like currency codes and never conflates the two.
-- Production retention, backup RPO/RTO, user roles, and model-provider policy
+- Production retention, backup RPO/RTO, named-user roles, and model-provider policy
   need stakeholder decisions before launch.
 - Initial server inventory found an empty target project directory, an unrelated PM2
   application that must remain untouched, and a system Python version below the

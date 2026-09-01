@@ -3,7 +3,12 @@ import unittest
 
 from pydantic import ValidationError
 
-from trade_agent.api.auth import AuthenticationError, authenticate_api_key
+from trade_agent.api.auth import (
+    AuthenticationError,
+    AuthorizationError,
+    authenticate_api_key,
+    authorize_role,
+)
 from trade_agent.config import Settings
 
 
@@ -15,13 +20,20 @@ class AuthenticationTests(unittest.TestCase):
             environment="test",
             auth_enabled=True,
             api_key_credentials={digest: "tenant-a"},
+            api_key_roles={digest.upper(): ["RESEARCH_REVIEWER", "RESEARCH_REVIEWER"]},
         )
 
         principal = authenticate_api_key(settings, key)
 
         self.assertEqual(principal.tenant_id, "tenant-a")
         self.assertEqual(principal.actor_id, f"api-key:{digest[:12]}")
+        self.assertEqual(principal.roles, frozenset({"RESEARCH_REVIEWER"}))
         self.assertNotIn(key, principal.actor_id)
+        authorize_role(principal, "RESEARCH_REVIEWER")
+        with self.assertRaises(AuthorizationError):
+            authorize_role(principal, "SUPPLIER_IDENTITY_REVIEWER")
+        with self.assertRaises(AuthorizationError):
+            authorize_role(principal, "ADMIN")
 
     def test_invalid_key_is_rejected(self) -> None:
         key = "valid-test-api-key-00000000000001"
@@ -39,6 +51,8 @@ class AuthenticationTests(unittest.TestCase):
 
         self.assertEqual(principal.tenant_id, "local-development")
         self.assertEqual(principal.actor_id, "development-auth-disabled")
+        authorize_role(principal, "RESEARCH_REVIEWER")
+        authorize_role(principal, "SUPPLIER_IDENTITY_REVIEWER")
 
     def test_production_fails_closed_without_authentication(self) -> None:
         with self.assertRaisesRegex(ValidationError, "production requires authentication"):
@@ -74,6 +88,58 @@ class AuthenticationTests(unittest.TestCase):
                 environment="test",
                 auth_enabled=True,
                 api_key_credentials={"plain-text-key": "tenant-a"},
+            )
+
+    def test_role_configuration_fails_closed_for_orphans_and_unknown_roles(self) -> None:
+        key_digest = hashlib.sha256(b"configured-key").hexdigest()
+        orphan_digest = hashlib.sha256(b"orphan-key").hexdigest()
+
+        with self.assertRaisesRegex(ValidationError, "credential identifiers must be unique"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={
+                    key_digest: "tenant-a",
+                    key_digest.upper(): "tenant-a",
+                },
+            )
+        with self.assertRaisesRegex(ValidationError, "role identifiers must be SHA-256"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={key_digest: "tenant-a"},
+                api_key_roles={"not-a-digest": ["RESEARCH_REVIEWER"]},
+            )
+        with self.assertRaisesRegex(ValidationError, "configured credential"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={key_digest: "tenant-a"},
+                api_key_roles={orphan_digest: ["RESEARCH_REVIEWER"]},
+            )
+        with self.assertRaisesRegex(ValidationError, "unsupported values"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={key_digest: "tenant-a"},
+                api_key_roles={key_digest: ["ADMIN"]},
+            )
+        with self.assertRaisesRegex(ValidationError, "cannot be empty"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={key_digest: "tenant-a"},
+                api_key_roles={key_digest: []},
+            )
+        with self.assertRaisesRegex(ValidationError, "role identifiers must be unique"):
+            Settings(
+                environment="test",
+                auth_enabled=True,
+                api_key_credentials={key_digest: "tenant-a"},
+                api_key_roles={
+                    key_digest: ["RESEARCH_REVIEWER"],
+                    key_digest.upper(): ["SUPPLIER_IDENTITY_REVIEWER"],
+                },
             )
 
 

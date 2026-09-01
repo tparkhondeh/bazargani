@@ -55,6 +55,10 @@ class ResponseSecurityHeaderTests(unittest.TestCase):
                 headers={"X-API-Key": self.api_key},
             )
             unauthorized = client.get("/api/v1/opportunities")
+            forbidden = client.get(
+                "/api/v1/research-review-queue",
+                headers={"X-API-Key": self.api_key},
+            )
             oversized = client.post(
                 "/api/v1/requests/parse",
                 headers={"X-API-Key": self.api_key},
@@ -64,13 +68,15 @@ class ResponseSecurityHeaderTests(unittest.TestCase):
         self.assertEqual(health.status_code, 200)
         self.assertEqual(protected.status_code, 200)
         self.assertEqual(unauthorized.status_code, 401)
+        self.assertEqual(forbidden.status_code, 403)
+        self.assertEqual(forbidden.json()["code"], "AUTHORIZATION_DENIED")
         self.assertEqual(oversized.status_code, 413)
-        for response in (health, protected, unauthorized, oversized):
+        for response in (health, protected, unauthorized, forbidden, oversized):
             with self.subTest(status=response.status_code):
                 for name, expected in EXPECTED_HEADERS.items():
                     self.assertEqual(response.headers[name], expected)
         self.assertNotIn("X-API-Key", health.headers.get("Vary", ""))
-        for response in (protected, unauthorized, oversized):
+        for response in (protected, unauthorized, forbidden, oversized):
             self.assertIn("X-API-Key", response.headers["Vary"])
 
 

@@ -15,7 +15,9 @@ from trade_agent import __version__
 from trade_agent.api.auth import (
     AuthenticatedPrincipal,
     AuthenticationError,
+    AuthorizationError,
     authenticate_api_key,
+    authorize_role,
 )
 from trade_agent.api.logging import configure_logging
 from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
@@ -206,6 +208,12 @@ def create_app(
         response.headers["WWW-Authenticate"] = "ApiKey"
         return response
 
+    @app.exception_handler(AuthorizationError)
+    async def authorization_failed(
+        request: Request, exc: AuthorizationError
+    ) -> JSONResponse:
+        return error(request, 403, "AUTHORIZATION_DENIED", str(exc))
+
     @app.exception_handler(RateLimitExceeded)
     async def rate_limit_exceeded(
         request: Request, exc: RateLimitExceeded
@@ -266,6 +274,18 @@ def create_app(
     ) -> AuthenticatedPrincipal:
         authenticated = authenticate_api_key(resolved, api_key)
         request_limiter.check(authenticated.tenant_id)
+        return authenticated
+
+    def research_reviewer(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> AuthenticatedPrincipal:
+        authorize_role(authenticated, "RESEARCH_REVIEWER")
+        return authenticated
+
+    def supplier_identity_reviewer(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> AuthenticatedPrincipal:
+        authorize_role(authenticated, "SUPPLIER_IDENTITY_REVIEWER")
         return authenticated
 
     @app.get("/health")
@@ -403,7 +423,10 @@ def create_app(
         response_model=SupplierIdentityReviewQueuePageView,
     )
     def list_supplier_identity_review_queue(
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[
+            AuthenticatedPrincipal,
+            Depends(supplier_identity_reviewer),
+        ],
         status: Annotated[
             Literal["UNREVIEWED", "INCONCLUSIVE"] | None,
             Query(),
@@ -441,7 +464,10 @@ def create_app(
         response_model=ResearchReviewQueuePageView,
     )
     def list_research_review_queue(
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[
+            AuthenticatedPrincipal,
+            Depends(research_reviewer),
+        ],
         status: Annotated[
             Literal["NEEDS_VERIFICATION", "NEEDS_HUMAN_REVIEW", "PARTIAL"] | None,
             Query(),
@@ -632,7 +658,7 @@ def create_app(
         run_id: str,
         payload: ResearchReviewSubmit,
         correlation_id: Annotated[str, Depends(correlation)],
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(research_reviewer)],
     ) -> Any:
         return repository.record_research_review(
             run_id=run_id,
@@ -650,7 +676,7 @@ def create_app(
     )
     def get_research_reviews(
         run_id: str,
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(research_reviewer)],
     ) -> Any:
         return repository.get_research_reviews(
             run_id,
@@ -938,7 +964,10 @@ def create_app(
         ],
         payload: SupplierIdentityClaimReviewSubmit,
         correlation_id: Annotated[str, Depends(correlation)],
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[
+            AuthenticatedPrincipal,
+            Depends(supplier_identity_reviewer),
+        ],
     ) -> Any:
         return repository.record_supplier_identity_claim_review(
             run_id=run_id,
@@ -965,7 +994,10 @@ def create_app(
                 pattern=SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN,
             ),
         ],
-        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        authenticated: Annotated[
+            AuthenticatedPrincipal,
+            Depends(supplier_identity_reviewer),
+        ],
     ) -> Any:
         return repository.get_supplier_identity_claim_reviews(
             run_id=run_id,

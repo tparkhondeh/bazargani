@@ -6,6 +6,13 @@ from functools import lru_cache
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ALLOWED_API_KEY_ROLES = frozenset(
+    {
+        "RESEARCH_REVIEWER",
+        "SUPPLIER_IDENTITY_REVIEWER",
+    }
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -27,15 +34,39 @@ class Settings(BaseSettings):
     api_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
     auth_enabled: bool = False
     api_key_credentials: dict[str, str] = Field(default_factory=dict)
+    api_key_roles: dict[str, list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_production(self) -> Settings:
         tenant_pattern = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+        normalized_credentials: dict[str, str] = {}
         for digest, tenant_id in self.api_key_credentials.items():
             if re.fullmatch(r"[0-9a-fA-F]{64}", digest) is None:
                 raise ValueError("API key credential identifiers must be SHA-256 hex digests")
             if tenant_pattern.fullmatch(tenant_id) is None:
                 raise ValueError("tenant identifiers contain unsupported characters")
+            normalized_digest = digest.lower()
+            if normalized_digest in normalized_credentials:
+                raise ValueError("API key credential identifiers must be unique")
+            normalized_credentials[normalized_digest] = tenant_id
+
+        normalized_roles: dict[str, list[str]] = {}
+        for digest, roles in self.api_key_roles.items():
+            normalized_digest = digest.lower()
+            if re.fullmatch(r"[0-9a-f]{64}", normalized_digest) is None:
+                raise ValueError("API key role identifiers must be SHA-256 hex digests")
+            if normalized_digest not in normalized_credentials:
+                raise ValueError("API key roles require a configured credential")
+            if normalized_digest in normalized_roles:
+                raise ValueError("API key role identifiers must be unique")
+            invalid_roles = sorted(set(roles) - ALLOWED_API_KEY_ROLES)
+            if invalid_roles:
+                raise ValueError("API key roles contain unsupported values")
+            if not roles:
+                raise ValueError("API key role assignments cannot be empty")
+            normalized_roles[normalized_digest] = sorted(set(roles))
+        self.api_key_credentials = normalized_credentials
+        self.api_key_roles = normalized_roles
         if self.auth_enabled and not self.api_key_credentials:
             raise ValueError("auth_enabled requires at least one API key credential")
         if self.environment == "production":

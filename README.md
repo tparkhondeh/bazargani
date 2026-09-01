@@ -139,7 +139,11 @@ stable `503 NOT_READY`. Every `/api/v1` endpoint is authenticated when
 `TRADE_AGENT_AUTH_ENABLED=true` and requires `X-API-Key`. Only SHA-256 key digests are
 configured; the resolved tenant and a non-secret key fingerprint are propagated into
 tenant-scoped repository queries and audit events. Production configuration fails at
-startup if authentication is disabled.
+startup if authentication is disabled. Review queues, review history, and review writes
+also require an explicit credential role: `RESEARCH_REVIEWER` or
+`SUPPLIER_IDENTITY_REVIEWER`. A valid key without the required role receives the stable
+`403 AUTHORIZATION_DENIED` contract; cross-tenant identifiers remain hidden as `404`
+after role authorization succeeds.
 
 Authenticated API traffic has a per-tenant, per-process fixed-window limit (default
 120 requests per 60 seconds). Every key mapped to a tenant shares its budget;
@@ -180,9 +184,11 @@ the generic transition endpoint. An authenticated actor must record an `APPROVE`
 `REJECT` review with a rationale and expected version. The decision, status/version
 change, actor fingerprint, and audit event commit atomically; cross-tenant review
 access returns `404`. API-key attribution is a service baseline, not proof of a named
-human identity—OIDC/roles remain required for production user accountability. The full
-rationale stays in the authenticated review ledger; new audit events record only the
-decision, transition, and resulting version to avoid duplicating commercial free text.
+human identity. Credential-level reviewer roles enforce least privilege now, while
+OIDC/SSO and named-user roles remain required for production user accountability. The
+full rationale stays in the role-authorized review ledger; new audit events record only
+the decision, transition, and resulting version to avoid duplicating commercial free
+text.
 
 Opportunity, research-run, and audit-event history endpoints use newest-first opaque
 cursor pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returned
@@ -256,7 +262,8 @@ The supplier identity review queue is a bounded tenant-scoped projection of only
 review, supports exact status filtering and keyset pagination, and includes opportunity
 context plus source provenance for triage. Resolved claims leave the queue. Raw evidence,
 review rationale, and reviewer identity are deliberately excluded, and queue membership
-never means that a supplier identity is verified.
+never means that a supplier identity is verified. Queue, history, and write access
+require `SUPPLIER_IDENTITY_REVIEWER`.
 
 The research review queue is a bounded tenant-scoped projection of report-bearing runs
 whose current system-derived status is `NEEDS_VERIFICATION`, `NEEDS_HUMAN_REVIEW`, or
@@ -264,7 +271,8 @@ whose current system-derived status is `NEEDS_VERIFICATION`, `NEEDS_HUMAN_REVIEW
 confidence, opportunity context, and deterministic data-gap counts needed for triage.
 Approval or rejection still uses the locked review endpoint. Report content, raw
 evidence, declared-unknown text, review rationale, reviewer identity, and opportunity
-notes are excluded from the queue.
+notes are excluded from the queue. Queue, history, and write access require
+`RESEARCH_REVIEWER`.
 
 The run evidence catalog returns each deduplicated evidence record's source metadata,
 classification, confidence, transformation, SHA-256 fingerprint, and deterministic
