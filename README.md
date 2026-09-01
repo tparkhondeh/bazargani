@@ -30,6 +30,8 @@ An executive summary turns the validated run into conservative decision codes, l
 unverified candidates, BASE landed cost, and explicit withheld market/spread fields.
 Trade-cost coverage compares recorded scenario component codes with a transparent
 reference vocabulary without inferring applicability or missing amounts.
+Incoterm coverage groups only declared offer codes against the Incoterms 2020
+reference vocabulary and withholds route-specific comparison when scenarios are absent.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -107,6 +109,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/assumptions`
 - `GET /api/v1/research-runs/{id}/evidence`
 - `GET /api/v1/research-runs/{id}/price-observations`
+- `GET /api/v1/research-runs/{id}/incoterm-coverage`
 - `GET /api/v1/research-runs/{id}/quantity-analysis`
 - `GET /api/v1/research-runs/{id}/price-distribution`
 - `GET /api/v1/research-runs/{id}/product-matches`
@@ -268,6 +271,13 @@ codes, and counts by evidence class. The reference vocabulary spans product, ori
 packaging, inspection, documentation, freight, insurance, tariff/tax, clearance,
 payment/FX, sanctions, and domestic transport categories. An unrecorded code is not
 automatically required or applicable, and the system never fills it with an estimate.
+
+Incoterm coverage normalizes declared codes for grouping, identifies codes present in
+the Incoterms 2020 reference vocabulary, lists unrecognized declarations and offers
+with no declared code, and reports exact offer/supplier/source coverage. Its comparison
+status remains `WITHHELD_NO_INCOTERM_SCENARIOS`: the current model does not capture a
+named place, asserted edition, or route-specific cost/control/risk scenarios, so the
+system does not recommend a “best” Incoterm from offer metadata alone.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

@@ -21,6 +21,10 @@ from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
     build_executive_summary,
 )
+from trade_agent.application.incoterm_coverage import (
+    IncotermEvidencePoint,
+    summarize_incoterm_coverage,
+)
 from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
@@ -1659,6 +1663,33 @@ class TradeRepository:
                 for observation, ranking, evidence in rows
             )
             return asdict(analyze_price_distribution(points))
+
+    def get_incoterm_coverage(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = session.execute(
+                select(PriceObservationRecord, EvidenceRecord)
+                .join(EvidenceRecord, EvidenceRecord.id == PriceObservationRecord.evidence_id)
+                .where(
+                    PriceObservationRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+            ).all()
+            points = tuple(
+                IncotermEvidencePoint(
+                    observation_id=observation.external_observation_id,
+                    incoterm=observation.incoterm,
+                    supplier_name=observation.supplier_name,
+                    source_url=evidence.source_url,
+                )
+                for observation, evidence in rows
+            )
+            return asdict(summarize_incoterm_coverage(points))
 
     def get_product_matches(
         self, run_id: str, *, tenant_id: str

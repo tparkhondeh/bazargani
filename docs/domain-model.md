@@ -92,6 +92,14 @@ presence, and rankable rows, and unions the ranking ledger's unknown factors. It
 diligence status is always `UNVERIFIED` because offer records do not prove identity,
 source independence, certifications, capacity, payment behavior, or legal standing.
 
+Incoterm evidence coverage is a run-level projection over submitted price observations.
+It normalizes non-empty declarations to uppercase, groups them against a shared
+Incoterms 2020 code vocabulary, and preserves unrecognized codes and missing observation
+IDs. Offer, named-supplier, and distinct-URL counts describe only retained metadata.
+The current schema has no structured named place, asserted edition, cost allocation,
+control, or risk-transfer scenario; comparison is therefore
+`WITHHELD_NO_INCOTERM_SCENARIOS`, and no code is recommended as “best.”
+
 The executive decision summary is a derived run view, not an authorization or mutable
 recommendation record. Validation disposition deterministically maps to human review,
 verification, or commercial-review-required status and action codes. Every rank-1 offer

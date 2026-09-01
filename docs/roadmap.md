@@ -105,6 +105,10 @@ A run-level supplier evidence-coverage view now aggregates offer/source and comm
 field coverage while keeping every due-diligence status unverified and anonymous offers
 separate. Verified supplier profiles, source independence, capacity/certification
 evidence, and multi-tier quote history remain Phase 3/5 work.
+A run-level Incoterm evidence-coverage view now groups exact declarations against the
+Incoterms 2020 reference vocabulary, preserves unknown/missing codes, and explicitly
+withholds comparison. Named-place capture and comparable route-specific cost, control,
+and risk scenarios remain Phase 5 work.
 
 ## Phase 3 — First approved real providers
 
@@ -126,9 +130,10 @@ for new research, progress, result, assumptions, and opportunity history.
 
 ## Phase 5 — MVP hardening
 
-OIDC/role authorization, review queues/escalation, verified supplier profiles, incoterm
-and quantity analysis, security/load/failure testing, operational runbooks,
-dependency notices, production migration and rollback rehearsal.
+OIDC/role authorization, review queues/escalation, verified supplier profiles,
+route-specific Incoterm scenario comparison and full EOQ analysis,
+security/load/failure testing, operational runbooks, dependency notices, production
+migration and rollback rehearsal.
 
 ### Quality gate per phase
 

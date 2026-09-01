@@ -356,6 +356,29 @@ class SupplierCoverageSummaryView(BaseModel):
     limitations: tuple[str, ...]
 
 
+class IncotermEvidenceGroupView(BaseModel):
+    code: str
+    recognized: bool
+    observation_ids: tuple[str, ...]
+    supplier_names: tuple[str, ...]
+    source_urls: tuple[str, ...]
+    offer_count: int = Field(ge=1)
+    named_supplier_count: int = Field(ge=0)
+    distinct_source_count: int = Field(ge=1)
+
+
+class IncotermCoverageSummaryView(BaseModel):
+    status: str
+    reference_version: str
+    reference_codes: tuple[str, ...]
+    observed_recognized_codes: tuple[str, ...]
+    unrecognized_declared_codes: tuple[str, ...]
+    groups: tuple[IncotermEvidenceGroupView, ...]
+    missing_incoterm_observation_ids: tuple[str, ...]
+    comparison_status: str
+    limitations: tuple[str, ...]
+
+
 class ExecutiveSupplierCandidateView(BaseModel):
     observation_id: str
     supplier_name: str

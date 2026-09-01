@@ -234,6 +234,23 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(price_observations.status_code, 200)
         self.assertEqual(len(price_observations.json()), completed["price_observation_count"])
         self.assertEqual(price_observations.json()[0]["normalized_currency"], "IRR")
+        incoterm_coverage = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/incoterm-coverage"
+        )
+        self.assertEqual(incoterm_coverage.status_code, 200)
+        self.assertEqual(
+            incoterm_coverage.json()["status"],
+            "OBSERVED_INCOTERM_COVERAGE",
+        )
+        self.assertEqual(
+            incoterm_coverage.json()["observed_recognized_codes"],
+            ["EXW"],
+        )
+        self.assertEqual(
+            incoterm_coverage.json()["comparison_status"],
+            "WITHHELD_NO_INCOTERM_SCENARIOS",
+        )
+        self.assertNotIn("raw_value", json.dumps(incoterm_coverage.json()))
         quantity_analysis = self.client.get(
             f"/api/v1/research-runs/{run['id']}/quantity-analysis"
         )

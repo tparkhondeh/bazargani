@@ -7,6 +7,7 @@ from enum import StrEnum
 from statistics import median
 from typing import Any
 
+from trade_agent.application.incoterms import INCOTERMS_2020_CODES
 from trade_agent.domain.models import (
     Confidence,
     Evidence,
@@ -22,21 +23,7 @@ VALIDATION_POLICY_VERSION = "2026-08-31.1"
 DEFAULT_MAX_EVIDENCE_AGE = timedelta(days=30)
 MAX_FUTURE_CLOCK_SKEW = timedelta(minutes=5)
 OUTLIER_FACTOR = Decimal("3")
-KNOWN_INCOTERMS = frozenset(
-    {
-        "EXW",
-        "FCA",
-        "FAS",
-        "FOB",
-        "CFR",
-        "CIF",
-        "CPT",
-        "CIP",
-        "DAP",
-        "DPU",
-        "DDP",
-    }
-)
+KNOWN_INCOTERMS = frozenset(INCOTERMS_2020_CODES)
 
 
 class ValidationSeverity(StrEnum):

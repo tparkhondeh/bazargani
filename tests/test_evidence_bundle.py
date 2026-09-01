@@ -27,6 +27,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("رتبه‌بندی پیشنهادهای تأمین‌کننده", report)
         self.assertIn("پوشش شواهد تأمین‌کننده", report)
         self.assertIn("راستی‌آزمایی `UNVERIFIED`", report)
+        self.assertIn("پوشش شواهد Incoterm", report)
+        self.assertIn("WITHHELD_NO_INCOTERM_SCENARIOS", report)
         self.assertIn(r"supplier\_reliability", report)
         self.assertIn("حساسیت سناریوها", report)
         self.assertIn("پوشش اجزای هزینه", report)

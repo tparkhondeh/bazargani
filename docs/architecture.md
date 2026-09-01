@@ -194,6 +194,12 @@ anonymous observation IDs, returns distinct URL coverage and missing factors, an
 promotes an offer into a verified supplier profile. The API and report share this
 calculation; raw evidence remains outside both outputs.
 
+Incoterm coverage uses a shared versioned code vocabulary also consumed by validation.
+The repository projects only tenant-owned observation/evidence rows into a pure
+calculator; the report uses the same point contract from its immutable result. Both
+surfaces expose recognized/unrecognized/missing declarations and source coverage, while
+the comparison status remains withheld because no route-specific scenario model exists.
+
 The executive-summary application policy consumes persisted validation, BASE scenario,
 rank-1 evidence-backed offers, and the shared data-gap summary. It emits conservative
 machine-readable status/recommendation codes and keeps tied candidates. Repository and

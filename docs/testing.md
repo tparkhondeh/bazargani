@@ -96,6 +96,11 @@ coverage, union unknown factors, keep named suppliers separate, and preserve ano
 observation IDs without merging. API/report and PostgreSQL tests require the explicit
 `UNVERIFIED` status, tenant hiding, and absence of raw evidence.
 
+Incoterm-coverage tests lock case-normalized grouping, reference-code order,
+recognized/unrecognized separation, missing declarations, exact supplier/source counts,
+empty versus undeclared status, and duplicate-ID rejection. API/report and PostgreSQL
+tests require the explicit comparison-withheld status, tenant hiding, and no raw data.
+
 Executive-summary tests cover validation-to-action mapping, missing/single/tied supplier
 candidate states, deterministic ordering, invalid confidence/disposition rejection, and
 the mandatory withholding of Iranian benchmark and gross-spread values. API/report and

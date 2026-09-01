@@ -459,6 +459,7 @@ class ApiTests(unittest.TestCase):
                 "assumptions",
                 "evidence",
                 "price-observations",
+                "incoterm-coverage",
                 "quantity-analysis",
                 "price-distribution",
                 "product-matches",
@@ -1272,6 +1273,29 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(supplier["due_diligence_status"], "UNVERIFIED")
         self.assertIn("supplier_reliability", supplier["unknown_factors"])
         self.assertNotIn("raw_value", json.dumps(coverage))
+
+        incoterm_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/incoterm-coverage"
+        )
+        self.assertEqual(incoterm_response.status_code, 200)
+        incoterm_coverage = incoterm_response.json()
+        self.assertEqual(
+            incoterm_coverage["status"],
+            "OBSERVED_INCOTERM_COVERAGE",
+        )
+        self.assertEqual(incoterm_coverage["reference_version"], "INCOTERMS_2020")
+        self.assertEqual(incoterm_coverage["observed_recognized_codes"], ["EXW"])
+        self.assertEqual(incoterm_coverage["unrecognized_declared_codes"], [])
+        self.assertEqual(incoterm_coverage["missing_incoterm_observation_ids"], [])
+        self.assertEqual(
+            incoterm_coverage["comparison_status"],
+            "WITHHELD_NO_INCOTERM_SCENARIOS",
+        )
+        self.assertEqual(incoterm_coverage["groups"][0]["code"], "EXW")
+        self.assertTrue(incoterm_coverage["groups"][0]["recognized"])
+        self.assertEqual(incoterm_coverage["groups"][0]["offer_count"], 1)
+        self.assertEqual(incoterm_coverage["groups"][0]["named_supplier_count"], 1)
+        self.assertNotIn("raw_value", json.dumps(incoterm_coverage))
 
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)

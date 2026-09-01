@@ -46,6 +46,9 @@ unknown or requires human verification?
   observations with identical canonical product identity, quantity, normalized unit/
   currency group, and declared market layer; excluded prices and source coverage remain
   explicit, and no layer label is treated as proof of a market benchmark.
+- Incoterm coverage distinguishes recognized declarations, unrecognized codes, and
+  observations with no declared code. It withholds comparison until named-place and
+  route-specific cost, control, and risk scenarios are captured and comparable.
 - Scenario sensitivity exposes exact per-unit deltas and percentages only when all
   three scenarios share quantity and target currency; it never masquerades as EOQ.
 - Provider failure produces partial results and explicit data gaps.

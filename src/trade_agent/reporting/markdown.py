@@ -14,6 +14,10 @@ from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
     build_executive_summary,
 )
+from trade_agent.application.incoterm_coverage import (
+    IncotermEvidencePoint,
+    summarize_incoterm_coverage,
+)
 from trade_agent.application.price_distribution import (
     DistributionPricePoint,
     analyze_price_distribution,
@@ -388,6 +392,43 @@ def render_markdown(result: ResearchResult) -> str:
             )
         )
     lines.extend(f"- محدودیت: {_text(item)}" for item in supplier_coverage.limitations)
+
+    incoterm_coverage = summarize_incoterm_coverage(
+        tuple(
+            IncotermEvidencePoint(
+                observation_id=observation.observation_id,
+                incoterm=observation.incoterm,
+                supplier_name=observation.supplier_name,
+                source_url=observation.evidence.source_url,
+            )
+            for observation in case.observations
+        )
+    )
+    lines.extend(["", "## پوشش شواهد Incoterm", ""])
+    lines.append(f"- وضعیت: {_code(incoterm_coverage.status)}")
+    lines.append(
+        f"- نسخه واژگان مرجع: {_code(incoterm_coverage.reference_version)}"
+    )
+    lines.append(
+        f"- وضعیت مقایسه: {_code(incoterm_coverage.comparison_status)}"
+    )
+    for incoterm_group in incoterm_coverage.groups:
+        recognition = "شناخته‌شده" if incoterm_group.recognized else "ناشناخته"
+        lines.append(
+            f"- {_code(incoterm_group.code)} ({recognition}): "
+            f"{incoterm_group.offer_count} پیشنهاد، "
+            f"{incoterm_group.named_supplier_count} تأمین‌کننده نام‌دار، "
+            f"{incoterm_group.distinct_source_count} نشانی منبع متمایز"
+        )
+    if incoterm_coverage.missing_incoterm_observation_ids:
+        lines.append(
+            "- مشاهدات فاقد Incoterm: "
+            + "، ".join(
+                _code(item)
+                for item in incoterm_coverage.missing_incoterm_observation_ids
+            )
+        )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in incoterm_coverage.limitations)
 
     quantity_points: list[QuantityPricePoint] = []
     for observation in case.observations:
