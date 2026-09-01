@@ -23,6 +23,8 @@ unknown or requires human verification?
 
 - Every material value is `FACT`, `ESTIMATE`, `ASSUMPTION`,
   `DERIVED_CALCULATION`, or `AI_INFERENCE`.
+- Evidence metadata remains traceable to every price/FX use through a content
+  fingerprint, while decision-oriented API views avoid duplicating raw source bodies.
 - A price requires source URL, retrieval timestamp, currency, unit, quantity or
   tier context, product variant, and confidence label.
 - Original values remain immutable; normalized values record transformation.

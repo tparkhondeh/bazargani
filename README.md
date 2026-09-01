@@ -92,6 +92,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/landed-cost-scenarios`
 - `GET /api/v1/research-runs/{id}/fx-rates`
 - `GET /api/v1/research-runs/{id}/assumptions`
+- `GET /api/v1/research-runs/{id}/evidence`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -192,6 +193,12 @@ are embedded in the latest-decision projection for result UI use. Notes must be
 non-empty strings, are limited to 5,000 characters each and 200 per kind, and are
 whitespace-normalized before persistence. Completed research runs remain immutable;
 correction requires a new run and an explicit recalculation rather than history edits.
+
+The run evidence catalog returns each deduplicated evidence record's source metadata,
+classification, confidence, transformation, SHA-256 fingerprint, and deterministic
+usage links to price observations or scenario FX inputs. It is tenant-scoped and omits
+`raw_value`; the fingerprint supports integrity comparison without turning the general
+decision endpoint into a raw-data export.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

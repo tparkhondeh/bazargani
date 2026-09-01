@@ -140,6 +140,12 @@ immutable snapshot so a UI does not need to parse report Markdown. Input parsing
 requires bounded non-empty strings; audit events retain counts and run lineage rather
 than duplicating commercial note contents.
 
+The evidence-catalog projection joins tenant-owned evidence to source metadata, then
+builds deterministic usage references from price observations and scenario-linked FX
+rows. It exposes the stored SHA-256 fingerprint but not `raw_value`. This keeps normal
+result consumption provenance-aware while leaving any future raw-evidence access behind
+a separate, stronger authorization and retention policy.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

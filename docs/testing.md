@@ -41,6 +41,12 @@ latest decision, deterministic separation from unknowns, cross-tenant `404`, and
 PostgreSQL persistence. Parser tests reject nested objects, blank notes, and individual
 values beyond 5,000 characters before report generation or storage.
 
+Evidence-catalog tests verify every persisted evidence row is returned once, shared FX
+evidence links to all consuming scenarios, price evidence links to its external
+observation, fingerprints are 64-character lowercase SHA-256 values, raw content is
+absent, and other tenants receive `404`. PostgreSQL integration compares catalog size
+with the atomically persisted completion count.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

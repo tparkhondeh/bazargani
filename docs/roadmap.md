@@ -21,6 +21,9 @@ evidence bodies; automated Iran-market FX sources remain blocked on source appro
 Structured assumption/unknown snapshots are implemented at run and latest-decision
 level. A correction/recalculation workflow that creates a successor run remains future
 work; immutable completed runs are not edited in place.
+A tenant-scoped evidence catalog now connects deduplicated source metadata and content
+fingerprints to price/FX usages without returning raw bodies. Role-gated raw-evidence
+review, retention rules, and legal export policy remain future governance work.
 
 ## Phase 2 — Persistence and service boundary
 

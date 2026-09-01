@@ -163,6 +163,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(decision_notes.status_code, 200)
         self.assertEqual(decision_notes.json()["assumptions"], bundle["assumptions"])
         self.assertEqual(latest_decision.json()["unknowns"], bundle["unknowns"])
+        evidence_catalog = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/evidence"
+        )
+        self.assertEqual(evidence_catalog.status_code, 200)
+        self.assertEqual(len(evidence_catalog.json()), completed["evidence_count"])
+        self.assertNotIn("raw_value", json.dumps(evidence_catalog.json()))
 
         additional_ids = {
             self.client.post(

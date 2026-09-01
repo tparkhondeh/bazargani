@@ -117,6 +117,13 @@ the latest opportunity decision. They are not opportunity workflow notes and can
 patched in place. A correction belongs to a new research run whose dependant results
 are explicitly recalculated.
 
+The evidence catalog is a read projection over immutable, deduplicated evidence. Each
+entry has a SHA-256 fingerprint and one or more deterministic usage references:
+`PRICE_OBSERVATION` points to the external observation ID and `FX_RATE` identifies the
+scenario/pair/type/effective time. Fingerprints are integrity identifiers, not source
+trust scores. Raw evidence remains stored for controlled future review but is not
+returned by this general decision API.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

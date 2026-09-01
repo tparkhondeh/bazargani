@@ -438,6 +438,7 @@ class ApiTests(unittest.TestCase):
                 "landed-cost-scenarios",
                 "fx-rates",
                 "assumptions",
+                "evidence",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -1028,6 +1029,24 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(decision_notes["research_run_id"], run["id"])
         self.assertEqual(decision_notes["assumptions"], bundle["assumptions"])
         self.assertEqual(decision_notes["unknowns"], bundle["unknowns"])
+
+        evidence_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/evidence"
+        )
+        self.assertEqual(evidence_response.status_code, 200)
+        evidence_catalog = evidence_response.json()
+        self.assertEqual(len(evidence_catalog), 2)
+        by_source = {item["source_name"]: item for item in evidence_catalog}
+        supplier_evidence = by_source["Demo supplier — synthetic fixture"]
+        self.assertEqual(
+            supplier_evidence["usages"],
+            [{"kind": "PRICE_OBSERVATION", "subject_id": "demo-price-1"}],
+        )
+        fx_evidence = by_source["Synthetic FX fixture"]
+        self.assertEqual(len(fx_evidence["usages"]), 3)
+        self.assertEqual({item["kind"] for item in fx_evidence["usages"]}, {"FX_RATE"})
+        self.assertRegex(fx_evidence["fingerprint_sha256"], r"^[0-9a-f]{64}$")
+        self.assertNotIn("raw_value", json.dumps(evidence_catalog))
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

@@ -155,6 +155,30 @@ class EvidenceView(BaseModel):
         return value
 
 
+class EvidenceUsageView(BaseModel):
+    kind: str
+    subject_id: str
+
+
+class EvidenceSummaryView(BaseModel):
+    id: str
+    classification: str
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    confidence: Confidence
+    transformation: str | None
+    fingerprint_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    usages: list[EvidenceUsageView]
+
+    @field_validator("retrieved_at", mode="before")
+    @classmethod
+    def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
 class ReferenceRateView(BaseModel):
     base_currency: str
     quote_currency: str

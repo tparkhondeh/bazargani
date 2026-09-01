@@ -1259,6 +1259,78 @@ class TradeRepository:
                 "unknowns": [note.text for note in notes if note.kind == "UNKNOWN"],
             }
 
+    def get_research_evidence(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[dict[str, Any]]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            evidence_rows = list(
+                session.execute(
+                    select(EvidenceRecord, SourceRecord)
+                    .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                    .where(EvidenceRecord.research_run_id == run_id)
+                    .order_by(EvidenceRecord.retrieved_at, EvidenceRecord.id)
+                ).all()
+            )
+            usages: dict[str, list[dict[str, str]]] = {
+                evidence.id: [] for evidence, _source in evidence_rows
+            }
+            observations = session.execute(
+                select(
+                    PriceObservationRecord.evidence_id,
+                    PriceObservationRecord.external_observation_id,
+                )
+                .where(PriceObservationRecord.research_run_id == run_id)
+                .order_by(PriceObservationRecord.external_observation_id)
+            ).all()
+            for evidence_id, observation_id in observations:
+                usages[evidence_id].append(
+                    {"kind": "PRICE_OBSERVATION", "subject_id": observation_id}
+                )
+
+            rate_rows = session.execute(
+                select(FXRateRecord, LandedCostScenarioRecord)
+                .join(
+                    LandedCostScenarioRecord,
+                    LandedCostScenarioRecord.id == FXRateRecord.scenario_id,
+                )
+                .where(
+                    FXRateRecord.research_run_id == run_id,
+                    LandedCostScenarioRecord.research_run_id == run_id,
+                )
+            ).all()
+            for rate, scenario in rate_rows:
+                effective_at = rate.effective_at.isoformat() if rate.effective_at else "unspecified"
+                usages[rate.evidence_id].append(
+                    {
+                        "kind": "FX_RATE",
+                        "subject_id": (
+                            f"{scenario.name}:{rate.base_currency}/{rate.quote_currency}:"
+                            f"{rate.rate_type}:{effective_at}"
+                        ),
+                    }
+                )
+            for items in usages.values():
+                items.sort(key=lambda item: (item["kind"], item["subject_id"]))
+
+            return [
+                {
+                    "id": evidence.id,
+                    "classification": evidence.classification,
+                    "source_name": source.name,
+                    "source_url": evidence.source_url,
+                    "retrieved_at": evidence.retrieved_at,
+                    "confidence": evidence.confidence,
+                    "transformation": evidence.transformation,
+                    "fingerprint_sha256": evidence.fingerprint,
+                    "usages": usages[evidence.id],
+                }
+                for evidence, source in evidence_rows
+            ]
+
     def get_product_matches(
         self, run_id: str, *, tenant_id: str
     ) -> list[ProductMatchRecord]:
