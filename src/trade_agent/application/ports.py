@@ -14,6 +14,7 @@ class ResearchCompletion:
     evidence_count: int
     price_observation_count: int
     product_match_count: int
+    supplier_ranking_count: int
     fx_rate_count: int
     scenario_count: int
     validation_disposition: str

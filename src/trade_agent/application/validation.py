@@ -15,6 +15,7 @@ from trade_agent.domain.models import (
     ProductMatch,
     ProductMatchClass,
     ResearchCase,
+    SupplierOfferRanking,
 )
 
 VALIDATION_POLICY_VERSION = "2026-08-31.1"
@@ -450,6 +451,94 @@ def validate_product_matches(
                     subject_type="PRICE_OBSERVATION",
                     subject_id=match.observation_id,
                     details={"match_score": match.score},
+                )
+            )
+
+    issues = [*validation.issues, *additions]
+    score, label = _confidence(issues)
+    if any(issue.severity is ValidationSeverity.ERROR for issue in issues):
+        disposition = ValidationDisposition.NEEDS_HUMAN_REVIEW
+    elif issues:
+        disposition = ValidationDisposition.NEEDS_VERIFICATION
+    else:
+        disposition = ValidationDisposition.PASSED
+    return replace(
+        validation,
+        disposition=disposition,
+        confidence_score=score,
+        confidence_label=label,
+        issues=tuple(issues),
+    )
+
+
+def validate_supplier_rankings(
+    validation: ValidationResult,
+    rankings: tuple[SupplierOfferRanking, ...],
+) -> ValidationResult:
+    additions: list[ValidationIssue] = []
+    reviewed_suppliers: set[str] = set()
+    rankable_by_group: dict[str, int] = {}
+    for ranking in rankings:
+        if ranking.rankable:
+            rankable_by_group[ranking.comparison_group] = (
+                rankable_by_group.get(ranking.comparison_group, 0) + 1
+            )
+        if not ranking.supplier_name:
+            additions.append(
+                ValidationIssue(
+                    code="MISSING_SUPPLIER_IDENTITY",
+                    severity=ValidationSeverity.ERROR,
+                    message_fa="پیشنهاد بدون هویت تأمین‌کننده قابل اقدام یا رتبه‌بندی نیست.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=ranking.observation_id,
+                )
+            )
+        elif ranking.supplier_name not in reviewed_suppliers:
+            reviewed_suppliers.add(ranking.supplier_name)
+            additions.append(
+                ValidationIssue(
+                    code="SUPPLIER_DUE_DILIGENCE_REQUIRED",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa=(
+                        "اعتبار، مجوزها، توان تحویل و شرایط پرداخت تأمین‌کننده "
+                        "هنوز راستی‌آزمایی نشده است."
+                    ),
+                    subject_type="SUPPLIER",
+                    subject_id=ranking.supplier_name,
+                )
+            )
+        if not ranking.eligible_for_quantity:
+            additions.append(
+                ValidationIssue(
+                    code="OFFER_BELOW_MINIMUM_ORDER",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="تعداد درخواستی به حداقل سفارش این پیشنهاد نمی‌رسد.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=ranking.observation_id,
+                )
+            )
+        if ranking.normalized_unit_price is None:
+            additions.append(
+                ValidationIssue(
+                    code="UNCONVERTIBLE_OFFER_PRICE",
+                    severity=ValidationSeverity.ERROR,
+                    message_fa="قیمت پیشنهاد به ارز مقایسه تبدیل نشد و قابل رتبه‌بندی نیست.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=ranking.observation_id,
+                )
+            )
+
+    comparison_groups = {ranking.comparison_group for ranking in rankings}
+    for group in sorted(comparison_groups):
+        if rankable_by_group.get(group, 0) < 2:
+            additions.append(
+                ValidationIssue(
+                    code="INSUFFICIENT_SUPPLIER_COMPARISON",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="برای این گروه کمتر از دو پیشنهاد قابل‌رتبه‌بندی وجود دارد.",
+                    subject_type="SUPPLIER_COMPARISON_GROUP",
+                    subject_id=group,
+                    details={"rankable_offer_count": rankable_by_group.get(group, 0)},
                 )
             )
 

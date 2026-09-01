@@ -17,6 +17,7 @@ from trade_agent.infrastructure.database import (
     PriceObservationRecord,
     ProductMatchRecord,
     ResearchValidationRecord,
+    SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
 
@@ -132,6 +133,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(completed["evidence_count"], 2)
         self.assertEqual(completed["price_observation_count"], 1)
         self.assertEqual(completed["product_match_count"], 1)
+        self.assertEqual(completed["supplier_ranking_count"], 1)
         self.assertEqual(completed["fx_rate_count"], 1)
         self.assertEqual(completed["scenario_count"], 3)
 
@@ -148,6 +150,14 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(validation["disposition"], "NEEDS_VERIFICATION")
         self.assertEqual(len(validation["issues"]), completed["validation_issue_count"])
         self.assertIn("ASSUMED_COST_COMPONENTS", {item["code"] for item in validation["issues"]})
+        self.assertIn(
+            "SUPPLIER_DUE_DILIGENCE_REQUIRED",
+            {item["code"] for item in validation["issues"]},
+        )
+        self.assertIn(
+            "INSUFFICIENT_SUPPLIER_COMPARISON",
+            {item["code"] for item in validation["issues"]},
+        )
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"
@@ -160,6 +170,16 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(matches[0]["requested_attributes"], {"variant": "DEMO"})
         self.assertEqual(matches[0]["observed_attributes"], {"variant": "DEMO"})
 
+        ranking_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-offer-rankings"
+        )
+        self.assertEqual(ranking_response.status_code, 200)
+        rankings = ranking_response.json()
+        self.assertEqual(len(rankings), 1)
+        self.assertEqual(rankings[0]["rank"], 1)
+        self.assertEqual(rankings[0]["normalized_currency"], "IRR")
+        self.assertIn("supplier_reliability", rankings[0]["unknown_factors"])
+
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)
             self.assertEqual(
@@ -168,6 +188,10 @@ class ApiTests(unittest.TestCase):
             )
             self.assertEqual(
                 connection.scalar(select(func.count()).select_from(ProductMatchRecord)),
+                1,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(SupplierOfferRankingRecord)),
                 1,
             )
             self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 1)

@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -180,6 +181,40 @@ class ProductMatchRecord(Base):
     matched_attributes: Mapped[list[str]] = mapped_column(JSON)
     conflicting_attributes: Mapped[list[str]] = mapped_column(JSON)
     missing_attributes: Mapped[list[str]] = mapped_column(JSON)
+    explanation_fa: Mapped[list[str]] = mapped_column(JSON)
+    policy_version: Mapped[str] = mapped_column(String(50))
+
+
+class SupplierOfferRankingRecord(Base):
+    __tablename__ = "supplier_offer_rankings"
+    __table_args__ = (
+        UniqueConstraint("price_observation_id", name="uq_supplier_ranking_price_observation"),
+        CheckConstraint(
+            "total_score >= 0 AND total_score <= 100",
+            name="ck_supplier_rankings_score_range",
+        ),
+        CheckConstraint("rank IS NULL OR rank > 0", name="ck_supplier_rankings_rank_positive"),
+        Index("ix_supplier_rankings_run_group", "research_run_id", "comparison_group", "rank"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    price_observation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("price_observations.id", ondelete="CASCADE")
+    )
+    external_observation_id: Mapped[str] = mapped_column(String(200))
+    supplier_name: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    comparison_group: Mapped[str] = mapped_column(String(100))
+    rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eligible_for_quantity: Mapped[bool] = mapped_column(Boolean)
+    rankable: Mapped[bool] = mapped_column(Boolean)
+    normalized_amount: Mapped[Decimal | None] = mapped_column(Numeric(28, 8), nullable=True)
+    normalized_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    total_score: Mapped[int] = mapped_column(Integer)
+    component_scores: Mapped[dict[str, int]] = mapped_column(JSON)
+    unknown_factors: Mapped[list[str]] = mapped_column(JSON)
     explanation_fa: Mapped[list[str]] = mapped_column(JSON)
     policy_version: Mapped[str] = mapped_column(String(50))
 

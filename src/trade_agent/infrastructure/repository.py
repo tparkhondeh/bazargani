@@ -35,6 +35,7 @@ from trade_agent.infrastructure.database import (
     ResearchRunRecord,
     ResearchValidationRecord,
     SourceRecord,
+    SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
 
@@ -219,6 +220,34 @@ class TradeRepository:
                     )
                 )
 
+            for ranking in result.supplier_rankings:
+                ranked_observation_record = observation_records.get(ranking.observation_id)
+                if ranked_observation_record is None:
+                    raise ValueError(
+                        f"supplier ranking references unknown observation: {ranking.observation_id}"
+                    )
+                normalized = ranking.normalized_unit_price
+                session.add(
+                    SupplierOfferRankingRecord(
+                        id=str(uuid4()),
+                        research_run_id=run_id,
+                        price_observation_id=ranked_observation_record.id,
+                        external_observation_id=ranking.observation_id,
+                        supplier_name=ranking.supplier_name,
+                        comparison_group=ranking.comparison_group,
+                        rank=ranking.rank,
+                        eligible_for_quantity=ranking.eligible_for_quantity,
+                        rankable=ranking.rankable,
+                        normalized_amount=normalized.amount if normalized else None,
+                        normalized_currency=normalized.currency if normalized else None,
+                        total_score=ranking.total_score,
+                        component_scores=ranking.component_scores,
+                        unknown_factors=list(ranking.unknown_factors),
+                        explanation_fa=list(ranking.explanation_fa),
+                        policy_version=ranking.policy_version,
+                    )
+                )
+
             fx_keys: set[tuple[str, str, str, datetime | None]] = set()
             for scenario_input in result.case.scenarios:
                 for rate in scenario_input.fx_rates:
@@ -345,6 +374,7 @@ class TradeRepository:
                     "evidence_count": len(evidence_cache),
                     "price_observation_count": len(result.case.observations),
                     "product_match_count": len(result.product_matches),
+                    "supplier_ranking_count": len(result.supplier_rankings),
                     "fx_rate_count": len(fx_keys),
                     "scenario_count": len(result.scenarios),
                     "validation_disposition": validation.disposition.value,
@@ -363,6 +393,7 @@ class TradeRepository:
             evidence_count=len(evidence_cache),
             price_observation_count=len(result.case.observations),
             product_match_count=len(result.product_matches),
+            supplier_ranking_count=len(result.supplier_rankings),
             fx_rate_count=len(fx_keys),
             scenario_count=len(result.scenarios),
             validation_disposition=validation.disposition.value,
@@ -426,6 +457,26 @@ class TradeRepository:
                     select(ProductMatchRecord)
                     .where(ProductMatchRecord.research_run_id == run_id)
                     .order_by(ProductMatchRecord.score.desc(), ProductMatchRecord.id)
+                )
+            )
+            for record in records:
+                session.expunge(record)
+            return records
+
+    def get_supplier_offer_rankings(self, run_id: str) -> list[SupplierOfferRankingRecord]:
+        with self._session_factory() as session:
+            run = session.get(ResearchRunRecord, run_id)
+            if run is None:
+                raise KeyError("research run not found")
+            records = list(
+                session.scalars(
+                    select(SupplierOfferRankingRecord)
+                    .where(SupplierOfferRankingRecord.research_run_id == run_id)
+                    .order_by(
+                        SupplierOfferRankingRecord.comparison_group,
+                        SupplierOfferRankingRecord.rank.asc().nulls_last(),
+                        SupplierOfferRankingRecord.id,
+                    )
                 )
             )
             for record in records:

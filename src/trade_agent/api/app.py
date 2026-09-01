@@ -26,6 +26,7 @@ from trade_agent.api.schemas import (
     ResearchRunTransition,
     ResearchRunView,
     ResearchValidationView,
+    SupplierOfferRankingView,
 )
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.config import Settings, get_settings
@@ -62,7 +63,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.4.0",
+        version="0.5.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -229,6 +230,13 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     )
     def get_product_matches(run_id: str) -> Any:
         return repository.get_product_matches(run_id)
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/supplier-offer-rankings",
+        response_model=list[SupplierOfferRankingView],
+    )
+    def get_supplier_offer_rankings(run_id: str) -> Any:
+        return repository.get_supplier_offer_rankings(run_id)
 
     return app
 

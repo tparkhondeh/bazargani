@@ -24,6 +24,8 @@ CLI / future FastAPI / future RTL UI
 - `calculation`: currency and landed-cost formulas only.
 - `application`: use cases, deterministic quality validation/deduplication,
   explainable confidence, product matching, and partial-result orchestration.
+- `application/ranking`: deterministic offer comparison only; it never asserts
+  supplier reliability without evidence and never compares incompatible units.
 - `providers`: acquisition contracts and adapters; no business decisions.
 - `reporting`: presentation from an already-computed result.
 - future `infrastructure`: PostgreSQL, queues, telemetry, HTTP clients.

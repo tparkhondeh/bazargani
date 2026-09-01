@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from trade_agent.application.research import execute_research_case
@@ -17,6 +18,15 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("https://example.com/demo-supplier", report)
         self.assertIn("EXACT_VARIANT", report)
         self.assertIn("تطبیق محصول", report)
+        self.assertIn("رتبه‌بندی پیشنهادهای تأمین‌کننده", report)
+        self.assertIn("supplier_reliability", report)
+
+    def test_duplicate_scenario_names_are_rejected_before_calculation(self) -> None:
+        case = load_evidence_bundle(Path("examples/demo_case.json"))
+        duplicate = replace(case, scenarios=(*case.scenarios, case.scenarios[1]))
+
+        with self.assertRaisesRegex(ValueError, "scenario names must be unique"):
+            execute_research_case(duplicate)
 
 
 if __name__ == "__main__":

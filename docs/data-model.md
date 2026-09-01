@@ -35,3 +35,9 @@ Migration `20260831_0004` stores raw requested/observed product attributes and o
 policy-versioned match result for every retained price observation. Match rows retain
 the class, score, normalized-name similarity, matched/conflicting/missing feature
 keys, and Persian explanations; normalized features never overwrite raw attributes.
+
+Migration `20260831_0005` adds one immutable supplier-offer ranking per retained
+price observation. It stores quantity eligibility, comparison group, normalized
+price, rankability/rank, every score component, unresolved diligence factors,
+explanations, and policy version. This is an offer score, not an unsupported supplier
+trust score.

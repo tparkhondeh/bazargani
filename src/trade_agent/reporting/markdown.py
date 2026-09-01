@@ -82,6 +82,34 @@ def render_markdown(result: ResearchResult) -> str:
     if not result.product_matches:
         lines.append("- مشاهده‌ای برای تطبیق وجود ندارد.")
 
+    lines.extend(["", "## رتبه‌بندی پیشنهادهای تأمین‌کننده", ""])
+    lines.append(
+        "> این رتبه‌بندی کیفیت پیشنهاد ثبت‌شده را مقایسه می‌کند و به‌تنهایی تأیید اعتبار "
+        "تأمین‌کننده نیست."
+    )
+    for ranking in result.supplier_rankings:
+        rank_label = str(ranking.rank) if ranking.rank is not None else "بدون رتبه"
+        normalized = (
+            f"{ranking.normalized_unit_price.amount:,.2f} "
+            f"{ranking.normalized_unit_price.currency}"
+            if ranking.normalized_unit_price
+            else "غیرقابل تبدیل"
+        )
+        lines.append(
+            f"- {ranking.supplier_name or 'تأمین‌کننده نامشخص'} — رتبه {rank_label} در "
+            f"`{ranking.comparison_group}`، امتیاز {ranking.total_score}/100، "
+            f"قیمت واحد نرمال‌شده {normalized}"
+        )
+        component_text = "، ".join(
+            f"{key}={value}" for key, value in sorted(ranking.component_scores.items())
+        )
+        lines.append(f"  - اجزای امتیاز: {component_text}")
+        if ranking.unknown_factors:
+            lines.append(f"  - عوامل نامشخص: {', '.join(ranking.unknown_factors)}")
+        lines.extend(f"  - {reason}" for reason in ranking.explanation_fa)
+    if not result.supplier_rankings:
+        lines.append("- پیشنهادی برای رتبه‌بندی وجود ندارد.")
+
     lines.extend(["", "## فرض‌ها", ""])
     lines.extend(f"- {item}" for item in case.assumptions)
     if not case.assumptions:

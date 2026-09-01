@@ -29,3 +29,9 @@ comparable and substitute classes, conflicting attributes, missing features, and
 guard that prevents generic attributes from promoting unrelated products. API tests
 verify the match ledger is persisted and retrievable with its raw features and policy
 version.
+
+Supplier-offer ranking tests cover cross-currency normalization, price-versus-
+evidence tradeoffs, neutral single-offer pricing, MOQ ineligibility, missing FX,
+anonymous suppliers, and deterministic tied ranks. Integration tests verify the
+ranking ledger and unknown diligence factors are returned by the API and committed in
+the same result transaction.

@@ -42,7 +42,27 @@ the run to human review; comparable/similar or an unverified variant produces a
 verification warning. This lexical baseline is intentionally conservative and will
 later be complemented—not overwritten—by evaluated assisted matching.
 
+## Supplier-offer ranking policy
+
+Rankings compare offers only inside the same price unit and normalized target
+currency. The baseline score is capped at 100 and consists of:
+
+- product match: 35 points;
+- evidence classification and confidence: 20 points;
+- quantity/MOQ fit: 10 points;
+- commercial-field completeness: 10 points;
+- relative normalized price: 25 points.
+
+When a group contains only one rankable offer, price receives a neutral 12/25 rather
+than an unsupported “best price” score. Offers below MOQ, without supplier identity,
+without an FX path, with a substitute product,
+or with conflicting product attributes remain visible but can be marked unrankable.
+Equal total score and normalized price receive the same rank. Supplier reliability,
+certifications, capacity, and payment terms remain explicit unknowns until supported
+by evidence; the ranking therefore evaluates the submitted offer, not supplier trust.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is
-append-only; and product-match class accompanies every comparison.
+append-only; scenario names are unique per case; and product-match class accompanies
+every comparison.

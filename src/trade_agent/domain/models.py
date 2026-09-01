@@ -131,6 +131,32 @@ class ProductMatch:
 
 
 @dataclass(frozen=True, slots=True)
+class SupplierOfferRanking:
+    observation_id: str
+    supplier_name: str | None
+    comparison_group: str
+    rank: int | None
+    eligible_for_quantity: bool
+    rankable: bool
+    normalized_unit_price: Money | None
+    total_score: int
+    component_scores: dict[str, int]
+    unknown_factors: tuple[str, ...]
+    explanation_fa: tuple[str, ...]
+    policy_version: str
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.total_score <= 100:
+            raise ValueError("supplier offer score must be between 0 and 100")
+        if self.rank is not None and self.rank <= 0:
+            raise ValueError("supplier offer rank must be positive")
+        if self.rankable and self.rank is None:
+            raise ValueError("a rankable supplier offer must have a rank")
+        if not self.rankable and self.rank is not None:
+            raise ValueError("an unrankable supplier offer cannot have a rank")
+
+
+@dataclass(frozen=True, slots=True)
 class FXRate:
     base_currency: str
     quote_currency: str

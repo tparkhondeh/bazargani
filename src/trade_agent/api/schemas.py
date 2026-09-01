@@ -63,6 +63,7 @@ class ResearchCompletionView(BaseModel):
     evidence_count: int
     price_observation_count: int
     product_match_count: int
+    supplier_ranking_count: int
     fx_rate_count: int
     scenario_count: int
     validation_disposition: str
@@ -103,6 +104,24 @@ class ProductMatchView(BaseModel):
     matched_attributes: list[str]
     conflicting_attributes: list[str]
     missing_attributes: list[str]
+    explanation_fa: list[str]
+    policy_version: str
+
+
+class SupplierOfferRankingView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    external_observation_id: str
+    supplier_name: str | None
+    comparison_group: str
+    rank: int | None
+    eligible_for_quantity: bool
+    rankable: bool
+    normalized_amount: Decimal | None
+    normalized_currency: str | None
+    total_score: int = Field(ge=0, le=100)
+    component_scores: dict[str, int]
+    unknown_factors: list[str]
     explanation_fa: list[str]
     policy_version: str
 

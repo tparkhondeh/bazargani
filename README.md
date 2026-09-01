@@ -13,6 +13,9 @@ conservative landed-cost scenarios with `Decimal`, and emits a Persian Markdown
 report with an explainable confidence score. Each retained price is also classified
 as an exact product, exact variant, comparable, similar, or substitute using a
 policy-versioned deterministic feature ledger.
+It also ranks actionable supplier offers within comparable unit/currency groups using
+quantity fit, MOQ, product match, evidence quality, commercial completeness, and
+normalized price—while keeping supplier due diligence explicitly unresolved.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -68,6 +71,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 - `GET /api/v1/research-runs/{id}/report`
 - `GET /api/v1/research-runs/{id}/validation`
 - `GET /api/v1/research-runs/{id}/product-matches`
+- `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three
