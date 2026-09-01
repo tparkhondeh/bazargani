@@ -38,6 +38,10 @@ Exact observed-price distributions are implemented for compatible product, quant
 unit/currency, and market-layer groups, including min/median/max/range and source
 coverage in the API and Persian report. Approved Iranian benchmark acquisition and
 representativeness rules remain Phase 3 work; labels alone never establish a benchmark.
+A conservative executive summary now exposes BASE landed cost, all leading unverified
+offer candidates, validation/gap context, and deterministic review action. Iranian
+market price and gross spread remain withheld/null until an approved comparable
+benchmark adapter and contract are implemented.
 
 ## Phase 2 — Persistence and service boundary
 

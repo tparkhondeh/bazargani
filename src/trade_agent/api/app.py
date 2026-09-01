@@ -29,6 +29,7 @@ from trade_agent.api.schemas import (
     EvidenceBackedSupplierOfferView,
     EvidenceBundleSubmit,
     EvidenceSummaryView,
+    ExecutiveDecisionSummaryView,
     LandedCostLedgerView,
     OpportunityContextUpdate,
     OpportunityCreate,
@@ -693,6 +694,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_supplier_coverage(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/executive-summary",
+        response_model=ExecutiveDecisionSummaryView,
+    )
+    def get_executive_summary(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_executive_summary(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

@@ -92,6 +92,14 @@ presence, and rankable rows, and unions the ranking ledger's unknown factors. It
 diligence status is always `UNVERIFIED` because offer records do not prove identity,
 source independence, certifications, capacity, payment behavior, or legal standing.
 
+The executive decision summary is a derived run view, not an authorization or mutable
+recommendation record. Validation disposition deterministically maps to human review,
+verification, or commercial-review-required status and action codes. Every rank-1 offer
+is retained as an unverified candidate across comparison groups, including ties, beside original/normalized price
+and source context. The BASE landed cost is shown, but Iranian market price and gross
+spread stay null with `WITHHELD_NO_APPROVED_BENCHMARK` until an approved comparable
+benchmark contract exists.
+
 ## Scenario-sensitivity policy
 
 Sensitivity compares exactly one `OPTIMISTIC`, `BASE`, and `CONSERVATIVE` scenario.

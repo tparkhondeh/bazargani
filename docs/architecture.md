@@ -184,6 +184,13 @@ anonymous observation IDs, returns distinct URL coverage and missing factors, an
 promotes an offer into a verified supplier profile. The API and report share this
 calculation; raw evidence remains outside both outputs.
 
+The executive-summary application policy consumes persisted validation, BASE scenario,
+rank-1 evidence-backed offers, and the shared data-gap summary. It emits conservative
+machine-readable status/recommendation codes and keeps tied candidates. Repository and
+report adapters use the same pure function. Iranian benchmark and gross-spread fields
+are structurally present but null until a separately approved comparable-market input
+contract exists, preventing presentation code from inventing the missing comparison.
+
 Report generation treats every domain/input string as untrusted presentation data.
 Plain text is collapsed to one line, HTML-encoded, and Markdown-escaped; code spans use
 a fence longer than any embedded backtick; HTTP(S) link targets are percent-encoded.

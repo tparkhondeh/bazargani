@@ -5,6 +5,10 @@ import re
 from urllib.parse import quote
 
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.executive_summary import (
+    ExecutiveSupplierCandidate,
+    build_executive_summary,
+)
 from trade_agent.application.price_distribution import (
     DistributionPricePoint,
     analyze_price_distribution,
@@ -104,6 +108,69 @@ def render_markdown(result: ResearchResult) -> str:
         ]
     )
     lines.extend(f"- محدودیت: {_text(item)}" for item in data_gaps.limitations)
+
+    observation_by_id = {
+        observation.observation_id: observation for observation in case.observations
+    }
+    executive_candidates: list[ExecutiveSupplierCandidate] = []
+    for ranking in result.supplier_rankings:
+        if ranking.rank != 1:
+            continue
+        observation = observation_by_id[ranking.observation_id]
+        if observation.supplier_name is None or ranking.normalized_unit_price is None:
+            continue
+        executive_candidates.append(
+            ExecutiveSupplierCandidate(
+                observation_id=observation.observation_id,
+                supplier_name=observation.supplier_name,
+                original_amount=observation.unit_price.amount,
+                original_currency=observation.unit_price.currency,
+                normalized_amount=ranking.normalized_unit_price.amount,
+                normalized_currency=ranking.normalized_unit_price.currency,
+                total_score=ranking.total_score,
+                source_url=observation.evidence.source_url,
+                evidence_classification=observation.evidence.classification.value,
+                evidence_confidence=observation.evidence.confidence.value,
+            )
+        )
+    base_scenario = next(
+        scenario for scenario in result.scenarios if scenario.name.value == "BASE"
+    )
+    executive = build_executive_summary(
+        validation_disposition=validation.disposition.value,
+        confidence_score=validation.confidence_score,
+        confidence_label=validation.confidence_label.value,
+        base_landed_cost_per_unit=base_scenario.per_unit.amount,
+        base_landed_cost_currency=base_scenario.per_unit.currency,
+        leading_supplier_candidates=tuple(executive_candidates),
+        data_gap_status=data_gaps.status,
+        data_gap_issue_count=data_gaps.issue_count,
+        declared_unknown_count=data_gaps.declared_unknown_count,
+    )
+    lines.extend(["", "## خلاصه اجرایی تصمیم", ""])
+    lines.append(f"- وضعیت تصمیم: {_code(executive.decision_status)}")
+    lines.append(f"- اقدام پیشنهادی: {_code(executive.recommendation_code)}")
+    lines.append(
+        f"- بهای تمام‌شده BASE هر واحد: {executive.base_landed_cost_per_unit:,.2f} "
+        f"{_code(executive.base_landed_cost_currency)}"
+    )
+    lines.append(
+        f"- وضعیت candidate تأمین‌کننده: "
+        f"{_code(executive.supplier_candidate_status)}"
+    )
+    for candidate in executive.leading_supplier_candidates:
+        lines.append(
+            f"  - {_text(candidate.supplier_name)}: "
+            f"{candidate.normalized_amount:,.2f} {_code(candidate.normalized_currency)}، "
+            f"امتیاز {candidate.total_score}/100، راستی‌آزمایی "
+            f"{_code(candidate.due_diligence_status)} — "
+            f"[شاهد]({_link_target(candidate.source_url)})"
+        )
+    lines.append(
+        f"- بازار ایران و gross spread: "
+        f"{_code(executive.iran_market_benchmark_status)}"
+    )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in executive.limitations)
 
     lines.extend(
         [

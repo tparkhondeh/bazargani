@@ -91,6 +91,12 @@ coverage, union unknown factors, keep named suppliers separate, and preserve ano
 observation IDs without merging. API/report and PostgreSQL tests require the explicit
 `UNVERIFIED` status, tenant hiding, and absence of raw evidence.
 
+Executive-summary tests cover validation-to-action mapping, missing/single/tied supplier
+candidate states, deterministic ordering, invalid confidence/disposition rejection, and
+the mandatory withholding of Iranian benchmark and gross-spread values. API/report and
+PostgreSQL assertions lock BASE landed cost, gap counts, provenance, tenant isolation,
+null withheld fields, and raw-evidence omission.
+
 Idempotency integration tests cover required-header validation, first-write response,
 same-key/same-payload replay without duplicate rows, stable report/version hashes, and
 same-key/different-payload conflict. The database unique constraint is retained as the

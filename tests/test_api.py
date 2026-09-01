@@ -446,6 +446,7 @@ class ApiTests(unittest.TestCase):
                 "product-matches",
                 "supplier-offer-rankings",
                 "supplier-coverage",
+                "executive-summary",
             )
         ]
 
@@ -1001,6 +1002,41 @@ class ApiTests(unittest.TestCase):
             sorted(item["code"] for item in validation["issues"]),
         )
         self.assertNotIn("raw_value", json.dumps(gaps))
+
+        executive_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/executive-summary"
+        )
+        self.assertEqual(executive_response.status_code, 200)
+        executive = executive_response.json()
+        self.assertEqual(executive["decision_status"], "VERIFICATION_REQUIRED")
+        self.assertEqual(
+            executive["recommendation_code"],
+            "VERIFY_GAPS_BEFORE_PURCHASE",
+        )
+        self.assertEqual(
+            executive["supplier_candidate_status"],
+            "SINGLE_UNVERIFIED_CANDIDATE",
+        )
+        self.assertEqual(Decimal(executive["base_landed_cost_per_unit"]), Decimal("630"))
+        self.assertEqual(executive["base_landed_cost_currency"], "IRR")
+        self.assertEqual(
+            executive["iran_market_benchmark_status"],
+            "WITHHELD_NO_APPROVED_BENCHMARK",
+        )
+        self.assertIsNone(executive["iran_market_unit_price"])
+        self.assertIsNone(executive["potential_gross_spread_per_unit"])
+        self.assertIsNone(executive["potential_gross_spread_percent"])
+        self.assertEqual(executive["data_gap_issue_count"], gaps["issue_count"])
+        self.assertEqual(
+            executive["declared_unknown_count"],
+            gaps["declared_unknown_count"],
+        )
+        self.assertEqual(len(executive["leading_supplier_candidates"]), 1)
+        candidate = executive["leading_supplier_candidates"][0]
+        self.assertEqual(candidate["supplier_name"], "Demo Supplier — NOT REAL")
+        self.assertEqual(candidate["due_diligence_status"], "UNVERIFIED")
+        self.assertEqual(candidate["source_url"], "https://example.com/demo-supplier")
+        self.assertNotIn("raw_value", json.dumps(executive))
 
         ledger_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"

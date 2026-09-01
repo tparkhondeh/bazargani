@@ -61,6 +61,10 @@ unknown or requires human verification?
   into audit payloads.
 - An opportunity exposes its newest evidence-backed decision without treating a newer
   empty run as a result or discarding equal first-ranked supplier offers.
+- A run-level executive summary exposes conservative review/recommendation codes,
+  all leading unverified supplier candidates, BASE landed cost, confidence, and data-gap
+  context, while withholding Iranian market price and gross spread until a comparable
+  benchmark source is explicitly approved.
 - Supplier ranking output retains the original commercial offer context and source
   provenance alongside normalized score data, without copying raw evidence bodies.
 - Supplier evidence coverage aggregates offer/source counts and MOQ/Incoterm/rankable

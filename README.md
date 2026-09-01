@@ -26,6 +26,8 @@ Persisted validation issues and declared unknowns are also projected as a struct
 data-gap summary for human verification workflows.
 Supplier coverage aggregates only retained offer/source fields and keeps due diligence
 explicitly unverified; distinct URLs are not presented as independent sources.
+An executive summary turns the validated run into conservative decision codes, leading
+unverified candidates, BASE landed cost, and explicit withheld market/spread fields.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -107,6 +109,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 - `GET /api/v1/research-runs/{id}/supplier-coverage`
+- `GET /api/v1/research-runs/{id}/executive-summary`
 
 `/health` and `/ready` are public for orchestration. Health reports process liveness;
 readiness checks database connectivity and, when Alembic manages the schema, requires
@@ -244,6 +247,14 @@ the union of known unknown factors. Anonymous observations are listed separately
 never merged into a synthetic supplier. Every supplier remains `UNVERIFIED` because
 offer metadata is not identity, certification, capacity, payment, or legal-status
 evidence; distinct URLs also do not prove independent sources.
+
+The executive-summary endpoint exposes deterministic decision/recommendation codes,
+all rank-1 offer candidates (including ties), their original and normalized price plus
+source/evidence context, BASE landed cost per unit, confidence, and data-gap counts.
+Candidates remain unverified and the output never authorizes a purchase. Until a
+comparable Iranian benchmark has an approved provider contract, Iranian market price
+and gross-spread amounts remain null with
+`WITHHELD_NO_APPROVED_BENCHMARK` rather than being inferred from a market-layer label.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

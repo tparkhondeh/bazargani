@@ -177,6 +177,24 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             completed["validation_issue_count"],
         )
         self.assertNotIn("raw_value", json.dumps(data_gaps.json()))
+        executive_summary = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/executive-summary"
+        )
+        self.assertEqual(executive_summary.status_code, 200)
+        self.assertEqual(
+            executive_summary.json()["decision_status"],
+            "VERIFICATION_REQUIRED",
+        )
+        self.assertEqual(
+            executive_summary.json()["iran_market_benchmark_status"],
+            "WITHHELD_NO_APPROVED_BENCHMARK",
+        )
+        self.assertIsNone(executive_summary.json()["potential_gross_spread_per_unit"])
+        self.assertEqual(
+            Decimal(executive_summary.json()["base_landed_cost_per_unit"]),
+            Decimal("630"),
+        )
+        self.assertNotIn("raw_value", json.dumps(executive_summary.json()))
         evidence_catalog = self.client.get(
             f"/api/v1/research-runs/{run['id']}/evidence"
         )

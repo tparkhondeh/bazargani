@@ -356,6 +356,39 @@ class SupplierCoverageSummaryView(BaseModel):
     limitations: tuple[str, ...]
 
 
+class ExecutiveSupplierCandidateView(BaseModel):
+    observation_id: str
+    supplier_name: str
+    original_amount: Decimal
+    original_currency: str
+    normalized_amount: Decimal
+    normalized_currency: str
+    total_score: int = Field(ge=0, le=100)
+    source_url: str
+    evidence_classification: str
+    evidence_confidence: str
+    due_diligence_status: str
+
+
+class ExecutiveDecisionSummaryView(BaseModel):
+    decision_status: str
+    recommendation_code: str
+    supplier_candidate_status: str
+    leading_supplier_candidates: tuple[ExecutiveSupplierCandidateView, ...]
+    base_landed_cost_per_unit: Decimal
+    base_landed_cost_currency: str
+    iran_market_benchmark_status: str
+    iran_market_unit_price: Decimal | None
+    potential_gross_spread_per_unit: Decimal | None
+    potential_gross_spread_percent: Decimal | None
+    data_gap_status: str
+    data_gap_issue_count: int = Field(ge=0)
+    declared_unknown_count: int = Field(ge=0)
+    confidence_score: int = Field(ge=0, le=100)
+    confidence_label: str
+    limitations: tuple[str, ...]
+
+
 class EvidenceBackedPriceObservationView(BaseModel):
     external_observation_id: str
     product_name: str

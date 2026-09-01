@@ -12,6 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.executive_summary import (
+    ExecutiveSupplierCandidate,
+    build_executive_summary,
+)
 from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
@@ -1659,6 +1663,113 @@ class TradeRepository:
                 for observation, ranking, evidence in rows
             )
             return asdict(summarize_supplier_coverage(points))
+
+    def get_executive_summary(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            validation = session.scalar(
+                select(ResearchValidationRecord).where(
+                    ResearchValidationRecord.research_run_id == run_id
+                )
+            )
+            base_scenario = session.scalar(
+                select(LandedCostScenarioRecord).where(
+                    LandedCostScenarioRecord.research_run_id == run_id,
+                    LandedCostScenarioRecord.name == "BASE",
+                )
+            )
+            if validation is None or base_scenario is None:
+                raise KeyError("research executive summary not found")
+
+            issues = tuple(
+                session.scalars(
+                    select(ValidationIssueRecord).where(
+                        ValidationIssueRecord.research_run_id == run_id
+                    )
+                )
+            )
+            unknowns = tuple(
+                session.scalars(
+                    select(ResearchNoteRecord.text).where(
+                        ResearchNoteRecord.research_run_id == run_id,
+                        ResearchNoteRecord.kind == "UNKNOWN",
+                    )
+                )
+            )
+            gap_summary = summarize_data_gaps(
+                tuple(
+                    DataGapIssue(
+                        code=issue.code,
+                        severity=issue.severity,
+                        message_fa=issue.message_fa,
+                        subject_type=issue.subject_type,
+                        subject_id=issue.subject_id,
+                        details=issue.details,
+                    )
+                    for issue in issues
+                ),
+                unknowns,
+            )
+
+            candidate_rows = session.execute(
+                select(
+                    SupplierOfferRankingRecord,
+                    PriceObservationRecord,
+                    EvidenceRecord,
+                )
+                .join(
+                    PriceObservationRecord,
+                    PriceObservationRecord.id
+                    == SupplierOfferRankingRecord.price_observation_id,
+                )
+                .join(EvidenceRecord, EvidenceRecord.id == PriceObservationRecord.evidence_id)
+                .where(
+                    SupplierOfferRankingRecord.research_run_id == run_id,
+                    SupplierOfferRankingRecord.rank == 1,
+                    PriceObservationRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+            ).all()
+            candidates: list[ExecutiveSupplierCandidate] = []
+            for ranking, observation, evidence in candidate_rows:
+                if (
+                    observation.supplier_name is None
+                    or ranking.normalized_amount is None
+                    or ranking.normalized_currency is None
+                ):
+                    raise KeyError("ranked supplier candidate is incomplete")
+                candidates.append(
+                    ExecutiveSupplierCandidate(
+                        observation_id=observation.external_observation_id,
+                        supplier_name=observation.supplier_name,
+                        original_amount=observation.original_amount,
+                        original_currency=observation.original_currency,
+                        normalized_amount=ranking.normalized_amount,
+                        normalized_currency=ranking.normalized_currency,
+                        total_score=ranking.total_score,
+                        source_url=evidence.source_url,
+                        evidence_classification=evidence.classification,
+                        evidence_confidence=evidence.confidence,
+                    )
+                )
+            return asdict(
+                build_executive_summary(
+                    validation_disposition=validation.disposition,
+                    confidence_score=validation.confidence_score,
+                    confidence_label=validation.confidence_label,
+                    base_landed_cost_per_unit=base_scenario.per_unit_amount,
+                    base_landed_cost_currency=base_scenario.target_currency,
+                    leading_supplier_candidates=tuple(candidates),
+                    data_gap_status=gap_summary.status,
+                    data_gap_issue_count=gap_summary.issue_count,
+                    declared_unknown_count=gap_summary.declared_unknown_count,
+                )
+            )
 
     @staticmethod
     def _supplier_offer_view(
