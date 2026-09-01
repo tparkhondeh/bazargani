@@ -55,6 +55,8 @@ validation context. Domain/parser exception messages are private by default and 
 explicit safe input errors cross the HTTP boundary. No-store and browser response
 hardening apply consistently to success and error paths; unexpected failures use a
 generic correlated `500` without exception text, while TLS/HSTS remains an edge gate.
+New decision reports also escape untrusted HTML/Markdown structure and encode link
+targets; strict client-side Markdown sanitization remains an RTL UI requirement.
 Deterministic data-quality validation, exact
 observation deduplication, persisted validation issues, and explainable confidence are
 implemented. The deterministic product-match baseline and persistence are implemented;

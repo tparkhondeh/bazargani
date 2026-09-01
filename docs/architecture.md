@@ -120,6 +120,13 @@ score as a decision and keeps normalized and original values visible together. T
 summary omits raw evidence content while retaining the URL, retrieval metadata, class,
 confidence, and transformation needed for provenance-aware display.
 
+Report generation treats every domain/input string as untrusted presentation data.
+Plain text is collapsed to one line, HTML-encoded, and Markdown-escaped; code spans use
+a fence longer than any embedded backtick; HTTP(S) link targets are percent-encoded.
+This prevents input from changing document structure while preserving provenance.
+Persisted report snapshots and hashes are immutable, so this policy applies to newly
+generated reports rather than rewriting history.
+
 History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
 not unbounded reads or offset drift. Opportunities/runs use creation time and audit
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,

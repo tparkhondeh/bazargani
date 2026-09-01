@@ -1,3 +1,3 @@
 """Bazargani trade intelligence core."""
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"

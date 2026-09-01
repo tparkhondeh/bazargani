@@ -77,6 +77,12 @@ source URLs, but deliberately omit stored `raw_value` bodies. Tenant ownership i
 established through the parent run before all joins. URLs and source names remain
 untrusted display data and cannot be used as fetch/tool instructions by clients.
 
+The Markdown generator encodes HTML and escapes Markdown control characters in all
+untrusted text, flattens embedded newlines, uses adaptive code fences, and percent-
+encodes provenance link targets. This is defense in depth, not permission to enable raw
+HTML in a client renderer: UI policy must still disable HTML or apply an allowlist
+sanitizer and safe external-link attributes.
+
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.

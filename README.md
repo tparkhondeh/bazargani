@@ -158,6 +158,12 @@ report snapshot, and an audit event in one transaction. A result with warnings i
 marked `NEEDS_VERIFICATION`; material conflicts are marked `NEEDS_HUMAN_REVIEW`
 instead of being silently reported as complete.
 
+New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
+metadata before interpolation. Input newlines cannot create headings, HTML tags remain
+text, Markdown control characters are escaped, and link targets are percent-encoded.
+Previously persisted reports remain immutable; browser clients must still render every
+report with an HTML-disabled or strictly sanitized Markdown policy.
+
 Every evidence-bundle submission also requires an `Idempotency-Key` header containing
 1–128 URL-safe identifier characters. An exact retry returns the original immutable
 completion with `idempotency_replayed=true`; reusing the key for a different run body

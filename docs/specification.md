@@ -44,6 +44,8 @@ unknown or requires human verification?
   empty run as a result or discarding equal first-ranked supplier offers.
 - Supplier ranking output retains the original commercial offer context and source
   provenance alongside normalized score data, without copying raw evidence bodies.
+- Generated report text cannot let untrusted product/source/note fields inject HTML,
+  headings, or additional links; client rendering remains separately sanitized.
 
 ## Deferred from MVP
 

@@ -125,6 +125,11 @@ amount/currency, quantity, MOQ, Incoterm, source, evidence class, and confidence
 tests retain distinct source URLs, while response assertions ensure raw evidence values
 are not copied into the ranking or latest-decision payloads.
 
+Markdown-injection regression tests place HTML tags, forged headings, nested-link
+syntax, newlines, and embedded backticks into product, supplier, source, destination,
+cost, assumption, and unknown fields. They verify structure is escaped, links stay
+bound to the percent-encoded source URL, and adaptive code spans remain balanced.
+
 Pagination tests cover UTC/UUID cursor round trips, malformed and oversized cursors,
 maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite
