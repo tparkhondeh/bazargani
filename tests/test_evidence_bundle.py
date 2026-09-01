@@ -23,6 +23,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("EXACT_VARIANT", report)
         self.assertIn("تطبیق محصول", report)
         self.assertIn("رتبه‌بندی پیشنهادهای تأمین‌کننده", report)
+        self.assertIn("پوشش شواهد تأمین‌کننده", report)
+        self.assertIn("راستی‌آزمایی `UNVERIFIED`", report)
         self.assertIn(r"supplier\_reliability", report)
         self.assertIn("حساسیت سناریوها", report)
         self.assertIn("25.51%", report)

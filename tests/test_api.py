@@ -445,6 +445,7 @@ class ApiTests(unittest.TestCase):
                 "price-distribution",
                 "product-matches",
                 "supplier-offer-rankings",
+                "supplier-coverage",
             )
         ]
 
@@ -1170,6 +1171,27 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(rankings[0]["evidence_classification"], "ASSUMPTION")
         self.assertEqual(rankings[0]["evidence_confidence"], "UNKNOWN")
         self.assertNotIn("raw_value", rankings[0])
+
+        coverage_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-coverage"
+        )
+        self.assertEqual(coverage_response.status_code, 200)
+        coverage = coverage_response.json()
+        self.assertEqual(coverage["status"], "SUPPLIER_EVIDENCE_COVERAGE")
+        self.assertEqual(coverage["unidentified_observation_ids"], [])
+        self.assertEqual(len(coverage["suppliers"]), 1)
+        supplier = coverage["suppliers"][0]
+        self.assertEqual(supplier["supplier_name"], "Demo Supplier — NOT REAL")
+        self.assertEqual(supplier["observation_ids"], ["demo-price-1"])
+        self.assertEqual(supplier["source_urls"], ["https://example.com/demo-supplier"])
+        self.assertEqual(supplier["offer_count"], 1)
+        self.assertEqual(supplier["distinct_source_count"], 1)
+        self.assertEqual(supplier["moq_observation_count"], 1)
+        self.assertEqual(supplier["incoterm_observation_count"], 1)
+        self.assertEqual(supplier["rankable_offer_count"], 1)
+        self.assertEqual(supplier["due_diligence_status"], "UNVERIFIED")
+        self.assertIn("supplier_reliability", supplier["unknown_factors"])
+        self.assertNotIn("raw_value", json.dumps(coverage))
 
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)

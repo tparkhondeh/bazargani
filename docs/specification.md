@@ -63,6 +63,9 @@ unknown or requires human verification?
   empty run as a result or discarding equal first-ranked supplier offers.
 - Supplier ranking output retains the original commercial offer context and source
   provenance alongside normalized score data, without copying raw evidence bodies.
+- Supplier evidence coverage aggregates offer/source counts and MOQ/Incoterm/rankable
+  field coverage without merging anonymous offers or claiming identity, source
+  independence, certifications, capacity, or due-diligence verification.
 - Assumptions and unknowns remain distinct, bounded, tenant-scoped run snapshots and
   are visible in the current decision without permitting historical mutation.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,

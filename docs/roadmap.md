@@ -94,8 +94,10 @@ implemented. The deterministic product-match baseline and persistence are implem
 assisted/semantic matching evaluation remains in Phase 3.
 The deterministic quantity-aware supplier-offer ranking baseline is implemented;
 ranking/latest-decision reads now carry original offer context and source provenance.
-Verified supplier profiles, capacity/certification evidence, and multi-tier quote
-history remain Phase 3/5 work.
+A run-level supplier evidence-coverage view now aggregates offer/source and commercial-
+field coverage while keeping every due-diligence status unverified and anonymous offers
+separate. Verified supplier profiles, source independence, capacity/certification
+evidence, and multi-tier quote history remain Phase 3/5 work.
 
 ## Phase 3 — First approved real providers
 

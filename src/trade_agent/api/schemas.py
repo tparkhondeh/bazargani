@@ -336,6 +336,26 @@ class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
         return value
 
 
+class SupplierEvidenceCoverageView(BaseModel):
+    supplier_name: str
+    observation_ids: tuple[str, ...]
+    source_urls: tuple[str, ...]
+    offer_count: int = Field(ge=1)
+    distinct_source_count: int = Field(ge=1)
+    moq_observation_count: int = Field(ge=0)
+    incoterm_observation_count: int = Field(ge=0)
+    rankable_offer_count: int = Field(ge=0)
+    unknown_factors: tuple[str, ...]
+    due_diligence_status: str
+
+
+class SupplierCoverageSummaryView(BaseModel):
+    status: str
+    suppliers: tuple[SupplierEvidenceCoverageView, ...]
+    unidentified_observation_ids: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+
 class EvidenceBackedPriceObservationView(BaseModel):
     external_observation_id: str
     product_name: str

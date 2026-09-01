@@ -85,6 +85,13 @@ consumer receives original price/currency, quoted quantity/unit, MOQ, Incoterm, 
 retrieval time, evidence classification/confidence, and transformation with the score.
 This is an evidence-backed offer view, not a supplier verification profile.
 
+Supplier evidence coverage is a run-level projection, not a persisted supplier profile.
+Identified offers group only by the exact submitted supplier name; anonymous observation
+IDs remain separate. The projection counts offers, distinct source URLs, MOQ/Incoterm
+presence, and rankable rows, and unions the ranking ledger's unknown factors. Its due-
+diligence status is always `UNVERIFIED` because offer records do not prove identity,
+source independence, certifications, capacity, payment behavior, or legal standing.
+
 ## Scenario-sensitivity policy
 
 Sensitivity compares exactly one `OPTIMISTIC`, `BASE`, and `CONSERVATIVE` scenario.

@@ -178,6 +178,12 @@ score as a decision and keeps normalized and original values visible together. T
 summary omits raw evidence content while retaining the URL, retrieval metadata, class,
 confidence, and transformation needed for provenance-aware display.
 
+Supplier coverage is calculated by a pure application projection over the same joined
+observation/ranking/evidence rows. It aggregates exact identified names while retaining
+anonymous observation IDs, returns distinct URL coverage and missing factors, and never
+promotes an offer into a verified supplier profile. The API and report share this
+calculation; raw evidence remains outside both outputs.
+
 Report generation treats every domain/input string as untrusted presentation data.
 Plain text is collapsed to one line, HTML-encoded, and Markdown-escaped; code spans use
 a fence longer than any embedded backtick; HTTP(S) link targets are percent-encoded.

@@ -16,6 +16,10 @@ from trade_agent.application.quantity import (
 )
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.sensitivity import analyze_scenario_sensitivity, cost_points
+from trade_agent.application.supplier_coverage import (
+    SupplierEvidencePoint,
+    summarize_supplier_coverage,
+)
 
 _MARKDOWN_SPECIAL = frozenset("\\`*_{}[]()#!|")
 _BACKTICK_RUN = re.compile(r"`+")
@@ -223,6 +227,46 @@ def render_markdown(result: ResearchResult) -> str:
     ranking_by_observation = {
         ranking.observation_id: ranking for ranking in result.supplier_rankings
     }
+    supplier_coverage = summarize_supplier_coverage(
+        tuple(
+            SupplierEvidencePoint(
+                observation_id=observation.observation_id,
+                supplier_name=observation.supplier_name,
+                source_url=observation.evidence.source_url,
+                minimum_order_quantity=observation.minimum_order_quantity,
+                incoterm=observation.incoterm,
+                rankable=ranking_by_observation[observation.observation_id].rankable,
+                unknown_factors=ranking_by_observation[
+                    observation.observation_id
+                ].unknown_factors,
+            )
+            for observation in case.observations
+        )
+    )
+    lines.extend(["", "## پوشش شواهد تأمین‌کننده", ""])
+    lines.append(f"- وضعیت: {_code(supplier_coverage.status)}")
+    for coverage in supplier_coverage.suppliers:
+        lines.append(
+            f"- {_text(coverage.supplier_name)}: {coverage.offer_count} پیشنهاد، "
+            f"{coverage.distinct_source_count} نشانی منبع متمایز، "
+            f"MOQ برای {coverage.moq_observation_count}/{coverage.offer_count}، "
+            f"Incoterm برای {coverage.incoterm_observation_count}/{coverage.offer_count}، "
+            f"قابل رتبه‌بندی {coverage.rankable_offer_count}/{coverage.offer_count}؛ "
+            f"راستی‌آزمایی {_code(coverage.due_diligence_status)}"
+        )
+        if coverage.unknown_factors:
+            lines.append(
+                f"  - عوامل نامشخص: {_text(', '.join(coverage.unknown_factors))}"
+            )
+    if supplier_coverage.unidentified_observation_ids:
+        lines.append(
+            "- مشاهدات بدون هویت تأمین‌کننده: "
+            + "، ".join(
+                _code(item) for item in supplier_coverage.unidentified_observation_ids
+            )
+        )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in supplier_coverage.limitations)
+
     quantity_points: list[QuantityPricePoint] = []
     for observation in case.observations:
         ranking = ranking_by_observation[observation.observation_id]
@@ -257,10 +301,10 @@ def render_markdown(result: ResearchResult) -> str:
     lines.append(f"- وضعیت: {_code(quantity_analysis.status)}")
     lines.append(f"- تعداد درخواستی: {quantity_analysis.requested_quantity:,}")
     for offer_series in quantity_analysis.series:
-        supplier = offer_series.supplier_name or "تأمین‌کننده نامشخص"
+        supplier_label = offer_series.supplier_name or "تأمین‌کننده نامشخص"
         variant = offer_series.product_variant or "نامشخص"
         lines.append(
-            f"- {_text(supplier)} — محصول {_text(offer_series.product_name)}، "
+            f"- {_text(supplier_label)} — محصول {_text(offer_series.product_name)}، "
             f"variant {_code(variant)}، گروه {_code(offer_series.comparison_group)}"
         )
         for point in offer_series.points:

@@ -29,6 +29,10 @@ from trade_agent.application.sensitivity import (
     ScenarioCostPoint,
     analyze_scenario_sensitivity,
 )
+from trade_agent.application.supplier_coverage import (
+    SupplierEvidencePoint,
+    summarize_supplier_coverage,
+)
 from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Evidence
@@ -1615,6 +1619,46 @@ class TradeRepository:
                 self._supplier_offer_view(ranking, observation, evidence, source)
                 for ranking, observation, evidence, source in rows
             ]
+
+    def get_supplier_coverage(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = session.execute(
+                select(
+                    PriceObservationRecord,
+                    SupplierOfferRankingRecord,
+                    EvidenceRecord,
+                )
+                .join(
+                    SupplierOfferRankingRecord,
+                    SupplierOfferRankingRecord.price_observation_id
+                    == PriceObservationRecord.id,
+                )
+                .join(EvidenceRecord, EvidenceRecord.id == PriceObservationRecord.evidence_id)
+                .where(
+                    PriceObservationRecord.research_run_id == run_id,
+                    SupplierOfferRankingRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+            ).all()
+            points = tuple(
+                SupplierEvidencePoint(
+                    observation_id=observation.external_observation_id,
+                    supplier_name=observation.supplier_name,
+                    source_url=evidence.source_url,
+                    minimum_order_quantity=observation.minimum_order_quantity,
+                    incoterm=observation.incoterm,
+                    rankable=ranking.rankable,
+                    unknown_factors=tuple(ranking.unknown_factors),
+                )
+                for observation, ranking, evidence in rows
+            )
+            return asdict(summarize_supplier_coverage(points))
 
     @staticmethod
     def _supplier_offer_view(

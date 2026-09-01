@@ -86,6 +86,11 @@ anonymous suppliers, and deterministic tied ranks. Integration tests verify the
 ranking ledger and unknown diligence factors are returned by the API and committed in
 the same result transaction.
 
+Supplier-coverage tests aggregate offers and distinct URLs, count MOQ/Incoterm/rankable
+coverage, union unknown factors, keep named suppliers separate, and preserve anonymous
+observation IDs without merging. API/report and PostgreSQL tests require the explicit
+`UNVERIFIED` status, tenant hiding, and absence of raw evidence.
+
 Idempotency integration tests cover required-header validation, first-write response,
 same-key/same-payload replay without duplicate rows, stable report/version hashes, and
 same-key/different-payload conflict. The database unique constraint is retained as the

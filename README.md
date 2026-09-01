@@ -24,6 +24,8 @@ distributions, but only inside identical product, quantity, unit/currency, and m
 layer groups; these submitted observations are not asserted to be market benchmarks.
 Persisted validation issues and declared unknowns are also projected as a structured
 data-gap summary for human verification workflows.
+Supplier coverage aggregates only retained offer/source fields and keeps due diligence
+explicitly unverified; distinct URLs are not presented as independent sources.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -104,6 +106,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/price-distribution`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
+- `GET /api/v1/research-runs/{id}/supplier-coverage`
 
 `/health` and `/ready` are public for orchestration. Health reports process liveness;
 readiness checks database connectivity and, when Alembic manages the schema, requires
@@ -234,6 +237,13 @@ unknown notes. It returns deterministic error/warning/unknown counts, the origin
 subject-linked issues, confidence/disposition context, and explicit limitations. It
 does not claim that an empty recorded-gap set proves the research is commercially
 complete, and gaps are closed only through verified evidence in a successor run.
+
+Supplier coverage groups identified suppliers by their exact submitted name and reports
+offer IDs, distinct source URLs, MOQ/Incoterm field coverage, rankable-offer count, and
+the union of known unknown factors. Anonymous observations are listed separately and
+never merged into a synthetic supplier. Every supplier remains `UNVERIFIED` because
+offer metadata is not identity, certification, capacity, payment, or legal-status
+evidence; distinct URLs also do not prove independent sources.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

@@ -208,6 +208,20 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             Decimal("500"),
         )
         self.assertNotIn("raw_value", json.dumps(distribution))
+        supplier_coverage = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-coverage"
+        )
+        self.assertEqual(supplier_coverage.status_code, 200)
+        self.assertEqual(
+            supplier_coverage.json()["status"],
+            "SUPPLIER_EVIDENCE_COVERAGE",
+        )
+        self.assertEqual(supplier_coverage.json()["suppliers"][0]["offer_count"], 1)
+        self.assertEqual(
+            supplier_coverage.json()["suppliers"][0]["due_diligence_status"],
+            "UNVERIFIED",
+        )
+        self.assertNotIn("raw_value", json.dumps(supplier_coverage.json()))
 
         additional_ids = {
             self.client.post(
