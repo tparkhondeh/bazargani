@@ -63,8 +63,9 @@ run-review queue now exposes report hash, validation lineage, gap counts, and th
 version required for review. New research-review audit events omit rationale while the
 authorized review ledger retains it. Digest-bound `RESEARCH_REVIEWER` and
 `SUPPLIER_IDENTITY_REVIEWER` roles now fail closed across their queue, history, and
-write endpoints. Named-user identity and role policy, assignment/escalation, and
-reassignment remain future work.
+write endpoints. The generic audit API also applies review-action allowlists so legacy
+payloads cannot disclose historical rationale or unexpected private fields. Named-user
+identity and role policy, assignment/escalation, and reassignment remain future work.
 The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
 with atomic audit history and terminal won/lost states. The initial transition graph
 still requires commercial stakeholder validation before production activation.

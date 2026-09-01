@@ -238,8 +238,12 @@ aggregates or silently broaden a query.
 Audit-history integration tests create events for two tenants, traverse multiple
 pages without duplicates, verify actor/action/aggregate fields, reject malformed or
 excessive pagination, and prove that one tenant never receives the other's event or a
-redundant tenant identifier. PostgreSQL integration compares the fully paged result
-with the tenant's stored audit-event count.
+redundant tenant identifier. Historical review-event fixtures add rationale and
+unexpected private fields, verify that action-specific response allowlists remove them,
+verify that invalid allowlisted values collapse to an empty public payload, and then
+prove the stored JSON remains byte-for-byte equivalent as structured data. PostgreSQL
+integration repeats that redaction/non-mutation contract and compares the fully paged
+result with the tenant's stored audit-event count.
 
 ECB provider tests use captured synthetic contract rows and cover latest-observation
 selection, provenance, invalid currency, and malformed upstream data. Cache tests

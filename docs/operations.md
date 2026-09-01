@@ -59,7 +59,10 @@ production launch requirement.
 Operational audit consumers should traverse `GET /api/v1/audit-events` with its
 opaque `next_cursor`; never decode a cursor for authorization or request an unbounded
 export. Correlate actions with `correlation_id` and treat review rationale as tenant
-commercial data subject to the approved logging/retention policy.
+commercial data subject to the approved logging/retention policy. Generic audit API
+responses never supply review rationale, including for historical rows written before
+version 0.51.0; review consumers with the matching reviewer role must use the dedicated
+review-history endpoint. The stored audit ledger remains immutable.
 
 `TRADE_AGENT_MAX_REQUEST_BODY_BYTES` defaults to `2000000` and is constrained to
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;

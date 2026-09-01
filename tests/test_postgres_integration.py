@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import unittest
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -544,7 +545,32 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(paged_ids, opportunity_ids)
         self.assertIsNone(second_page["next_cursor"])
 
+        historical_audit_id = str(uuid4())
+        historical_audit_payload = {
+            "decision": "APPROVE",
+            "rationale": "POSTGRES-SENSITIVE-HISTORICAL-RATIONALE",
+            "from": "NEEDS_VERIFICATION",
+            "to": "COMPLETED",
+            "version": 99,
+            "unexpected_private_note": "POSTGRES-SENSITIVE-UNEXPECTED-FIELD",
+        }
+        with self.engine.begin() as connection:
+            connection.execute(
+                insert(AuditEventRecord).values(
+                    id=historical_audit_id,
+                    tenant_id="postgres-ci",
+                    actor_id="api-key:historical",
+                    correlation_id=str(uuid4()),
+                    aggregate_type="ResearchRun",
+                    aggregate_id=str(uuid4()),
+                    action="REVIEW_RECORDED",
+                    payload=historical_audit_payload,
+                    occurred_at=datetime.now(UTC),
+                )
+            )
+
         audit_ids: list[str] = []
+        audit_payloads: dict[str, dict[str, object]] = {}
         audit_cursor: str | None = None
         while True:
             params: dict[str, int | str] = {"limit": 3}
@@ -554,10 +580,22 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             self.assertEqual(audit_page_response.status_code, 200)
             audit_page = audit_page_response.json()
             audit_ids.extend(event["id"] for event in audit_page["items"])
+            audit_payloads.update(
+                {event["id"]: event["payload"] for event in audit_page["items"]}
+            )
             audit_cursor = audit_page["next_cursor"]
             if audit_cursor is None:
                 break
         self.assertEqual(len(audit_ids), len(set(audit_ids)))
+        self.assertEqual(
+            audit_payloads[historical_audit_id],
+            {
+                "decision": "APPROVE",
+                "from": "NEEDS_VERIFICATION",
+                "to": "COMPLETED",
+                "version": 99,
+            },
+        )
 
         with self.engine.connect() as connection:
             tenant_id = connection.scalar(
@@ -581,6 +619,11 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 select(func.count())
                 .select_from(AuditEventRecord)
                 .where(AuditEventRecord.tenant_id == "postgres-ci")
+            )
+            stored_historical_audit_payload = connection.scalar(
+                select(AuditEventRecord.payload).where(
+                    AuditEventRecord.id == historical_audit_id
+                )
             )
             research_review_audit_payload = connection.scalar(
                 select(AuditEventRecord.payload).where(
@@ -624,6 +667,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertIsInstance(total, Decimal)
         self.assertIsInstance(audit_payload, dict)
         self.assertEqual(len(audit_ids), audit_count)
+        self.assertEqual(stored_historical_audit_payload, historical_audit_payload)
         self.assertEqual(idempotency_count, 2)
         self.assertEqual(review_count, 1)
         self.assertEqual(

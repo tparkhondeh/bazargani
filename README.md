@@ -196,7 +196,10 @@ only when another page exists. Cursors encode ordering state, not authorization:
 query independently applies the authenticated tenant predicate and malformed or
 oversized cursors fail with `422`. Audit responses expose the non-secret actor
 fingerprint, correlation/aggregate metadata, action, timestamp, and structured event
-payload, but omit `tenant_id`.
+payload, but omit `tenant_id`. Review-event payloads use action-specific public
+allowlists at response time. This also removes rationale and unknown private fields from
+historical review events without rewriting the immutable stored rows; authorized review
+history is the source for rationale.
 
 Opportunity history accepts an optional exact `status` enum filter. Filtering remains
 inside the tenant-scoped indexed query and works with the same bounded cursor contract;

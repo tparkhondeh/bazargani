@@ -144,6 +144,12 @@ emit a minimal audit payload containing only decision, before/after status, and 
 version. This is a forward-only event contract: existing audit rows are never rewritten,
 and downstream consumers must not require rationale duplication in new audit events.
 
+The audit API applies action-specific allowlists while validating its response models for
+both research and supplier-identity review events. This read-time projection strips
+historical rationale and unexpected fields without mutating the detached ORM record or
+stored JSON. Other audit actions retain their existing payload contract, and the
+role-authorized review-history endpoints remain the source for rationale.
+
 The opportunity decision view also builds the executive summary from those same joined
 validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
 opportunity policy identical and prevents a client from combining a summary with a

@@ -116,7 +116,11 @@ Audit history is read only through a bounded tenant-scoped query. The response o
 `tenant_id` and never contains raw API keys; actor attribution remains the non-secret
 key fingerprint. Audit payload design excludes credentials, raw evidence bodies, and
 new research-review rationale. Rationale remains visible only through the authorized
-tenant-scoped review ledger. Historical audit rows are not rewritten.
+tenant-scoped review ledger. Historical audit rows are not rewritten. The generic audit
+API applies action-specific allowlists to research and supplier-identity review events,
+so legacy rationale and unexpected fields are removed from responses while the stored
+event remains immutable. Invalid allowlisted values collapse that event's public payload
+to an empty object instead of leaking data or failing the full page.
 
 The ECB adapter remains fixed to one HTTPS host, rejects redirects and non-public DNS
 results, ignores environment proxies, bounds response bytes, and retries transport or

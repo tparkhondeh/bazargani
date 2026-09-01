@@ -73,6 +73,8 @@ unknown or requires human verification?
 - Completing or rejecting a review-required result records the authenticated actor,
   rationale, decision, tenant, and exact run version without rewriting evidence; the
   audit event omits rationale while the role-authorized review ledger retains it.
+- Generic audit reads expose only the defined public fields for review actions, including
+  historical events, without modifying the append-only stored payload.
 - Review queues, review histories, and review writes fail closed unless the calling
   credential has the exact reviewer role; role authorization never replaces the
   independent tenant predicate or claims a named human identity.

@@ -5,9 +5,10 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, insert, select
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.pool import StaticPool
 
@@ -922,6 +923,114 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(malformed.json()["code"], "INVALID_INPUT")
         self.assertEqual(excessive_limit.status_code, 422)
         self.assertEqual(excessive_limit.json()["code"], "REQUEST_VALIDATION_FAILED")
+
+    def test_audit_api_redacts_historical_review_payload_without_mutating_it(self) -> None:
+        research_event_id = str(uuid4())
+        identity_event_id = str(uuid4())
+        malformed_event_id = str(uuid4())
+        historical_rationale = "SENSITIVE-HISTORICAL-REVIEW-RATIONALE"
+        research_payload = {
+            "decision": "APPROVE",
+            "rationale": historical_rationale,
+            "from": "NEEDS_VERIFICATION",
+            "to": "COMPLETED",
+            "version": 3,
+            "unexpected_private_note": "SENSITIVE-UNEXPECTED-FIELD",
+        }
+        identity_payload = {
+            "research_run_id": str(uuid4()),
+            "claim_id": "historical-identity-claim",
+            "decision": "INCONCLUSIVE",
+            "previous_version": 0,
+            "resulting_version": 1,
+            "rationale": historical_rationale,
+            "unexpected_private_note": "SENSITIVE-UNEXPECTED-FIELD",
+        }
+        with self.engine.begin() as connection:
+            connection.execute(
+                insert(AuditEventRecord),
+                [
+                    {
+                        "id": research_event_id,
+                        "tenant_id": "tenant-a",
+                        "actor_id": "api-key:historical",
+                        "correlation_id": str(uuid4()),
+                        "aggregate_type": "ResearchRun",
+                        "aggregate_id": str(uuid4()),
+                        "action": "REVIEW_RECORDED",
+                        "payload": research_payload,
+                        "occurred_at": datetime.now(UTC),
+                    },
+                    {
+                        "id": identity_event_id,
+                        "tenant_id": "tenant-a",
+                        "actor_id": "api-key:historical",
+                        "correlation_id": str(uuid4()),
+                        "aggregate_type": "SupplierIdentityClaim",
+                        "aggregate_id": str(uuid4()),
+                        "action": "IDENTITY_CLAIM_REVIEW_RECORDED",
+                        "payload": identity_payload,
+                        "occurred_at": datetime.now(UTC),
+                    },
+                    {
+                        "id": malformed_event_id,
+                        "tenant_id": "tenant-a",
+                        "actor_id": "api-key:historical",
+                        "correlation_id": str(uuid4()),
+                        "aggregate_type": "ResearchRun",
+                        "aggregate_id": str(uuid4()),
+                        "action": "REVIEW_RECORDED",
+                        "payload": {
+                            "decision": historical_rationale,
+                            "from": "NEEDS_VERIFICATION",
+                            "to": "COMPLETED",
+                            "version": 4,
+                        },
+                        "occurred_at": datetime.now(UTC),
+                    },
+                ],
+            )
+
+        response = self.client.get("/api/v1/audit-events", params={"limit": 100})
+
+        self.assertEqual(response.status_code, 200)
+        payload_by_id = {item["id"]: item["payload"] for item in response.json()["items"]}
+        self.assertEqual(
+            payload_by_id[research_event_id],
+            {
+                "decision": "APPROVE",
+                "from": "NEEDS_VERIFICATION",
+                "to": "COMPLETED",
+                "version": 3,
+            },
+        )
+        self.assertEqual(
+            payload_by_id[identity_event_id],
+            {
+                "research_run_id": identity_payload["research_run_id"],
+                "claim_id": "historical-identity-claim",
+                "decision": "INCONCLUSIVE",
+                "previous_version": 0,
+                "resulting_version": 1,
+            },
+        )
+        self.assertEqual(payload_by_id[malformed_event_id], {})
+        self.assertNotIn(historical_rationale, response.text)
+        self.assertNotIn("SENSITIVE-UNEXPECTED-FIELD", response.text)
+
+        with self.engine.connect() as connection:
+            stored_payloads = dict(
+                connection.execute(
+                    select(AuditEventRecord.id, AuditEventRecord.payload).where(
+                        AuditEventRecord.id.in_(
+                            [research_event_id, identity_event_id, malformed_event_id]
+                        )
+                    )
+                ).all()
+            )
+        self.assertEqual(stored_payloads[research_event_id], research_payload)
+        self.assertEqual(stored_payloads[identity_event_id], identity_payload)
+        self.assertEqual(stored_payloads[malformed_event_id]["decision"], historical_rationale)
 
     def test_parse_request_returns_only_critical_questions(self) -> None:
         response = self.client.post(

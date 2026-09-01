@@ -3,11 +3,20 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Literal
+from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from trade_agent.application.reference_rates import ProviderRuntimeHealthStatus
-from trade_agent.domain.models import Confidence
+from trade_agent.domain.models import SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN, Confidence
 from trade_agent.domain.workflow import (
     OpportunityStatus,
     ResearchReviewDecision,
@@ -105,6 +114,35 @@ class SuccessorResearchRunView(ResearchRunView):
     idempotency_replayed: bool
 
 
+class _ResearchReviewAuditPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    decision: ResearchReviewDecision
+    previous_status: ResearchRunStatus = Field(alias="from")
+    resulting_status: ResearchRunStatus = Field(alias="to")
+    version: int = Field(gt=0, strict=True)
+
+
+class _SupplierIdentityReviewAuditPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    research_run_id: UUID
+    claim_id: str = Field(
+        min_length=1,
+        max_length=200,
+        pattern=SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN,
+    )
+    decision: SupplierIdentityReviewDecision
+    previous_version: int = Field(ge=0, strict=True)
+    resulting_version: int = Field(gt=0, strict=True)
+
+
+_PUBLIC_REVIEW_AUDIT_MODELS: dict[str, type[BaseModel]] = {
+    "REVIEW_RECORDED": _ResearchReviewAuditPayload,
+    "IDENTITY_CLAIM_REVIEW_RECORDED": _SupplierIdentityReviewAuditPayload,
+}
+
+
 class AuditEventView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -116,6 +154,18 @@ class AuditEventView(BaseModel):
     action: str
     payload: dict[str, Any]
     occurred_at: datetime
+
+    @model_validator(mode="after")
+    def enforce_public_review_payload_contract(self) -> AuditEventView:
+        payload_model = _PUBLIC_REVIEW_AUDIT_MODELS.get(self.action)
+        if payload_model is not None:
+            try:
+                validated = payload_model.model_validate(self.payload)
+            except ValidationError:
+                self.payload = {}
+            else:
+                self.payload = validated.model_dump(mode="json", by_alias=True)
+        return self
 
 
 class AuditEventPageView(BaseModel):
