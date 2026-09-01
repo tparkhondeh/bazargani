@@ -120,6 +120,11 @@ result, scenario ordering is deterministic, all equal rank-1 offers survive the
 projection, cross-tenant access returns `404`, and tenant metadata is absent.
 PostgreSQL integration verifies the report hash and run identity across the joined view.
 
+Supplier-offer read-model tests verify that ranking rows join to the correct original
+amount/currency, quantity, MOQ, Incoterm, source, evidence class, and confidence. Tie
+tests retain distinct source URLs, while response assertions ensure raw evidence values
+are not copied into the ranking or latest-decision payloads.
+
 Pagination tests cover UTC/UUID cursor round trips, malformed and oversized cursors,
 maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite

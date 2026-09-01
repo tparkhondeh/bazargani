@@ -347,6 +347,16 @@ class ApiTests(unittest.TestCase):
             {"Demo Supplier — NOT REAL", "Demo Supplier Two — NOT REAL"},
         )
         self.assertTrue(all(offer["rank"] == 1 for offer in body["leading_offers"]))
+        self.assertEqual(
+            {offer["source_url"] for offer in body["leading_offers"]},
+            {
+                "https://example.com/demo-supplier",
+                "https://example.com/demo-supplier-two",
+            },
+        )
+        self.assertTrue(
+            all("raw_value" not in offer for offer in body["leading_offers"])
+        )
         self.assertNotIn("tenant_id", decision.text)
         self.assertEqual(hidden.status_code, 404)
         self.assertEqual(hidden.json()["code"], "NOT_FOUND")
@@ -921,6 +931,17 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(rankings[0]["rank"], 1)
         self.assertEqual(rankings[0]["normalized_currency"], "IRR")
         self.assertIn("supplier_reliability", rankings[0]["unknown_factors"])
+        self.assertEqual(rankings[0]["original_amount"], "5.00000000")
+        self.assertEqual(rankings[0]["original_currency"], "USD")
+        self.assertEqual(rankings[0]["quoted_quantity"], 10)
+        self.assertEqual(rankings[0]["minimum_order_quantity"], 10)
+        self.assertEqual(rankings[0]["incoterm"], "EXW")
+        self.assertEqual(rankings[0]["source_name"], "Demo supplier — synthetic fixture")
+        self.assertEqual(rankings[0]["source_url"], "https://example.com/demo-supplier")
+        self.assertEqual(rankings[0]["retrieved_at"], "2026-08-31T00:00:00Z")
+        self.assertEqual(rankings[0]["evidence_classification"], "ASSUMPTION")
+        self.assertEqual(rankings[0]["evidence_confidence"], "UNKNOWN")
+        self.assertNotIn("raw_value", rankings[0])
 
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)

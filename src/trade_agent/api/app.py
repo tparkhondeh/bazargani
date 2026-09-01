@@ -25,6 +25,7 @@ from trade_agent.api.schemas import (
     AuditEventPageView,
     DecisionReportView,
     ErrorBody,
+    EvidenceBackedSupplierOfferView,
     EvidenceBundleSubmit,
     OpportunityContextUpdate,
     OpportunityCreate,
@@ -43,7 +44,6 @@ from trade_agent.api.schemas import (
     ResearchRunTransition,
     ResearchRunView,
     ResearchValidationView,
-    SupplierOfferRankingView,
     ValidationErrorDetail,
 )
 from trade_agent.api.validation_errors import safe_validation_details
@@ -547,7 +547,7 @@ def create_app(
 
     @app.get(
         "/api/v1/research-runs/{run_id}/supplier-offer-rankings",
-        response_model=list[SupplierOfferRankingView],
+        response_model=list[EvidenceBackedSupplierOfferView],
     )
     def get_supplier_offer_rankings(
         run_id: str,

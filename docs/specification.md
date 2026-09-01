@@ -42,6 +42,8 @@ unknown or requires human verification?
   into audit payloads.
 - An opportunity exposes its newest evidence-backed decision without treating a newer
   empty run as a result or discarding equal first-ranked supplier offers.
+- Supplier ranking output retains the original commercial offer context and source
+  provenance alongside normalized score data, without copying raw evidence bodies.
 
 ## Deferred from MVP
 

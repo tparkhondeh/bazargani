@@ -121,6 +121,11 @@ summaries, and every rank-1 offer (including ties). A newer empty/in-progress ru
 not erase the last evidence-backed decision, and the endpoint never chooses one tied
 supplier arbitrarily.
 
+Supplier ranking responses are evidence-backed offer views: they include the original
+price/currency, quoted quantity, unit, MOQ, Incoterm, source identity/URL, retrieval
+time, evidence class/confidence, and transformation beside the deterministic score.
+Raw evidence bodies are not duplicated into these decision summaries.
+
 Statuses derived from validation cannot be manually promoted to `COMPLETED` through
 the generic transition endpoint. An authenticated actor must record an `APPROVE` or
 `REJECT` review with a rationale and expected version. The decision, status/version

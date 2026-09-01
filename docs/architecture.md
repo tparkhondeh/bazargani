@@ -114,6 +114,12 @@ drift from evidence. Empty newer runs are skipped. The projection preserves rank
 and leaves report content unmodified; any future HTML UI must render it with a strict
 sanitization policy.
 
+Supplier-offer read models join the immutable ranking row to its exact price
+observation, evidence row, and source. This prevents clients from treating a detached
+score as a decision and keeps normalized and original values visible together. The
+summary omits raw evidence content while retaining the URL, retrieval metadata, class,
+confidence, and transformation needed for provenance-aware display.
+
 History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
 not unbounded reads or offset drift. Opportunities/runs use creation time and audit
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,

@@ -947,19 +947,36 @@ class TradeRepository:
                     )
                 )
             )
-            leading_offers = list(
-                session.scalars(
-                    select(SupplierOfferRankingRecord)
-                    .where(
-                        SupplierOfferRankingRecord.research_run_id == run.id,
-                        SupplierOfferRankingRecord.rank == 1,
-                    )
-                    .order_by(
-                        SupplierOfferRankingRecord.comparison_group,
-                        SupplierOfferRankingRecord.id,
-                    )
+            leading_rows = session.execute(
+                select(
+                    SupplierOfferRankingRecord,
+                    PriceObservationRecord,
+                    EvidenceRecord,
+                    SourceRecord,
                 )
-            )
+                .join(
+                    PriceObservationRecord,
+                    PriceObservationRecord.id
+                    == SupplierOfferRankingRecord.price_observation_id,
+                )
+                .join(
+                    EvidenceRecord,
+                    EvidenceRecord.id == PriceObservationRecord.evidence_id,
+                )
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .where(
+                    SupplierOfferRankingRecord.research_run_id == run.id,
+                    SupplierOfferRankingRecord.rank == 1,
+                )
+                .order_by(
+                    SupplierOfferRankingRecord.comparison_group,
+                    SupplierOfferRankingRecord.id,
+                )
+            ).all()
+            leading_offers = [
+                self._supplier_offer_view(ranking, observation, evidence, source)
+                for ranking, observation, evidence, source in leading_rows
+            ]
             if report is None or validation is None or not scenarios:
                 raise KeyError("opportunity decision not found")
 
@@ -991,7 +1008,7 @@ class TradeRepository:
                     for issue in issues
                 ],
             }
-            for record in (run, report, *scenarios, *leading_offers):
+            for record in (run, report, *scenarios):
                 session.expunge(record)
             return {
                 "opportunity_id": opportunity_id,
@@ -1055,23 +1072,73 @@ class TradeRepository:
 
     def get_supplier_offer_rankings(
         self, run_id: str, *, tenant_id: str
-    ) -> list[SupplierOfferRankingRecord]:
+    ) -> list[dict[str, Any]]:
         with self._session_factory() as session:
             self._require_research_run(session, run_id, tenant_id)
-            records = list(
-                session.scalars(
-                    select(SupplierOfferRankingRecord)
-                    .where(SupplierOfferRankingRecord.research_run_id == run_id)
-                    .order_by(
-                        SupplierOfferRankingRecord.comparison_group,
-                        SupplierOfferRankingRecord.rank.asc().nulls_last(),
-                        SupplierOfferRankingRecord.id,
-                    )
+            rows = session.execute(
+                select(
+                    SupplierOfferRankingRecord,
+                    PriceObservationRecord,
+                    EvidenceRecord,
+                    SourceRecord,
                 )
-            )
-            for record in records:
-                session.expunge(record)
-            return records
+                .join(
+                    PriceObservationRecord,
+                    PriceObservationRecord.id
+                    == SupplierOfferRankingRecord.price_observation_id,
+                )
+                .join(
+                    EvidenceRecord,
+                    EvidenceRecord.id == PriceObservationRecord.evidence_id,
+                )
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .where(SupplierOfferRankingRecord.research_run_id == run_id)
+                .order_by(
+                    SupplierOfferRankingRecord.comparison_group,
+                    SupplierOfferRankingRecord.rank.asc().nulls_last(),
+                    SupplierOfferRankingRecord.id,
+                )
+            ).all()
+            return [
+                self._supplier_offer_view(ranking, observation, evidence, source)
+                for ranking, observation, evidence, source in rows
+            ]
+
+    @staticmethod
+    def _supplier_offer_view(
+        ranking: SupplierOfferRankingRecord,
+        observation: PriceObservationRecord,
+        evidence: EvidenceRecord,
+        source: SourceRecord,
+    ) -> dict[str, Any]:
+        return {
+            "external_observation_id": ranking.external_observation_id,
+            "supplier_name": ranking.supplier_name,
+            "comparison_group": ranking.comparison_group,
+            "rank": ranking.rank,
+            "eligible_for_quantity": ranking.eligible_for_quantity,
+            "rankable": ranking.rankable,
+            "normalized_amount": ranking.normalized_amount,
+            "normalized_currency": ranking.normalized_currency,
+            "total_score": ranking.total_score,
+            "component_scores": ranking.component_scores,
+            "unknown_factors": ranking.unknown_factors,
+            "explanation_fa": ranking.explanation_fa,
+            "policy_version": ranking.policy_version,
+            "product_name": observation.product_name,
+            "original_amount": observation.original_amount,
+            "original_currency": observation.original_currency,
+            "quoted_quantity": observation.quantity,
+            "unit": observation.unit,
+            "minimum_order_quantity": observation.minimum_order_quantity,
+            "incoterm": observation.incoterm,
+            "source_name": source.name,
+            "source_url": evidence.source_url,
+            "retrieved_at": evidence.retrieved_at,
+            "evidence_classification": evidence.classification,
+            "evidence_confidence": evidence.confidence,
+            "transformation": evidence.transformation,
+        }
 
     def _load_idempotent_completion(
         self,

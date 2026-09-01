@@ -80,6 +80,11 @@ Equal total score and normalized price receive the same rank. Supplier reliabili
 certifications, capacity, and payment terms remain explicit unknowns until supported
 by evidence; the ranking therefore evaluates the submitted offer, not supplier trust.
 
+Every persisted ranking read is joined back to its price observation and evidence. A
+consumer receives original price/currency, quoted quantity/unit, MOQ, Incoterm, source,
+retrieval time, evidence classification/confidence, and transformation with the score.
+This is an evidence-backed offer view, not a supplier verification profile.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

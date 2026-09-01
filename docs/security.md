@@ -72,6 +72,11 @@ scenarios, and offer rankings only through that tenant-owned run. The response e
 no tenant identifier. Report Markdown and source-linked content remain untrusted data;
 a future browser renderer must sanitize/encode them and must not execute embedded HTML.
 
+Evidence-backed offer summaries expose authorized commercial price context and public
+source URLs, but deliberately omit stored `raw_value` bodies. Tenant ownership is
+established through the parent run before all joins. URLs and source names remain
+untrusted display data and cannot be used as fetch/tool instructions by clients.
+
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.

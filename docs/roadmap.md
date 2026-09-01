@@ -60,7 +60,8 @@ observation deduplication, persisted validation issues, and explainable confiden
 implemented. The deterministic product-match baseline and persistence are implemented;
 assisted/semantic matching evaluation remains in Phase 3.
 The deterministic quantity-aware supplier-offer ranking baseline is implemented;
-verified supplier profiles, capacity/certification evidence, and multi-tier quote
+ranking/latest-decision reads now carry original offer context and source provenance.
+Verified supplier profiles, capacity/certification evidence, and multi-tier quote
 history remain Phase 3/5 work.
 
 ## Phase 3 — First approved real providers

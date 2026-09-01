@@ -142,10 +142,17 @@ class EvidenceView(BaseModel):
     classification: str
     source_name: str
     source_url: str
-    retrieved_at: datetime
+    retrieved_at: AwareDatetime
     raw_value: str
     confidence: Confidence
     transformation: str | None
+
+    @field_validator("retrieved_at", mode="before")
+    @classmethod
+    def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
 
 
 class ReferenceRateView(BaseModel):
@@ -228,6 +235,29 @@ class SupplierOfferRankingView(BaseModel):
     policy_version: str
 
 
+class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
+    product_name: str
+    original_amount: Decimal
+    original_currency: str
+    quoted_quantity: int
+    unit: str
+    minimum_order_quantity: int | None
+    incoterm: str | None
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    evidence_classification: str
+    evidence_confidence: Confidence
+    transformation: str | None
+
+    @field_validator("retrieved_at", mode="before")
+    @classmethod
+    def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
 class LandedCostScenarioView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -254,7 +284,7 @@ class OpportunityDecisionView(BaseModel):
     research_run: ResearchRunView
     validation: ResearchValidationView
     scenarios: list[LandedCostScenarioView]
-    leading_offers: list[SupplierOfferRankingView]
+    leading_offers: list[EvidenceBackedSupplierOfferView]
     report: DecisionReportView
 
 
