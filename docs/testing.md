@@ -55,6 +55,11 @@ exercise the full opportunity/run/bundle endpoint, and verify that the raw invar
 message is replaced by the generic `INVALID_INPUT` reason. Separate tests retain safe
 specific messages for explicitly public missing-unit and destination-mismatch errors.
 
+Response-header tests cover public success, authenticated success, authentication
+failure, and pre-parser body-limit rejection. They verify no-store/no-cache,
+anti-sniff/frame/referrer/device-policy controls, API-key `Vary`, public-route
+exclusion, and case-insensitive preservation of an existing `Vary` value.
+
 Authentication integration tests run with authentication enabled and cover missing,
 invalid, and valid keys; public health; tenant/actor audit attribution; and identical
 `404` responses for cross-tenant aggregate reads and mutations. Configuration tests

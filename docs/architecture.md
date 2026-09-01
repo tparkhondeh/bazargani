@@ -68,6 +68,12 @@ Application/parser code must opt into a specific client-visible reason with
 All other `ValueError` messages are treated as internal and replaced by a generic
 input error at the HTTP boundary.
 
+The outer response middleware applies no-store/no-cache, MIME sniffing, framing,
+referrer, and browser-permission controls to success and error responses, including
+body-limit rejections. Authenticated routes also vary on the API-key header as defense
+in depth if an intermediary ignores `no-store`. Transport security remains an edge
+responsibility because the app does not trust arbitrary forwarded-protocol headers.
+
 The API authenticates a secret key at the boundary, resolves it to an immutable
 tenant/actor principal, and passes that principal explicitly through application
 ports. Aggregate reads and writes include tenant predicates; an identifier owned by

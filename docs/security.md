@@ -104,3 +104,9 @@ Domain/parser `ValueError` text is also non-public by default because invariant
 messages can contain cost codes, observation identifiers, currencies, or other input.
 Only explicitly reviewed `PublicInputError` messages built from controlled labels may
 cross the API boundary; all other values collapse to a generic `INVALID_INPUT` reason.
+
+All application responses disable storage and legacy caching, MIME sniffing, framing,
+referrers, camera, microphone, and geolocation. Tenant API responses also include
+`Vary: X-API-Key`. HSTS is deliberately not emitted by the loopback-capable app: the
+trusted TLS edge must set it after domain/TLS verification, without trusting arbitrary
+forwarded headers from clients.

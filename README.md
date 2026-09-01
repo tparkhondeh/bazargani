@@ -148,3 +148,8 @@ Domain/parser failures use `422 INVALID_INPUT`. Only deliberately authored
 `PublicInputError` messages may provide a specific safe reason; every other
 `ValueError` is reduced to `request input is invalid`, so identifiers embedded in
 invariant failures are not reflected to clients.
+
+Every HTTP response uses `Cache-Control: no-store`, `Pragma: no-cache`,
+`X-Content-Type-Options: nosniff`, deny framing/referrers, and disables browser device
+permissions. `/api/v1` responses also vary on `X-API-Key`. HSTS belongs at the trusted
+TLS edge and is not inferred from client-controlled forwarding headers.

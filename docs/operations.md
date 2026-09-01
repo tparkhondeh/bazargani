@@ -63,6 +63,12 @@ specific reason. A generic `request input is invalid` can represent a rejected d
 invariant; investigate by correlation ID and never expose the underlying exception or
 payload in a client-facing response.
 
+The app marks all responses `no-store`/`no-cache` and sets anti-sniff/frame/referrer
+and browser-permission headers. The TLS reverse proxy must independently set HSTS only
+after HTTPS is correctly enforced for the approved domain; do not derive HSTS from an
+untrusted `X-Forwarded-Proto` value. Preserve the app's headers on `401`, `413`, `422`,
+`429`, and `503` responses.
+
 `TRADE_AGENT_API_RATE_LIMIT_REQUESTS` defaults to `120` and is bounded to 1–100,000;
 `TRADE_AGENT_API_RATE_LIMIT_WINDOW_SECONDS` defaults to `60` and is bounded to
 1–3,600. This budget is per tenant **and per application process**. Configure a

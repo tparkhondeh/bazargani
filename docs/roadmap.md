@@ -43,7 +43,8 @@ per-process fixed-window baseline is implemented with shared budgets across rota
 keys, stable `429` responses, and explicit multi-worker limitations. Request-schema
 errors use a bounded non-reflective public contract that excludes rejected values and
 validation context. Domain/parser exception messages are private by default and only
-explicit safe input errors cross the HTTP boundary.
+explicit safe input errors cross the HTTP boundary. No-store and browser response
+hardening apply consistently to success and error paths; TLS/HSTS remains an edge gate.
 Deterministic data-quality validation, exact
 observation deduplication, persisted validation issues, and explainable confidence are
 implemented. The deterministic product-match baseline and persistence are implemented;

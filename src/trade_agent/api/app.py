@@ -19,6 +19,7 @@ from trade_agent.api.auth import (
 from trade_agent.api.logging import configure_logging
 from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
 from trade_agent.api.rate_limit import RateLimitExceeded, TenantRateLimiter
+from trade_agent.api.response_headers import apply_response_security_headers
 from trade_agent.api.schemas import (
     AuditEventPageView,
     DecisionReportView,
@@ -119,6 +120,7 @@ def create_app(
         request.state.correlation_id = request_correlation_id
         response = await call_next(request)
         response.headers["X-Correlation-ID"] = request_correlation_id
+        apply_response_security_headers(response, path=request.url.path)
         logger.info(
             "request_completed",
             extra={
