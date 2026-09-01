@@ -18,8 +18,9 @@ user identity, reports, and production infrastructure.
   output encoding, bounded inputs, and safe report rendering.
 - **Abusive acquisition:** per-provider allowlists, terms review, rate limits,
   robots/policy compliance, timeouts, caching, and a kill switch.
-- **Supply chain:** pinned lockfile once dependencies enter, automated advisory scan,
-  license inventory, reviewed upgrades, and isolated build credentials.
+- **Supply chain:** exact reviewed lockfile, blocking automated advisory scan against
+  that lock, direct-dependency license inventory, reviewed upgrades, pinned CI actions
+  and service images, and isolated build credentials.
 - **Unauthorized actions:** authentication/authorization at the API boundary,
   tenant-aware repositories, auditable state transitions, and human approval before
   external communication or purchasing.
@@ -58,6 +59,11 @@ results, ignores environment proxies, bounds response bytes, and retries transpo
 server failures. The API requires authentication to limit anonymous abuse. Only
 successful parsed observations enter the TTL cache; a provider failure returns `502`
 without serving a stale value as if it were current.
+
+`pip-audit` checks the exact Python lock in every CI run and fails on known published
+advisories. The lock and `THIRD_PARTY_NOTICES.md` are reviewed together whenever a
+dependency changes. A clean advisory result is point-in-time evidence, not a guarantee
+that a dependency is defect-free; repeat the gate for every change and release.
 
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.

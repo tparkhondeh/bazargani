@@ -51,7 +51,13 @@ data.
 python -m unittest discover -s tests
 python -m ruff check .
 python -m mypy
+python -m compileall -q src tests
+python -m pip check
+python -m pip_audit -r requirements.lock --strict --progress-spinner off
 ```
+
+The advisory audit requires network access and fails the local/CI gate when a known
+vulnerability is reported for the exact locked environment.
 
 See `docs/` for specification, architecture, security, data model, source
 strategy, open-source evaluation, testing strategy, and roadmap.

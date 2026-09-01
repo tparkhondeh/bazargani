@@ -13,6 +13,15 @@ python -m alembic upgrade head
 python -m trade_agent.api.run
 ```
 
+Before a dependency change is committed, resolve and review the exact lock, update
+`THIRD_PARTY_NOTICES.md`, and run the blocking compatibility/advisory checks:
+
+```powershell
+python -m pip install -r requirements.lock
+python -m pip check
+python -m pip_audit -r requirements.lock --strict --progress-spinner off
+```
+
 For authenticated local or staging operation, generate a random key, configure only
 its SHA-256 digest, and send the original key as `X-API-Key`. Keep the raw key in an
 approved secret manager, not in `.env`, shell history, source control, or logs.

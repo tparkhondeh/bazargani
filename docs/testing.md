@@ -59,6 +59,12 @@ against PostgreSQL (including Decimal, JSON, tenant, audit, and idempotency beha
 then verifies a complete rollback and re-upgrade. The PostgreSQL test skips locally
 unless `TRADE_AGENT_TEST_POSTGRES_URL` is explicitly configured.
 
+The same workflow installs only the exact `requirements.lock` environment, verifies
+package compatibility with `pip check`, and runs a strict `pip-audit` advisory scan
+against that lock. The audit needs network access to current vulnerability data and a
+reported known vulnerability blocks the quality job; exceptions must be explicitly
+reviewed and documented rather than silently ignored.
+
 SQLite integration connections explicitly enable foreign-key enforcement, so local
 tests reject invalid parent/child flush ordering instead of deferring its discovery to
 PostgreSQL. Parent scenario rows are flushed before their component ledger entries.
