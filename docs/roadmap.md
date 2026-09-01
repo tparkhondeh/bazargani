@@ -19,7 +19,9 @@ Scenario-specific point-in-time FX overrides and persisted scenario lineage are 
 implemented. A provenance-rich run endpoint exposes the exact rates used without raw
 evidence bodies; automated Iran-market FX sources remain blocked on source approval.
 Structured assumption/unknown snapshots are implemented at run and latest-decision
-level. A correction/recalculation workflow that creates a successor run remains future
+level. Explicit correction now creates an idempotent, predecessor-linked empty successor
+run, preserves old report hashes, and requires the corrected full bundle to pass the
+ordinary calculation pipeline. Selective dependency-graph recalculation remains future
 work; immutable completed runs are not edited in place.
 A structured data-gap projection now combines validation errors/warnings and individual
 declared unknowns for API and report consumers, while explicitly refusing to equate an

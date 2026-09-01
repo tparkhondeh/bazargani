@@ -80,8 +80,18 @@ class ResearchRunRecord(Base):
     __tablename__ = "research_runs"
     __table_args__ = (
         CheckConstraint("version > 0", name="ck_research_runs_version_positive"),
+        CheckConstraint(
+            "(supersedes_research_run_id IS NULL AND recalculation_reason IS NULL) OR "
+            "(supersedes_research_run_id IS NOT NULL AND recalculation_reason IS NOT NULL)",
+            name="ck_research_runs_recalculation_lineage",
+        ),
+        CheckConstraint(
+            "supersedes_research_run_id IS NULL OR supersedes_research_run_id <> id",
+            name="ck_research_runs_not_self_superseding",
+        ),
         Index("ix_research_runs_opportunity_created_at", "opportunity_id", "created_at"),
         Index("ix_research_runs_tenant_created_at", "tenant_id", "created_at"),
+        Index("ix_research_runs_supersedes", "supersedes_research_run_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -89,6 +99,10 @@ class ResearchRunRecord(Base):
     opportunity_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("opportunities.id", ondelete="CASCADE")
     )
+    supersedes_research_run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("research_runs.id"), nullable=True
+    )
+    recalculation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30))
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

@@ -271,3 +271,12 @@ audit attribution without rationale, stale-version conflict, cross-tenant `404`,
 latest-state projection, report hash immutability, and unchanged ranking/due diligence.
 PostgreSQL integration covers migration `20260901_0014`, native constraints, row-lock
 version behavior, projection reads, and full rollback/re-upgrade.
+
+Recalculation-lineage tests require a report-bearing source and valid expected version,
+normalize the bounded reason, reject missing keys, preserve tenant-hiding `404`, and
+prove identical retries return one successor while changed payloads conflict. They also
+prove the successor starts without a report, run history exposes lineage, audit omits
+the reason, the predecessor hash never changes, and latest-decision advances only after
+the corrected bundle creates a new report. PostgreSQL integration exercises native
+self-reference/check constraints, idempotency persistence, migration `20260901_0015`,
+and rollback/re-upgrade.

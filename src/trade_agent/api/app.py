@@ -58,6 +58,8 @@ from trade_agent.api.schemas import (
     ResearchRunView,
     ResearchValidationView,
     ScenarioFXRateView,
+    SuccessorResearchRunCreate,
+    SuccessorResearchRunView,
     SupplierCoverageSummaryView,
     SupplierIdentityClaimReviewSubmit,
     SupplierIdentityClaimReviewView,
@@ -68,6 +70,7 @@ from trade_agent.api.schemas import (
 from trade_agent.api.validation_errors import safe_validation_details
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.application.pagination import MAX_CURSOR_LENGTH, decode_cursor
+from trade_agent.application.recalculation import create_successor_research_run
 from trade_agent.application.reference_rates import (
     CachedReferenceRateService,
     ProviderRuntimeHealthStatus,
@@ -490,6 +493,37 @@ def create_app(
             after=decode_cursor(after),
         )
         return {"items": items, "next_cursor": next_cursor}
+
+    @app.post(
+        "/api/v1/research-runs/{run_id}/successors",
+        response_model=SuccessorResearchRunView,
+        status_code=201,
+    )
+    def create_successor_run(
+        run_id: str,
+        payload: SuccessorResearchRunCreate,
+        idempotency_key: Annotated[
+            str,
+            Header(
+                alias="Idempotency-Key",
+                min_length=1,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9._:-]+$",
+            ),
+        ],
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return create_successor_research_run(
+            repository,
+            source_run_id=run_id,
+            reason=payload.reason,
+            expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+            idempotency_key=idempotency_key,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
+        )
 
     @app.post(
         "/api/v1/research-runs/{run_id}/transitions",

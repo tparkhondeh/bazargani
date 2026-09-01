@@ -23,4 +23,5 @@ recalculate dependent results in a future workflow.
   database content.
 - Opportunity workflow notes remain a separate mutable concern with value-redacted
   audit metadata.
-- Successor-run lineage and selective dependency recalculation remain future work.
+- ADR 0033 implements successor-run lineage and full deterministic recalculation;
+  selective dependency recomputation remains future work.

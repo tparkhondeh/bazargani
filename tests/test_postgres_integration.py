@@ -18,6 +18,7 @@ from trade_agent.infrastructure.database import (
     LandedCostScenarioRecord,
     OpportunityRecord,
     ResearchReviewRecord,
+    ResearchRunRecord,
     SupplierIdentityClaimRecord,
     SupplierIdentityClaimReviewRecord,
 )
@@ -55,7 +56,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0014")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0015")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         bundle["supplier_identity_claims"] = [
@@ -147,11 +148,42 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(review.status_code, 201)
         self.assertEqual(review.json()["resulting_status"], "COMPLETED")
 
+        successor_path = f"/api/v1/research-runs/{run['id']}/successors"
+        successor_payload = {
+            "expected_version": review.json()["resulting_version"],
+            "reason": "PostgreSQL fixture requires an explicit recalculation run",
+        }
+        successor = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "postgres-ci-successor"},
+            json=successor_payload,
+        )
+        successor_replay = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "postgres-ci-successor"},
+            json=successor_payload,
+        )
+        self.assertEqual(successor.status_code, 201)
+        self.assertEqual(successor.json()["supersedes_research_run_id"], run["id"])
+        self.assertFalse(successor.json()["idempotency_replayed"])
+        self.assertEqual(successor_replay.status_code, 201)
+        self.assertEqual(successor_replay.json()["id"], successor.json()["id"])
+        self.assertTrue(successor_replay.json()["idempotency_replayed"])
+        self.assertEqual(
+            self.client.get(
+                f"/api/v1/research-runs/{successor.json()['id']}/report"
+            ).status_code,
+            404,
+        )
+
         latest_decision = self.client.get(
             f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
         )
         self.assertEqual(latest_decision.status_code, 200)
         self.assertEqual(latest_decision.json()["research_run"]["id"], run["id"])
+        self.assertIsNone(
+            latest_decision.json()["research_run"]["supersedes_research_run_id"]
+        )
         self.assertEqual(
             latest_decision.json()["report"]["content_sha256"],
             completed["report_sha256"],
@@ -529,16 +561,27 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .select_from(SupplierIdentityClaimReviewRecord)
                 .where(SupplierIdentityClaimReviewRecord.research_run_id == run["id"])
             )
+            successor_lineage = connection.execute(
+                select(
+                    ResearchRunRecord.supersedes_research_run_id,
+                    ResearchRunRecord.recalculation_reason,
+                ).where(ResearchRunRecord.id == successor.json()["id"])
+            ).one()
 
         self.assertEqual(tenant_id, "postgres-ci")
         self.assertIsInstance(total, Decimal)
         self.assertIsInstance(audit_payload, dict)
         self.assertEqual(len(audit_ids), audit_count)
-        self.assertEqual(idempotency_count, 1)
+        self.assertEqual(idempotency_count, 2)
         self.assertEqual(review_count, 1)
         self.assertEqual(identity_claim_count, 1)
         self.assertEqual(identity_claim_review_count, 1)
         self.assertIsNotNone(identity_claim_database_id)
+        self.assertEqual(successor_lineage.supersedes_research_run_id, run["id"])
+        self.assertEqual(
+            successor_lineage.recalculation_reason,
+            successor_payload["reason"],
+        )
 
         with self.assertRaises(IntegrityError), self.engine.begin() as connection:
             connection.execute(
@@ -555,6 +598,37 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                     previous_version=0,
                     resulting_version=1,
                     created_at=func.now(),
+                )
+            )
+
+        with self.assertRaises(IntegrityError), self.engine.begin() as connection:
+            connection.execute(
+                insert(ResearchRunRecord).values(
+                    id=str(uuid4()),
+                    tenant_id="postgres-ci",
+                    opportunity_id=opportunity["id"],
+                    supersedes_research_run_id=None,
+                    recalculation_reason="Orphaned recalculation reason",
+                    status="CREATED",
+                    version=1,
+                    created_at=func.now(),
+                    updated_at=func.now(),
+                )
+            )
+
+        self_superseding_id = str(uuid4())
+        with self.assertRaises(IntegrityError), self.engine.begin() as connection:
+            connection.execute(
+                insert(ResearchRunRecord).values(
+                    id=self_superseding_id,
+                    tenant_id="postgres-ci",
+                    opportunity_id=opportunity["id"],
+                    supersedes_research_run_id=self_superseding_id,
+                    recalculation_reason="Invalid self-reference",
+                    status="CREATED",
+                    version=1,
+                    created_at=func.now(),
+                    updated_at=func.now(),
                 )
             )
 

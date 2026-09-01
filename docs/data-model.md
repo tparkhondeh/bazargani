@@ -97,6 +97,13 @@ one-version increments, initial `UNREVIEWED` semantics, and uniqueness per claim
 The live claim projection folds the latest ledger row; the immutable decision report
 continues to represent the ingestion-time snapshot.
 
+Migration `20260901_0015` adds nullable `supersedes_research_run_id` and
+`recalculation_reason` to research runs. Existing and independently created runs keep
+both null. A successor must set both, reference another run, and cannot reference itself;
+the repository additionally enforces same tenant/opportunity and a report-bearing source.
+An index supports predecessor-to-successor history. Result tables remain linked only to
+their own run, so lineage never aliases or copies evidence, scenarios, or reports.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

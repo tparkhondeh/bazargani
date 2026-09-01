@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from trade_agent.application.research import ResearchResult
@@ -26,6 +27,19 @@ class ResearchCompletion:
     supplier_identity_claim_count: int = 0
 
 
+@dataclass(frozen=True, slots=True)
+class SuccessorResearchRun:
+    id: str
+    opportunity_id: str
+    status: str
+    version: int
+    created_at: datetime
+    updated_at: datetime
+    supersedes_research_run_id: str
+    recalculation_reason: str
+    idempotency_replayed: bool
+
+
 class ResearchResultWriter(Protocol):
     def replay_research_result(
         self,
@@ -49,3 +63,27 @@ class ResearchResultWriter(Protocol):
         tenant_id: str,
         actor_id: str,
     ) -> ResearchCompletion: ...
+
+
+class SuccessorResearchRunWriter(Protocol):
+    def replay_successor_research_run(
+        self,
+        *,
+        source_run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        tenant_id: str,
+    ) -> SuccessorResearchRun | None: ...
+
+    def persist_successor_research_run(
+        self,
+        *,
+        source_run_id: str,
+        reason: str,
+        expected_version: int,
+        correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> SuccessorResearchRun: ...

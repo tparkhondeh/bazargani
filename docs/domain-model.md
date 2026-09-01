@@ -155,7 +155,10 @@ Research assumptions and unknowns are separate immutable note collections. API v
 normalize them into deterministic text order and expose them both at run level and in
 the latest opportunity decision. They are not opportunity workflow notes and cannot be
 patched in place. A correction belongs to a new research run whose dependant results
-are explicitly recalculated.
+are explicitly recalculated. A successor records its predecessor and normalized reason,
+starts with no evidence/results, and must receive a complete corrected bundle through
+the normal pipeline. Multiple intentional successor attempts may coexist; only a
+report-bearing run participates in latest-decision selection.
 
 The data-gap summary is a read projection over the immutable validation issue ledger
 and declared unknown notes. Errors take precedence over warnings; otherwise any warning

@@ -388,6 +388,225 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(hidden.status_code, 404)
         self.assertEqual(hidden.json()["code"], "NOT_FOUND")
 
+    def test_recalculation_creates_an_idempotent_successor_without_mutating_history(
+        self,
+    ) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        source = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        successor_path = f"/api/v1/research-runs/{source['id']}/successors"
+        no_idempotency_key = self.client.post(
+            successor_path,
+            json={"expected_version": 1, "reason": "Correct a cost assumption"},
+        )
+        blank_reason = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "recalculation-blank-reason"},
+            json={"expected_version": 1, "reason": "   "},
+        )
+        no_result = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "recalculation-before-result"},
+            json={"expected_version": 1, "reason": "Correct a cost assumption"},
+        )
+        self.assertEqual(no_idempotency_key.status_code, 422)
+        self.assertEqual(blank_reason.status_code, 422)
+        self.assertEqual(blank_reason.json()["code"], "INVALID_INPUT")
+        self.assertEqual(no_result.status_code, 409)
+        self.assertEqual(no_result.json()["code"], "INVALID_TRANSITION")
+
+        running = self.client.post(
+            f"/api/v1/research-runs/{source['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": source["version"]},
+        ).json()
+        completed = self.client.post(
+            f"/api/v1/research-runs/{source['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "recalculation-source-result"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        ).json()
+        source_report_before = self.client.get(
+            f"/api/v1/research-runs/{source['id']}/report"
+        ).json()
+        reason = "Correct the synthetic freight assumption from 1000 to 1100 IRR"
+        request_body = {
+            "expected_version": completed["version"],
+            "reason": f"  {reason}  ",
+        }
+        successor = self.client.post(
+            successor_path,
+            headers={
+                "Idempotency-Key": "recalculation-successor-1",
+                "X-Correlation-ID": "806d584e-b7a0-45e5-acf9-0271e7b9a1d8",
+            },
+            json=request_body,
+        )
+        replay = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "recalculation-successor-1"},
+            json={"expected_version": completed["version"], "reason": reason},
+        )
+        conflict = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "recalculation-successor-1"},
+            json={**request_body, "reason": "A different correction"},
+        )
+        stale = self.client.post(
+            successor_path,
+            headers={"Idempotency-Key": "recalculation-stale-version"},
+            json={"expected_version": completed["version"] - 1, "reason": reason},
+        )
+        hidden = self.client.post(
+            successor_path,
+            headers={
+                "Idempotency-Key": "recalculation-other-tenant",
+                "X-API-Key": self.other_api_key,
+            },
+            json=request_body,
+        )
+
+        self.assertEqual(successor.status_code, 201)
+        successor_body = successor.json()
+        self.assertEqual(successor_body["status"], "CREATED")
+        self.assertEqual(successor_body["version"], 1)
+        self.assertEqual(successor_body["opportunity_id"], opportunity["id"])
+        self.assertEqual(successor_body["supersedes_research_run_id"], source["id"])
+        self.assertEqual(successor_body["recalculation_reason"], reason)
+        self.assertFalse(successor_body["idempotency_replayed"])
+        self.assertEqual(replay.status_code, 201)
+        self.assertEqual(replay.json()["id"], successor_body["id"])
+        self.assertTrue(replay.json()["idempotency_replayed"])
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "IDEMPOTENCY_CONFLICT")
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(hidden.status_code, 404)
+        self.assertEqual(
+            self.client.get(
+                f"/api/v1/research-runs/{successor_body['id']}/report"
+            ).status_code,
+            404,
+        )
+        with self.engine.connect() as connection:
+            self.assertEqual(
+                connection.scalar(
+                    select(func.count())
+                    .select_from(EvidenceRecord)
+                    .where(EvidenceRecord.research_run_id == successor_body["id"])
+                ),
+                0,
+            )
+            self.assertEqual(
+                connection.scalar(
+                    select(func.count())
+                    .select_from(DecisionReportRecord)
+                    .where(DecisionReportRecord.research_run_id == successor_body["id"])
+                ),
+                0,
+            )
+
+        run_history = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()["items"]
+        history_by_id = {item["id"]: item for item in run_history}
+        self.assertIsNone(history_by_id[source["id"]]["supersedes_research_run_id"])
+        self.assertIsNone(history_by_id[source["id"]]["recalculation_reason"])
+        self.assertEqual(
+            history_by_id[successor_body["id"]]["supersedes_research_run_id"],
+            source["id"],
+        )
+        latest_before_recalculation = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
+        ).json()
+        self.assertEqual(latest_before_recalculation["research_run"]["id"], source["id"])
+
+        successor_running = self.client.post(
+            f"/api/v1/research-runs/{successor_body['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        corrected_bundle = deepcopy(bundle)
+        corrected_bundle["case_id"] = "DEMO-EXPLICIT-RECALCULATION"
+        corrected_bundle["assumptions"].append(reason)
+        for scenario in corrected_bundle["scenarios"]:
+            scenario["costs"][0]["money"]["amount"] = "1100"
+        corrected = self.client.post(
+            f"/api/v1/research-runs/{successor_body['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "recalculation-corrected-result"},
+            json={
+                "expected_version": successor_running["version"],
+                "bundle": corrected_bundle,
+            },
+        )
+        self.assertEqual(corrected.status_code, 200)
+        corrected_report = self.client.get(
+            f"/api/v1/research-runs/{successor_body['id']}/report"
+        ).json()
+        source_report_after = self.client.get(
+            f"/api/v1/research-runs/{source['id']}/report"
+        ).json()
+        latest_after_recalculation = self.client.get(
+            f"/api/v1/opportunities/{opportunity['id']}/latest-decision"
+        ).json()
+        self.assertNotEqual(
+            corrected_report["content_sha256"],
+            source_report_before["content_sha256"],
+        )
+        self.assertEqual(
+            source_report_after["content_sha256"],
+            source_report_before["content_sha256"],
+        )
+        self.assertEqual(
+            latest_after_recalculation["research_run"]["id"],
+            successor_body["id"],
+        )
+        self.assertEqual(
+            latest_after_recalculation["research_run"]["supersedes_research_run_id"],
+            source["id"],
+        )
+
+        with self.engine.connect() as connection:
+            lineage = connection.execute(
+                select(
+                    ResearchRunRecord.supersedes_research_run_id,
+                    ResearchRunRecord.recalculation_reason,
+                ).where(ResearchRunRecord.id == successor_body["id"])
+            ).one()
+            recalculation_audit = connection.execute(
+                select(
+                    AuditEventRecord.correlation_id,
+                    AuditEventRecord.payload,
+                ).where(
+                    AuditEventRecord.aggregate_id == successor_body["id"],
+                    AuditEventRecord.action == "CREATED_AS_RECALCULATION",
+                )
+            ).one()
+            idempotency_count = connection.scalar(
+                select(func.count()).select_from(IdempotencyRecord)
+            )
+        self.assertEqual(lineage.supersedes_research_run_id, source["id"])
+        self.assertEqual(lineage.recalculation_reason, reason)
+        self.assertEqual(
+            recalculation_audit.correlation_id,
+            "806d584e-b7a0-45e5-acf9-0271e7b9a1d8",
+        )
+        self.assertEqual(
+            recalculation_audit.payload,
+            {
+                "supersedes_research_run_id": source["id"],
+                "source_version": completed["version"],
+            },
+        )
+        self.assertNotIn(reason, json.dumps(recalculation_audit.payload))
+        self.assertEqual(idempotency_count, 3)
+
     def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
         health = self.client.get("/health", headers={"X-API-Key": ""})
         readiness = self.client.get("/ready", headers={"X-API-Key": ""})

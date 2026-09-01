@@ -115,6 +115,14 @@ drift from evidence. Empty newer runs are skipped. The projection preserves rank
 and leaves report content unmodified; any future HTML UI must render it with a strict
 sanitization policy.
 
+Explicit recalculation creates a new empty research-run aggregate with a self-referencing
+predecessor ID and bounded reason. The application layer canonicalizes and hashes the
+source ID, source version, and normalized reason. The repository checks idempotency,
+locks the tenant-owned source run, requires its immutable report, and atomically inserts
+the successor, audit event, and idempotency response. No result/evidence rows are copied.
+The ordinary pipeline must produce a new report before latest-decision selection changes;
+the predecessor remains byte-for-byte unchanged.
+
 The opportunity decision view also builds the executive summary from those same joined
 validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
 opportunity policy identical and prevents a client from combining a summary with a

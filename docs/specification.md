@@ -97,6 +97,10 @@ unknown or requires human verification?
   label the identity verified or mutate the original report snapshot.
 - Assumptions and unknowns remain distinct, bounded, tenant-scoped run snapshots and
   are visible in the current decision without permitting historical mutation.
+- A correction creates an idempotent tenant-scoped successor linked to a report-bearing
+  source run under an expected-version lock. It copies no evidence or result rows; the
+  corrected full bundle is recalculated normally, while the predecessor report/hash
+  remains unchanged and visible in history.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,
   headings, or additional links; client rendering remains separately sanitized.
 - Every automated provider exposes controlled scope/limitations/terms status and a

@@ -35,7 +35,7 @@ from trade_agent.application.offer_terms_coverage import (
     summarize_offer_terms_coverage,
 )
 from trade_agent.application.pagination import PageCursor, encode_cursor
-from trade_agent.application.ports import ResearchCompletion
+from trade_agent.application.ports import ResearchCompletion, SuccessorResearchRun
 from trade_agent.application.price_distribution import (
     DistributionPricePoint,
     analyze_price_distribution,
@@ -381,6 +381,154 @@ class TradeRepository:
                 {},
             )
         return record
+
+    def persist_successor_research_run(
+        self,
+        *,
+        source_run_id: str,
+        reason: str,
+        expected_version: int,
+        correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> SuccessorResearchRun:
+        scope = f"research-successor:{tenant_id}:{source_run_id}"
+        try:
+            return self._persist_successor_research_run_once(
+                source_run_id=source_run_id,
+                reason=reason,
+                expected_version=expected_version,
+                correlation_id=correlation_id,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                scope=scope,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+            )
+        except IntegrityError:
+            replay = self._load_idempotent_successor(
+                scope=scope,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                tenant_id=tenant_id,
+            )
+            if replay is None:
+                raise
+            return replay
+
+    def replay_successor_research_run(
+        self,
+        *,
+        source_run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        tenant_id: str,
+    ) -> SuccessorResearchRun | None:
+        return self._load_idempotent_successor(
+            scope=f"research-successor:{tenant_id}:{source_run_id}",
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            tenant_id=tenant_id,
+        )
+
+    def _persist_successor_research_run_once(
+        self,
+        *,
+        source_run_id: str,
+        reason: str,
+        expected_version: int,
+        correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        scope: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> SuccessorResearchRun:
+        if not idempotency_key.strip() or len(idempotency_key) > 128:
+            raise PublicInputError("idempotency_key must contain 1 to 128 characters")
+        if not 3 <= len(reason) <= 2_000 or reason != reason.strip():
+            raise PublicInputError("recalculation reason must contain 3 to 2000 characters")
+        with self._session_factory.begin() as session:
+            idempotency = session.scalar(
+                select(IdempotencyRecord).where(
+                    IdempotencyRecord.scope == scope,
+                    IdempotencyRecord.idempotency_key == idempotency_key,
+                    IdempotencyRecord.tenant_id == tenant_id,
+                )
+            )
+            if idempotency is not None:
+                return self._successor_from_idempotency(
+                    session,
+                    idempotency,
+                    request_hash,
+                )
+            source_run = session.scalar(
+                select(ResearchRunRecord)
+                .where(
+                    ResearchRunRecord.id == source_run_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
+            if source_run is None:
+                raise KeyError("research run not found")
+            if source_run.version != expected_version:
+                raise VersionConflictError(
+                    f"expected version {expected_version}, current version {source_run.version}"
+                )
+            report_id = session.scalar(
+                select(DecisionReportRecord.id).where(
+                    DecisionReportRecord.research_run_id == source_run_id
+                )
+            )
+            if report_id is None:
+                raise InvalidTransitionError(
+                    "a successor requires an immutable research result snapshot"
+                )
+            now = datetime.now(UTC)
+            successor = ResearchRunRecord(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                opportunity_id=source_run.opportunity_id,
+                supersedes_research_run_id=source_run.id,
+                recalculation_reason=reason,
+                status=ResearchRunStatus.CREATED.value,
+                version=1,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(successor)
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "ResearchRun",
+                successor.id,
+                "CREATED_AS_RECALCULATION",
+                {
+                    "supersedes_research_run_id": source_run.id,
+                    "source_version": source_run.version,
+                },
+            )
+            session.add(
+                IdempotencyRecord(
+                    id=str(uuid4()),
+                    tenant_id=tenant_id,
+                    scope=scope,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    response_payload={"research_run_id": successor.id},
+                    created_at=now,
+                )
+            )
+            response = self._successor_from_record(
+                successor,
+                idempotency_replayed=False,
+            )
+        return response
 
     def list_research_runs(
         self,
@@ -2381,6 +2529,81 @@ class TradeRepository:
             if record is None:
                 return None
             return self._completion_from_idempotency(record, request_hash)
+
+    def _load_idempotent_successor(
+        self,
+        *,
+        scope: str,
+        idempotency_key: str,
+        request_hash: str,
+        tenant_id: str,
+    ) -> SuccessorResearchRun | None:
+        with self._session_factory() as session:
+            record = session.scalar(
+                select(IdempotencyRecord).where(
+                    IdempotencyRecord.scope == scope,
+                    IdempotencyRecord.idempotency_key == idempotency_key,
+                    IdempotencyRecord.tenant_id == tenant_id,
+                )
+            )
+            if record is None:
+                return None
+            return self._successor_from_idempotency(
+                session,
+                record,
+                request_hash,
+            )
+
+    @classmethod
+    def _successor_from_idempotency(
+        cls,
+        session: Session,
+        record: IdempotencyRecord,
+        request_hash: str,
+    ) -> SuccessorResearchRun:
+        if record.request_hash != request_hash:
+            raise IdempotencyConflictError(
+                "idempotency key was already used with a different request payload"
+            )
+        run_id = record.response_payload.get("research_run_id")
+        if not isinstance(run_id, str):
+            raise RuntimeError("stored successor idempotency response is invalid")
+        successor = session.scalar(
+            select(ResearchRunRecord).where(
+                ResearchRunRecord.id == run_id,
+                ResearchRunRecord.tenant_id == record.tenant_id,
+                ResearchRunRecord.supersedes_research_run_id.is_not(None),
+            )
+        )
+        if successor is None:
+            raise RuntimeError("stored successor research run is unavailable")
+        return cls._successor_from_record(
+            successor,
+            idempotency_replayed=True,
+        )
+
+    @staticmethod
+    def _successor_from_record(
+        record: ResearchRunRecord,
+        *,
+        idempotency_replayed: bool,
+    ) -> SuccessorResearchRun:
+        if (
+            record.supersedes_research_run_id is None
+            or record.recalculation_reason is None
+        ):
+            raise RuntimeError("research run does not have recalculation lineage")
+        return SuccessorResearchRun(
+            id=record.id,
+            opportunity_id=record.opportunity_id,
+            status=record.status,
+            version=record.version,
+            created_at=_database_utc(record.created_at),
+            updated_at=_database_utc(record.updated_at),
+            supersedes_research_run_id=record.supersedes_research_run_id,
+            recalculation_reason=record.recalculation_reason,
+            idempotency_replayed=idempotency_replayed,
+        )
 
     @staticmethod
     def _require_research_run(

@@ -103,6 +103,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/opportunities/{id}/latest-decision`
 - `POST /api/v1/opportunities/{id}/research-runs`
 - `GET /api/v1/opportunities/{id}/research-runs`
+- `POST /api/v1/research-runs/{id}/successors`
 - `POST /api/v1/research-runs/{id}/transitions`
 - `POST /api/v1/research-runs/{id}/reviews`
 - `GET /api/v1/research-runs/{id}/reviews`
@@ -239,7 +240,12 @@ Assumptions and unknowns are available as a tenant-scoped structured run snapsho
 are embedded in the latest-decision projection for result UI use. Notes must be
 non-empty strings, are limited to 5,000 characters each and 200 per kind, and are
 whitespace-normalized before persistence. Completed research runs remain immutable;
-correction requires a new run and an explicit recalculation rather than history edits.
+correction uses an idempotently created successor run with an explicit reason and
+source-version check rather than history edits. The successor begins empty: old evidence,
+calculations, and reports are never copied as current input. Its full corrected bundle
+must pass the normal deterministic pipeline, and only a successor with a new immutable
+report can become the latest decision. Run history exposes the predecessor link and
+reason while audit metadata omits the reason's commercial text.
 
 The run evidence catalog returns each deduplicated evidence record's source metadata,
 classification, confidence, transformation, SHA-256 fingerprint, and deterministic

@@ -153,6 +153,13 @@ to a research run and bound to a canonical SHA-256 request hash; a key cannot be
 to substitute a different payload. Keys and hashes are operational metadata, never
 authorization credentials.
 
+Successor-run creation independently scopes idempotency to tenant and source run, locks
+and authorizes the source, checks its version, and requires an existing immutable report.
+Cross-tenant calls return `404`. The normalized recalculation reason is visible in
+authorized run history but is not duplicated into audit payloads; audit records only
+predecessor ID and source version. Successors copy no raw evidence, report, or calculated
+row, preventing stale historical values from silently becoming current inputs.
+
 POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length` is
 missing. The default application limit is 2 MB and the reverse proxy must enforce an
 equal or smaller limit in production. Evidence collections have separate item-count

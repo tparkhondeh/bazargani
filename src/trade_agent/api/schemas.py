@@ -81,6 +81,8 @@ class ResearchRunView(BaseModel):
 
     id: str
     opportunity_id: str
+    supersedes_research_run_id: str | None
+    recalculation_reason: str | None
     status: str
     version: int
     created_at: datetime
@@ -90,6 +92,17 @@ class ResearchRunView(BaseModel):
 class ResearchRunPageView(BaseModel):
     items: list[ResearchRunView]
     next_cursor: str | None
+
+
+class SuccessorResearchRunCreate(BaseModel):
+    expected_version: int = Field(gt=0)
+    reason: str = Field(min_length=3, max_length=2_000)
+
+
+class SuccessorResearchRunView(ResearchRunView):
+    supersedes_research_run_id: str
+    recalculation_reason: str
+    idempotency_replayed: bool
 
 
 class AuditEventView(BaseModel):
