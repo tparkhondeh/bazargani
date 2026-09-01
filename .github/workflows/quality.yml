@@ -57,7 +57,7 @@ jobs:
 
       - name: Verify installable UI assets
         run: |
-          python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+          python -m pip wheel --no-deps --wheel-dir dist .
           python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/app.css"
           python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/app.js"
           python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/index.html"
