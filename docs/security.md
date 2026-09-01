@@ -31,3 +31,8 @@ Evidence-bundle mutations require bounded, URL-safe idempotency keys. Keys are s
 to a research run and bound to a canonical SHA-256 request hash; a key cannot be used
 to substitute a different payload. Keys and hashes are operational metadata, never
 authorization credentials.
+
+POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length` is
+missing. The default application limit is 2 MB and the reverse proxy must enforce an
+equal or smaller limit in production. Evidence collections have separate item-count
+caps. A `413` response preserves the correlation ID but never echoes request content.

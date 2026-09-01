@@ -85,3 +85,8 @@ Every evidence-bundle submission also requires an `Idempotency-Key` header conta
 completion with `idempotency_replayed=true`; reusing the key for a different run body
 returns `409 IDEMPOTENCY_CONFLICT`. The idempotency record is committed in the same
 transaction as the research result.
+
+Mutating HTTP requests are capped at 2,000,000 bytes by default, including chunked
+requests without `Content-Length`; oversized requests receive `413 REQUEST_TOO_LARGE`.
+The evidence parser also caps observations (500), FX rates (100), scenarios (3),
+costs per scenario (100), notes per kind (200), and product attributes (100).

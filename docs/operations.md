@@ -13,6 +13,10 @@ python -m alembic upgrade head
 python -m trade_agent.api.run
 ```
 
+`TRADE_AGENT_MAX_REQUEST_BODY_BYTES` defaults to `2000000` and is constrained to
+1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
+the application limit remains a required defense for direct/internal traffic.
+
 SQLite auto-schema mode is allowed only for local development and tests. Production
 requires PostgreSQL and Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`).
 

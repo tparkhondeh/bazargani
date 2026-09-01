@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     database_url: str = "sqlite+pysqlite:///./data/trade_agent.db"
     auto_create_schema: bool = True
+    max_request_body_bytes: int = Field(default=2_000_000, ge=1024, le=10_000_000)
 
     @model_validator(mode="after")
     def validate_production(self) -> Settings:

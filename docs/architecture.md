@@ -48,6 +48,12 @@ request hash. The immutable response snapshot and idempotency record commit in o
 transaction. Same-key/same-hash retries replay the snapshot; same-key/different-hash
 requests fail explicitly, including after a concurrent unique-key race.
 
+The HTTP boundary buffers only bounded mutation bodies. It rejects a declared or
+streamed body above the configured maximum before validation/use-case execution and
+replays accepted chunks unchanged to FastAPI. Independent structural limits prevent a
+small but combinatorially excessive evidence bundle from exhausting calculation or
+database resources.
+
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated

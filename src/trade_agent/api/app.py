@@ -4,7 +4,6 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from typing import Any
-from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
@@ -13,6 +12,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from trade_agent.api.logging import configure_logging
+from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
 from trade_agent.api.schemas import (
     DecisionReportView,
     ErrorBody,
@@ -42,15 +42,6 @@ from trade_agent.parsing.request import parse_trade_request
 logger = logging.getLogger("trade_agent.http")
 
 
-def _correlation_id(value: str | None) -> str:
-    if value:
-        try:
-            return str(UUID(value))
-        except ValueError:
-            pass
-    return str(uuid4())
-
-
 def create_app(settings: Settings | None = None, engine: Engine | None = None) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(resolved.log_level)
@@ -67,25 +58,29 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.6.0",
+        version="0.7.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
     app.state.engine = database_engine
     app.state.sessions = sessions
     app.state.repository = repository
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=resolved.max_request_body_bytes,
+    )
 
     @app.middleware("http")
     async def request_context(request: Request, call_next: Any) -> Any:
         started = time.perf_counter()
-        correlation_id = _correlation_id(request.headers.get("X-Correlation-ID"))
-        request.state.correlation_id = correlation_id
+        request_correlation_id = correlation_id(request.headers.get("X-Correlation-ID"))
+        request.state.correlation_id = request_correlation_id
         response = await call_next(request)
-        response.headers["X-Correlation-ID"] = correlation_id
+        response.headers["X-Correlation-ID"] = request_correlation_id
         logger.info(
             "request_completed",
             extra={
-                "correlation_id": correlation_id,
+                "correlation_id": request_correlation_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,

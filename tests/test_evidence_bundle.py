@@ -1,9 +1,10 @@
+import json
 import unittest
 from dataclasses import replace
 from pathlib import Path
 
 from trade_agent.application.research import execute_research_case
-from trade_agent.providers.evidence_bundle import load_evidence_bundle
+from trade_agent.providers.evidence_bundle import load_evidence_bundle, parse_evidence_bundle
 from trade_agent.reporting.markdown import render_markdown
 
 
@@ -27,6 +28,20 @@ class EvidenceBundleTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "scenario names must be unique"):
             execute_research_case(duplicate)
+
+    def test_bundle_structure_limits_observation_count(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        bundle["observations"] = bundle["observations"] * 501
+
+        with self.assertRaisesRegex(ValueError, "more than 500"):
+            parse_evidence_bundle(bundle)
+
+    def test_bundle_rejects_wrong_nested_container_type(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        bundle["observations"][0]["unit_price"] = []
+
+        with self.assertRaisesRegex(ValueError, "unit_price must be an object"):
+            parse_evidence_bundle(bundle)
 
 
 if __name__ == "__main__":

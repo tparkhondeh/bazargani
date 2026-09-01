@@ -40,3 +40,7 @@ Idempotency integration tests cover required-header validation, first-write resp
 same-key/same-payload replay without duplicate rows, stable report/version hashes, and
 same-key/different-payload conflict. The database unique constraint is retained as the
 final concurrent-write guard.
+
+Request-limit tests cover declared oversized JSON, chunked bodies without a content
+length, unchanged replay under the limit, stable `413`/correlation contracts, excessive
+observation counts, and invalid nested container types.

@@ -345,6 +345,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["code"], "REQUEST_VALIDATION_FAILED")
 
+    def test_oversized_request_is_rejected_with_stable_contract(self) -> None:
+        correlation_id = "343f80ba-1d47-4a56-aee5-901cbff70cb2"
+        response = self.client.post(
+            "/api/v1/requests/parse",
+            headers={"X-Correlation-ID": correlation_id},
+            json={"text": "x" * 2_100_000},
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json()["code"], "REQUEST_TOO_LARGE")
+        self.assertEqual(response.json()["correlation_id"], correlation_id)
+        self.assertEqual(response.headers["X-Correlation-ID"], correlation_id)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,6 +20,8 @@ development environment, backup/restore procedure.
 Status: core foundation implemented. Remaining hardening includes PostgreSQL
 integration in CI, authentication/tenant scope, idempotency retention/cleanup policy,
 and production backup rehearsal. Atomic bundle-submission idempotency is implemented.
+Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
+rate limiting remains part of authentication/production hardening.
 Deterministic data-quality validation, exact
 observation deduplication, persisted validation issues, and explainable confidence are
 implemented. The deterministic product-match baseline and persistence are implemented;
