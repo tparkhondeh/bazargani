@@ -33,6 +33,7 @@ from trade_agent.api.schemas import (
     ExecutiveDecisionSummaryView,
     IncotermCoverageSummaryView,
     LandedCostLedgerView,
+    OfferTermsCoverageSummaryView,
     OpportunityContextUpdate,
     OpportunityCreate,
     OpportunityDecisionView,
@@ -671,6 +672,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_incoterm_coverage(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/offer-terms-coverage",
+        response_model=OfferTermsCoverageSummaryView,
+    )
+    def get_offer_terms_coverage(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_offer_terms_coverage(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

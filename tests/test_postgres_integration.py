@@ -285,6 +285,23 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             1,
         )
         self.assertNotIn("raw_value", json.dumps(incoterm_coverage.json()))
+        offer_terms = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/offer-terms-coverage"
+        )
+        self.assertEqual(offer_terms.status_code, 200)
+        self.assertEqual(
+            offer_terms.json()["status"],
+            "RECORDED_CORE_TERMS_PRESENT",
+        )
+        self.assertEqual(
+            offer_terms.json()["offers"][0]["declared_recorded_field_count"],
+            len(offer_terms.json()["recorded_core_term_fields"]),
+        )
+        self.assertIn(
+            "payment_terms",
+            offer_terms.json()["uncaptured_commercial_term_fields"],
+        )
+        self.assertNotIn("raw_value", json.dumps(offer_terms.json()))
         quantity_analysis = self.client.get(
             f"/api/v1/research-runs/{run['id']}/quantity-analysis"
         )

@@ -416,6 +416,24 @@ class IncotermCoverageSummaryView(BaseModel):
     limitations: tuple[str, ...]
 
 
+class OfferTermsCoverageView(BaseModel):
+    observation_id: str
+    supplier_name: str | None
+    declared_fields: tuple[str, ...]
+    missing_recorded_fields: tuple[str, ...]
+    declared_recorded_field_count: int = Field(ge=0)
+    rankable: bool
+    ranking_unknown_factors: tuple[str, ...]
+
+
+class OfferTermsCoverageSummaryView(BaseModel):
+    status: str
+    recorded_core_term_fields: tuple[str, ...]
+    offers: tuple[OfferTermsCoverageView, ...]
+    uncaptured_commercial_term_fields: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+
 class ExecutiveSupplierCandidateView(BaseModel):
     observation_id: str
     supplier_name: str

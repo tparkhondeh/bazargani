@@ -23,6 +23,10 @@ from trade_agent.application.incoterm_coverage import (
     IncotermEvidencePoint,
     summarize_incoterm_coverage,
 )
+from trade_agent.application.offer_terms_coverage import (
+    OfferTermsPoint,
+    summarize_offer_terms_coverage,
+)
 from trade_agent.application.price_distribution import (
     DistributionPricePoint,
     analyze_price_distribution,
@@ -519,6 +523,51 @@ def render_markdown(result: ResearchResult) -> str:
             )
         )
     lines.extend(f"- محدودیت: {_text(item)}" for item in incoterm_coverage.limitations)
+
+    offer_terms = summarize_offer_terms_coverage(
+        tuple(
+            OfferTermsPoint(
+                observation_id=observation.observation_id,
+                supplier_name=observation.supplier_name,
+                minimum_order_quantity=observation.minimum_order_quantity,
+                product_variant=observation.product_variant,
+                product_attributes=observation.product_attributes,
+                incoterm=observation.incoterm,
+                incoterm_named_place=observation.incoterm_named_place,
+                incoterm_version=observation.incoterm_version,
+                rankable=ranking_by_observation[observation.observation_id].rankable,
+                ranking_unknown_factors=ranking_by_observation[
+                    observation.observation_id
+                ].unknown_factors,
+            )
+            for observation in case.observations
+        )
+    )
+    lines.extend(["", "## پوشش شروط ثبت‌شده پیشنهادها", ""])
+    lines.append(f"- وضعیت: {_code(offer_terms.status)}")
+    for offer_terms_item in offer_terms.offers:
+        supplier_label = offer_terms_item.supplier_name or "تأمین‌کننده نامشخص"
+        lines.append(
+            f"- مشاهده {_code(offer_terms_item.observation_id)}، "
+            f"{_text(supplier_label)}: "
+            f"{offer_terms_item.declared_recorded_field_count}/"
+            f"{len(offer_terms.recorded_core_term_fields)} فیلد مرجع ثبت‌شده؛ "
+            f"قابل رتبه‌بندی {_code(offer_terms_item.rankable)}"
+        )
+        if offer_terms_item.missing_recorded_fields:
+            lines.append(
+                "  - فیلدهای ثبت‌نشده: "
+                + "، ".join(
+                    _code(item) for item in offer_terms_item.missing_recorded_fields
+                )
+            )
+    lines.append(
+        "- فیلدهای تجاری خارج از schema فعلی: "
+        + "، ".join(
+            _code(item) for item in offer_terms.uncaptured_commercial_term_fields
+        )
+    )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in offer_terms.limitations)
 
     quantity_points: list[QuantityPricePoint] = []
     for observation in case.observations:

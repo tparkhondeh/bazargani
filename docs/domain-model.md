@@ -103,6 +103,14 @@ retained metadata. The current schema still has no route-specific cost allocatio
 operational-control, or risk-transfer scenario; comparison is therefore
 `WITHHELD_NO_INCOTERM_SCENARIOS`, and no code is recommended as “best.”
 
+Offer-terms coverage is a per-observation projection over the price record and its
+ranking ledger. The versioned-in-code recorded field set contains supplier identity,
+MOQ, product specification, and the three structured Incoterm terms. Each offer exposes
+declared and missing field names, count, rankability, and deduplicated ranking unknowns.
+Payment, timing, capacity, certification, warranty, and inspection fields remain a
+separate `uncaptured_commercial_term_fields` list. Presence is not verification, absence
+is not applicability, and no coverage percentage or procurement authorization exists.
+
 The executive decision summary is a derived run view, not an authorization or mutable
 recommendation record. Validation disposition deterministically maps to human review,
 verification, or commercial-review-required status and action codes. Every rank-1 offer

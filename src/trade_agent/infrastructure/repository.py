@@ -30,6 +30,10 @@ from trade_agent.application.incoterm_coverage import (
     summarize_incoterm_coverage,
 )
 from trade_agent.application.matching import normalize_product_text
+from trade_agent.application.offer_terms_coverage import (
+    OfferTermsPoint,
+    summarize_offer_terms_coverage,
+)
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.price_distribution import (
@@ -1766,6 +1770,43 @@ class TradeRepository:
                 for observation, evidence in rows
             )
             return asdict(summarize_incoterm_coverage(points))
+
+    def get_offer_terms_coverage(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = session.execute(
+                select(PriceObservationRecord, SupplierOfferRankingRecord)
+                .join(
+                    SupplierOfferRankingRecord,
+                    SupplierOfferRankingRecord.price_observation_id
+                    == PriceObservationRecord.id,
+                )
+                .where(
+                    PriceObservationRecord.research_run_id == run_id,
+                    SupplierOfferRankingRecord.research_run_id == run_id,
+                )
+            ).all()
+            points = tuple(
+                OfferTermsPoint(
+                    observation_id=observation.external_observation_id,
+                    supplier_name=observation.supplier_name,
+                    minimum_order_quantity=observation.minimum_order_quantity,
+                    product_variant=observation.product_variant,
+                    product_attributes=observation.product_attributes,
+                    incoterm=observation.incoterm,
+                    incoterm_named_place=observation.incoterm_named_place,
+                    incoterm_version=observation.incoterm_version,
+                    rankable=ranking.rankable,
+                    ranking_unknown_factors=tuple(ranking.unknown_factors),
+                )
+                for observation, ranking in rows
+            )
+            return asdict(summarize_offer_terms_coverage(points))
 
     def get_product_matches(
         self, run_id: str, *, tenant_id: str

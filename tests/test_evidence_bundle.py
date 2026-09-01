@@ -33,6 +33,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("WITHHELD_NO_INCOTERM_SCENARIOS", report)
         self.assertIn("Demo Factory Gate — NOT REAL", report)
         self.assertIn("نسخه‌های اعلام‌شده: `2020`", report)
+        self.assertIn("پوشش شروط ثبت‌شده پیشنهادها", report)
+        self.assertIn("فیلدهای تجاری خارج از schema فعلی", report)
         self.assertIn(r"supplier\_reliability", report)
         self.assertIn("حساسیت سناریوها", report)
         self.assertIn("پوشش اجزای هزینه", report)

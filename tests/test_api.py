@@ -461,6 +461,7 @@ class ApiTests(unittest.TestCase):
                 "evidence-freshness",
                 "price-observations",
                 "incoterm-coverage",
+                "offer-terms-coverage",
                 "quantity-analysis",
                 "price-distribution",
                 "product-matches",
@@ -1360,6 +1361,29 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(incoterm_coverage["missing_named_place_observation_ids"], [])
         self.assertEqual(incoterm_coverage["missing_version_observation_ids"], [])
         self.assertNotIn("raw_value", json.dumps(incoterm_coverage))
+
+        offer_terms_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/offer-terms-coverage"
+        )
+        self.assertEqual(offer_terms_response.status_code, 200)
+        offer_terms = offer_terms_response.json()
+        self.assertEqual(offer_terms["status"], "RECORDED_CORE_TERMS_PRESENT")
+        self.assertEqual(len(offer_terms["offers"]), 1)
+        offer_terms_item = offer_terms["offers"][0]
+        self.assertEqual(offer_terms_item["observation_id"], "demo-price-1")
+        self.assertEqual(
+            offer_terms_item["declared_fields"],
+            offer_terms["recorded_core_term_fields"],
+        )
+        self.assertEqual(offer_terms_item["missing_recorded_fields"], [])
+        self.assertEqual(offer_terms_item["declared_recorded_field_count"], 6)
+        self.assertTrue(offer_terms_item["rankable"])
+        self.assertIn("payment_terms", offer_terms_item["ranking_unknown_factors"])
+        self.assertIn(
+            "quote_valid_until",
+            offer_terms["uncaptured_commercial_term_fields"],
+        )
+        self.assertNotIn("raw_value", json.dumps(offer_terms))
 
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)

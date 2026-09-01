@@ -34,6 +34,8 @@ Incoterm coverage groups only declared offer codes against the Incoterms 2020
 reference vocabulary and withholds route-specific comparison when scenarios are absent.
 Price observations now retain an optional Incoterm named place and declared version;
 partial declarations become explicit validation and ranking gaps.
+Offer-terms coverage exposes exact per-offer presence for the six currently structured
+commercial fields while separately naming important terms outside the current schema.
 Evidence freshness applies the validation run's immutable evaluation timestamp and
 policy thresholds to every deduplicated evidence item and its exact usage count.
 
@@ -115,6 +117,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/evidence-freshness`
 - `GET /api/v1/research-runs/{id}/price-observations`
 - `GET /api/v1/research-runs/{id}/incoterm-coverage`
+- `GET /api/v1/research-runs/{id}/offer-terms-coverage`
 - `GET /api/v1/research-runs/{id}/quantity-analysis`
 - `GET /api/v1/research-runs/{id}/price-distribution`
 - `GET /api/v1/research-runs/{id}/product-matches`
@@ -293,6 +296,14 @@ clock tolerance as validation, with separate current, within-skew, stale, and fu
 dated states. The projection is immutable with its run: it is not recalculated against
 the wall clock, and freshness alone does not prove authority, accuracy, independence,
 or commercial fitness.
+
+Offer-terms coverage reports, for each retained observation, the exact presence or
+absence of supplier identity, MOQ, product specification, Incoterm code, named place,
+and declared version beside rankability and the ranking ledger's unknown factors.
+Payment terms/method, quote validity, lead time, capacity, certifications, warranty,
+and inspection terms are explicitly listed as outside the current schema. The endpoint
+does not calculate a completeness percentage, verify a declared field, or infer whether
+an uncaptured field is absent, required, or applicable.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

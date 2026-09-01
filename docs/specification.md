@@ -33,6 +33,9 @@ unknown or requires human verification?
 - When any Incoterm term is declared, code, named place, and declared version are
   preserved as separate fields; partial terms are surfaced for verification and no
   missing field receives a default.
+- Per-offer terms coverage lists declared and missing fields from the current structured
+  contract and separately lists material commercial terms that the schema cannot yet
+  represent; it produces no completeness percentage or verification claim.
 - Original values remain immutable; normalized values record transformation.
 - Structured price observations keep original offer/product/source context beside the
   BASE-scenario normalized comparison and product-match result.

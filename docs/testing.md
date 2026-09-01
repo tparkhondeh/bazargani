@@ -110,6 +110,12 @@ length bounds, partial-term warnings, fingerprint separation, and split complete
 scoring. API/report and PostgreSQL tests require persisted terms, explicit comparison-
 withheld status, tenant hiding, and no raw data; migration CI checks parity and rollback.
 
+Offer-terms coverage tests lock deterministic observation/field ordering, whitespace-
+only absence, product specification from variant or attributes, duplicate-ID rejection,
+empty/all-present/gap statuses, deduplicated ranking unknowns, and the fixed uncaptured-
+field vocabulary. API/report and PostgreSQL tests enforce tenant hiding, exact demo
+coverage, explicit out-of-schema terms, and absence of raw evidence.
+
 Executive-summary tests cover validation-to-action mapping, missing/single/tied supplier
 candidate states, deterministic ordering, invalid confidence/disposition rejection, and
 the mandatory withholding of Iranian benchmark and gross-spread values. API/report and

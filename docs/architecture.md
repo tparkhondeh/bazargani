@@ -209,6 +209,12 @@ version values, complete-terms counts, and source coverage. Nullable columns pre
 legacy rows without inventing defaults; comparison remains withheld because no route-
 specific cost/control/risk scenario model exists.
 
+Offer-terms coverage joins only tenant-owned price observations to their immutable
+ranking rows, then invokes a pure application projection also used by reports. The
+calculation uses a finite ordered vocabulary for fields the schema can represent and a
+separate explicit vocabulary for currently uncaptured commercial terms. This prevents
+clients from deriving a misleading percentage or treating rankability as completeness.
+
 The executive-summary application policy consumes persisted validation, BASE scenario,
 rank-1 evidence-backed offers, and the shared data-gap summary. It emits conservative
 machine-readable status/recommendation codes and keeps tied candidates. Repository and
