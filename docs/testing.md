@@ -259,3 +259,12 @@ consecutive-failure count. Factory failures are observed without exposing their 
 A concurrency regression sends sixteen same-currency misses through eight workers and
 requires one upstream attempt plus fifteen cache hits. API tests prove authentication,
 passive reads, disabled state, stable counters, and failure status.
+
+Supplier-identity claim tests enforce bounded required legal-name/jurisdiction/
+registration fields, unique claim IDs, exact observation references, deterministic
+ordering, and explicit exclusion when an attached duplicate observation is removed.
+End-to-end API tests prove atomic persistence, tenant isolation, evidence catalog/freshness
+usage, raw-body omission, escaped report output, and fixed `UNREVIEWED` status. Ranking
+and supplier coverage remain unchanged and `UNVERIFIED`. PostgreSQL integration covers
+migration `20260901_0013`, native foreign keys/constraints, projection reads, and full
+rollback/re-upgrade.

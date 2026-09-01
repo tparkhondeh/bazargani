@@ -89,6 +89,10 @@ unknown or requires human verification?
 - Supplier evidence coverage aggregates offer/source counts and MOQ/Incoterm/rankable
   field coverage without merging anonymous offers or claiming identity, source
   independence, certifications, capacity, or due-diligence verification.
+- A supplier legal-identity claim is optional, immutable, tied to one exact retained
+  offer and its own evidence, and remains `UNREVIEWED`; its legal name, jurisdiction,
+  or registration number never overwrites the quoted supplier name, changes ranking,
+  creates a supplier profile, or proves due diligence.
 - Assumptions and unknowns remain distinct, bounded, tenant-scoped run snapshots and
   are visible in the current decision without permitting historical mutation.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,

@@ -1,5 +1,6 @@
 import json
 import unittest
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
@@ -10,6 +11,25 @@ from trade_agent.reporting.markdown import render_markdown
 
 
 class EvidenceBundleTests(unittest.TestCase):
+    @staticmethod
+    def _identity_claim() -> dict[str, object]:
+        return {
+            "claim_id": "synthetic-identity-claim-1",
+            "observation_id": "demo-price-1",
+            "claimed_legal_name": '<img src=x onerror="not-real"> Fixture Legal Name',
+            "jurisdiction": "Synthetic Fixture Jurisdiction",
+            "registration_number": "SYNTHETIC-REG-001`",
+            "evidence": {
+                "classification": "FACT",
+                "source_name": "Synthetic registry — NOT REAL",
+                "source_url": "https://example.com/synthetic-registry",
+                "retrieved_at": "2026-09-01T00:00:00Z",
+                "raw_value": "SENSITIVE-SYNTHETIC-REGISTRY-BODY-998877",
+                "confidence": "HIGH",
+                "transformation": "synthetic identity fixture only",
+            },
+        }
+
     def test_demo_bundle_runs_end_to_end(self) -> None:
         case = load_evidence_bundle(Path("examples/demo_case.json"))
         result = execute_research_case(case)
@@ -53,6 +73,87 @@ class EvidenceBundleTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "scenario names must be unique"):
             execute_research_case(duplicate)
+
+    def test_identity_claim_is_evidence_bound_unreviewed_and_does_not_change_ranking(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        baseline = execute_research_case(parse_evidence_bundle(bundle))
+        bundle["supplier_identity_claims"] = [self._identity_claim()]
+
+        result = execute_research_case(parse_evidence_bundle(bundle))
+        report = render_markdown(result)
+        claim = result.case.supplier_identity_claims[0]
+
+        self.assertEqual(claim.claim_id, "synthetic-identity-claim-1")
+        self.assertEqual(claim.observation_id, "demo-price-1")
+        self.assertEqual(
+            result.supplier_rankings[0].total_score,
+            baseline.supplier_rankings[0].total_score,
+        )
+        self.assertIn(
+            "SUPPLIER_IDENTITY_CLAIM_REQUIRES_REVIEW",
+            {issue.code for issue in result.validation.issues},
+        )
+        self.assertIn("ادعاهای هویت حقوقی تأمین‌کننده", report)
+        self.assertIn("`UNREVIEWED`", report)
+        self.assertIn("&lt;img src=x onerror=\"not-real\"&gt;", report)
+        self.assertNotIn("SENSITIVE-SYNTHETIC-REGISTRY-BODY-998877", report)
+
+    def test_identity_claim_references_and_identifiers_fail_closed(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        unknown = self._identity_claim()
+        unknown["observation_id"] = "missing-observation"
+        bundle["supplier_identity_claims"] = [unknown]
+        with self.assertRaisesRegex(ValueError, "unknown observations"):
+            parse_evidence_bundle(bundle)
+
+        duplicate_bundle = json.loads(
+            Path("examples/demo_case.json").read_text(encoding="utf-8")
+        )
+        duplicate_bundle["supplier_identity_claims"] = [
+            self._identity_claim(),
+            deepcopy(self._identity_claim()),
+        ]
+        with self.assertRaisesRegex(ValueError, "claim_id values must be unique"):
+            parse_evidence_bundle(duplicate_bundle)
+
+    def test_identity_claim_requires_exact_bounded_public_fields(self) -> None:
+        invalid_values = (
+            ("claimed_legal_name", None, "must be a string"),
+            ("jurisdiction", "   ", "cannot be empty"),
+            ("registration_number", "x" * 101, "at most 100"),
+        )
+        for field, value, expected in invalid_values:
+            with self.subTest(field=field):
+                bundle = json.loads(
+                    Path("examples/demo_case.json").read_text(encoding="utf-8")
+                )
+                claim = self._identity_claim()
+                claim[field] = value
+                bundle["supplier_identity_claims"] = [claim]
+                with self.assertRaisesRegex(ValueError, expected):
+                    parse_evidence_bundle(bundle)
+
+        oversized = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        oversized["supplier_identity_claims"] = [self._identity_claim()] * 501
+        with self.assertRaisesRegex(ValueError, "more than 500"):
+            parse_evidence_bundle(oversized)
+
+    def test_claim_for_deduplicated_observation_is_excluded_explicitly(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        duplicate = deepcopy(bundle["observations"][0])
+        duplicate["observation_id"] = "demo-price-duplicate"
+        bundle["observations"].append(duplicate)
+        claim = self._identity_claim()
+        claim["observation_id"] = "demo-price-duplicate"
+        bundle["supplier_identity_claims"] = [claim]
+
+        result = execute_research_case(parse_evidence_bundle(bundle))
+
+        self.assertEqual(result.case.supplier_identity_claims, ())
+        self.assertIn(
+            "IDENTITY_CLAIM_FOR_EXCLUDED_OBSERVATION",
+            {issue.code for issue in result.validation.issues},
+        )
 
     def test_duplicate_fx_identity_within_scenario_is_rejected(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

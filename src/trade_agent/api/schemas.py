@@ -291,6 +291,7 @@ class ResearchCompletionView(BaseModel):
     confidence_label: Confidence
     report_sha256: str
     idempotency_replayed: bool
+    supplier_identity_claim_count: int = Field(default=0, ge=0)
 
 
 class ValidationIssueView(BaseModel):
@@ -407,6 +408,33 @@ class SupplierCoverageSummaryView(BaseModel):
     status: str
     suppliers: tuple[SupplierEvidenceCoverageView, ...]
     unidentified_observation_ids: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+
+class SupplierIdentityClaimView(BaseModel):
+    claim_id: str
+    observation_id: str
+    quoted_supplier_name: str | None
+    claimed_legal_name: str
+    jurisdiction: str
+    registration_number: str
+    review_status: Literal["UNREVIEWED"]
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    evidence_classification: str
+    evidence_confidence: Confidence
+    transformation: str | None
+
+
+class SupplierIdentityClaimSummaryView(BaseModel):
+    research_run_id: str
+    status: Literal[
+        "NO_SUPPLIER_IDENTITY_CLAIMS",
+        "UNREVIEWED_IDENTITY_CLAIMS",
+    ]
+    claim_count: int = Field(ge=0)
+    claims: tuple[SupplierIdentityClaimView, ...]
     limitations: tuple[str, ...]
 
 

@@ -80,6 +80,13 @@ Payment text, payment method, quote-validity time, and lead-time values inherit 
 tenant and evidence boundary. Their presence is not supplier verification or purchasing
 authorization, and text remains untrusted presentation data for report/UI encoding.
 
+Supplier identity claims remain inside the tenant-owned research-run boundary. Reads
+first authorize the run, then independently constrain claim, offer, and evidence joins
+to that same run. API/report views omit raw evidence bodies and escape legal names,
+jurisdictions, registration numbers, source labels, and URLs as untrusted content. A
+submitted `FACT`/`HIGH` label is preserved but cannot change the fixed `UNREVIEWED`
+status, offer ranking, or supplier due-diligence result.
+
 The Markdown generator encodes HTML and escapes Markdown control characters in all
 untrusted text, flattens embedded newlines, uses adaptive code fences, and percent-
 encodes provenance link targets. This is defense in depth, not permission to enable raw

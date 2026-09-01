@@ -201,6 +201,14 @@ anonymous observation IDs, returns distinct URL coverage and missing factors, an
 promotes an offer into a verified supplier profile. The API and report share this
 calculation; raw evidence remains outside both outputs.
 
+Supplier identity claims enter only with the immutable evidence bundle. Each claim
+references one exact retained price observation and one deduplicated evidence record;
+claims referring to an observation removed by deterministic deduplication are excluded
+with an explicit validation error rather than being reassigned. A shared pure projection
+orders claims and labels each `UNREVIEWED` for both API and report. It never mutates the
+offer's supplier name, ranking, or due-diligence status and does not create a cross-run
+supplier profile.
+
 Incoterm coverage uses a shared versioned code vocabulary also consumed by validation.
 The repository projects only tenant-owned observation/evidence rows into a pure
 calculator; the report uses the same point contract from its immutable result. Both

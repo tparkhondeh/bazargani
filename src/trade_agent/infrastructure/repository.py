@@ -54,6 +54,10 @@ from trade_agent.application.supplier_coverage import (
     SupplierEvidencePoint,
     summarize_supplier_coverage,
 )
+from trade_agent.application.supplier_identity import (
+    SupplierIdentityClaimPoint,
+    summarize_supplier_identity_claims,
+)
 from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Evidence
@@ -84,6 +88,7 @@ from trade_agent.infrastructure.database import (
     ResearchRunRecord,
     ResearchValidationRecord,
     SourceRecord,
+    SupplierIdentityClaimRecord,
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
@@ -761,6 +766,33 @@ class TradeRepository:
                     )
                 )
 
+            for claim in result.case.supplier_identity_claims:
+                claimed_observation_record = observation_records.get(claim.observation_id)
+                if claimed_observation_record is None:
+                    raise ValueError(
+                        "supplier identity claim references unknown observation: "
+                        f"{claim.observation_id}"
+                    )
+                evidence = self._evidence(
+                    session,
+                    run_id,
+                    claim.evidence,
+                    evidence_cache,
+                )
+                session.add(
+                    SupplierIdentityClaimRecord(
+                        id=str(uuid4()),
+                        research_run_id=run_id,
+                        price_observation_id=claimed_observation_record.id,
+                        evidence_id=evidence.id,
+                        external_claim_id=claim.claim_id,
+                        claimed_legal_name=claim.claimed_legal_name,
+                        jurisdiction=claim.jurisdiction,
+                        registration_number=claim.registration_number,
+                        created_at=datetime.now(UTC),
+                    )
+                )
+
             scenario_records: dict[str, LandedCostScenarioRecord] = {}
             for scenario_result in result.scenarios:
                 scenario_record = LandedCostScenarioRecord(
@@ -897,6 +929,9 @@ class TradeRepository:
                     "price_observation_count": len(result.case.observations),
                     "product_match_count": len(result.product_matches),
                     "supplier_ranking_count": len(result.supplier_rankings),
+                    "supplier_identity_claim_count": len(
+                        result.case.supplier_identity_claims
+                    ),
                     "fx_rate_count": fx_rate_count,
                     "scenario_count": len(result.scenarios),
                     "validation_disposition": validation.disposition.value,
@@ -924,6 +959,9 @@ class TradeRepository:
                 confidence_label=validation.confidence_label.value,
                 report_sha256=report_hash,
                 idempotency_replayed=False,
+                supplier_identity_claim_count=len(
+                    result.case.supplier_identity_claims
+                ),
             )
             session.add(
                 IdempotencyRecord(
@@ -1471,6 +1509,19 @@ class TradeRepository:
                     {"kind": "PRICE_OBSERVATION", "subject_id": observation_id}
                 )
 
+            identity_claims = session.execute(
+                select(
+                    SupplierIdentityClaimRecord.evidence_id,
+                    SupplierIdentityClaimRecord.external_claim_id,
+                )
+                .where(SupplierIdentityClaimRecord.research_run_id == run_id)
+                .order_by(SupplierIdentityClaimRecord.external_claim_id)
+            ).all()
+            for evidence_id, claim_id in identity_claims:
+                usages[evidence_id].append(
+                    {"kind": "SUPPLIER_IDENTITY_CLAIM", "subject_id": claim_id}
+                )
+
             rate_rows = session.execute(
                 select(FXRateRecord, LandedCostScenarioRecord)
                 .join(
@@ -1542,6 +1593,13 @@ class TradeRepository:
                 )
             )
             for evidence_id in observation_evidence_ids:
+                usage_counts[evidence_id] += 1
+            identity_evidence_ids = session.scalars(
+                select(SupplierIdentityClaimRecord.evidence_id).where(
+                    SupplierIdentityClaimRecord.research_run_id == run_id
+                )
+            )
+            for evidence_id in identity_evidence_ids:
                 usage_counts[evidence_id] += 1
             rate_evidence_ids = session.scalars(
                 select(FXRateRecord.evidence_id).where(
@@ -1909,6 +1967,57 @@ class TradeRepository:
                 for observation, ranking, evidence in rows
             )
             return asdict(summarize_supplier_coverage(points))
+
+    def get_supplier_identity_claims(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = session.execute(
+                select(
+                    SupplierIdentityClaimRecord,
+                    PriceObservationRecord,
+                    EvidenceRecord,
+                    SourceRecord,
+                )
+                .join(
+                    PriceObservationRecord,
+                    PriceObservationRecord.id
+                    == SupplierIdentityClaimRecord.price_observation_id,
+                )
+                .join(
+                    EvidenceRecord,
+                    EvidenceRecord.id == SupplierIdentityClaimRecord.evidence_id,
+                )
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .where(
+                    SupplierIdentityClaimRecord.research_run_id == run_id,
+                    PriceObservationRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+            ).all()
+            points = tuple(
+                SupplierIdentityClaimPoint(
+                    claim_id=claim.external_claim_id,
+                    observation_id=observation.external_observation_id,
+                    quoted_supplier_name=observation.supplier_name,
+                    claimed_legal_name=claim.claimed_legal_name,
+                    jurisdiction=claim.jurisdiction,
+                    registration_number=claim.registration_number,
+                    source_name=source.name,
+                    source_url=evidence.source_url,
+                    retrieved_at=_database_utc(evidence.retrieved_at),
+                    evidence_classification=evidence.classification,
+                    evidence_confidence=evidence.confidence,
+                    transformation=evidence.transformation,
+                )
+                for claim, observation, evidence, source in rows
+            )
+            summary = summarize_supplier_identity_claims(points)
+            return {"research_run_id": run_id, **asdict(summary)}
 
     def get_executive_summary(
         self,

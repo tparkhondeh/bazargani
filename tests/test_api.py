@@ -26,6 +26,7 @@ from trade_agent.infrastructure.database import (
     ResearchReviewRecord,
     ResearchRunRecord,
     ResearchValidationRecord,
+    SupplierIdentityClaimRecord,
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
@@ -467,6 +468,7 @@ class ApiTests(unittest.TestCase):
                 "product-matches",
                 "supplier-offer-rankings",
                 "supplier-coverage",
+                "supplier-identity-claims",
                 "executive-summary",
             )
         ]
@@ -1022,6 +1024,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(completed["price_observation_count"], 1)
         self.assertEqual(completed["product_match_count"], 1)
         self.assertEqual(completed["supplier_ranking_count"], 1)
+        self.assertEqual(completed["supplier_identity_claim_count"], 0)
         self.assertEqual(completed["fx_rate_count"], 3)
         self.assertEqual(completed["scenario_count"], 3)
 
@@ -1417,6 +1420,16 @@ class ApiTests(unittest.TestCase):
         self.assertIn("supplier_reliability", supplier["unknown_factors"])
         self.assertNotIn("raw_value", json.dumps(coverage))
 
+        identity_claims_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
+        )
+        self.assertEqual(identity_claims_response.status_code, 200)
+        self.assertEqual(
+            identity_claims_response.json()["status"],
+            "NO_SUPPLIER_IDENTITY_CLAIMS",
+        )
+        self.assertEqual(identity_claims_response.json()["claim_count"], 0)
+
         incoterm_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/incoterm-coverage"
         )
@@ -1486,6 +1499,10 @@ class ApiTests(unittest.TestCase):
                 connection.scalar(select(func.count()).select_from(SupplierOfferRankingRecord)),
                 1,
             )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(SupplierIdentityClaimRecord)),
+                0,
+            )
             self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 3)
             self.assertEqual(
                 connection.scalar(select(func.count()).select_from(LandedCostScenarioRecord)),
@@ -1511,6 +1528,115 @@ class ApiTests(unittest.TestCase):
                 connection.scalar(select(func.count()).select_from(AuditEventRecord)),
                 4,
             )
+
+    def test_supplier_identity_claim_is_persisted_as_unreviewed_offer_scoped_evidence(
+        self,
+    ) -> None:
+        raw_evidence = "SENSITIVE-SYNTHETIC-IDENTITY-EVIDENCE-998877"
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        bundle["supplier_identity_claims"] = [
+            {
+                "claim_id": "demo-identity-claim-1",
+                "observation_id": "demo-price-1",
+                "claimed_legal_name": "Demo Legal Supplier — NOT REAL",
+                "jurisdiction": "Synthetic Fixture Jurisdiction",
+                "registration_number": "SYNTHETIC-REG-001",
+                "evidence": {
+                    "classification": "FACT",
+                    "source_name": "Synthetic registry — NOT REAL",
+                    "source_url": "https://example.com/synthetic-registry",
+                    "retrieved_at": "2026-09-01T00:00:00Z",
+                    "raw_value": raw_evidence,
+                    "confidence": "HIGH",
+                    "transformation": "synthetic identity contract fixture",
+                },
+            }
+        ]
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        running = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+
+        completed_response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "identity-claim-bundle"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        )
+        claims_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
+        )
+        hidden = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims",
+            headers={"X-API-Key": self.other_api_key},
+        )
+
+        self.assertEqual(completed_response.status_code, 200)
+        completed = completed_response.json()
+        self.assertEqual(completed["supplier_identity_claim_count"], 1)
+        self.assertEqual(completed["evidence_count"], 3)
+        self.assertEqual(claims_response.status_code, 200)
+        claims = claims_response.json()
+        self.assertEqual(claims["research_run_id"], run["id"])
+        self.assertEqual(claims["status"], "UNREVIEWED_IDENTITY_CLAIMS")
+        self.assertEqual(claims["claim_count"], 1)
+        claim = claims["claims"][0]
+        self.assertEqual(claim["claim_id"], "demo-identity-claim-1")
+        self.assertEqual(claim["observation_id"], "demo-price-1")
+        self.assertEqual(claim["quoted_supplier_name"], "Demo Supplier — NOT REAL")
+        self.assertEqual(claim["claimed_legal_name"], "Demo Legal Supplier — NOT REAL")
+        self.assertEqual(claim["review_status"], "UNREVIEWED")
+        self.assertEqual(claim["evidence_classification"], "FACT")
+        self.assertEqual(claim["evidence_confidence"], "HIGH")
+        self.assertNotIn("raw_value", json.dumps(claims))
+        self.assertNotIn(raw_evidence, json.dumps(claims))
+        self.assertEqual(hidden.status_code, 404)
+
+        evidence_catalog = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/evidence"
+        ).json()
+        registry_evidence = next(
+            item
+            for item in evidence_catalog
+            if item["source_name"] == "Synthetic registry — NOT REAL"
+        )
+        self.assertEqual(
+            registry_evidence["usages"],
+            [{"kind": "SUPPLIER_IDENTITY_CLAIM", "subject_id": "demo-identity-claim-1"}],
+        )
+        self.assertNotIn(raw_evidence, json.dumps(evidence_catalog))
+
+        ranking = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-offer-rankings"
+        ).json()[0]
+        coverage = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-coverage"
+        ).json()["suppliers"][0]
+        self.assertIn("supplier_reliability", ranking["unknown_factors"])
+        self.assertEqual(coverage["due_diligence_status"], "UNVERIFIED")
+
+        report = self.client.get(f"/api/v1/research-runs/{run['id']}/report").json()
+        self.assertIn("Demo Legal Supplier — NOT REAL", report["content"])
+        self.assertIn("`UNREVIEWED`", report["content"])
+        self.assertNotIn(raw_evidence, report["content"])
+
+        with self.engine.connect() as connection:
+            persisted_count = connection.scalar(
+                select(func.count())
+                .select_from(SupplierIdentityClaimRecord)
+                .where(SupplierIdentityClaimRecord.research_run_id == run["id"])
+            )
+        self.assertEqual(persisted_count, 1)
 
     def test_scenario_specific_fx_is_persisted_with_exact_lineage(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

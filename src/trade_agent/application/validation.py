@@ -23,7 +23,7 @@ from trade_agent.domain.models import (
     SupplierOfferRanking,
 )
 
-VALIDATION_POLICY_VERSION = "2026-09-01.2"
+VALIDATION_POLICY_VERSION = "2026-09-01.3"
 OUTLIER_FACTOR = Decimal("3")
 KNOWN_INCOTERMS = frozenset(INCOTERMS_2020_CODES)
 
@@ -184,7 +184,34 @@ def validate_research_case(
         seen_fingerprints[fingerprint] = observation.observation_id
         unique_observations.append(observation)
 
-    clean_case = replace(case, observations=tuple(unique_observations))
+    retained_observation_ids = {
+        observation.observation_id for observation in unique_observations
+    }
+    retained_identity_claims = tuple(
+        claim
+        for claim in case.supplier_identity_claims
+        if claim.observation_id in retained_observation_ids
+    )
+    for claim in case.supplier_identity_claims:
+        if claim.observation_id not in retained_observation_ids:
+            issues.append(
+                ValidationIssue(
+                    code="IDENTITY_CLAIM_FOR_EXCLUDED_OBSERVATION",
+                    severity=ValidationSeverity.ERROR,
+                    message_fa=(
+                        "ادعای هویت به مشاهده قیمت تکراری یا حذف‌شده متصل بود و "
+                        "برای جلوگیری از انتساب ضمنی کنار گذاشته شد."
+                    ),
+                    subject_type="SUPPLIER_IDENTITY_CLAIM",
+                    subject_id=claim.claim_id,
+                    details={"observation_id": claim.observation_id},
+                )
+            )
+    clean_case = replace(
+        case,
+        observations=tuple(unique_observations),
+        supplier_identity_claims=retained_identity_claims,
+    )
     if not clean_case.observations:
         issues.append(
             ValidationIssue(
@@ -295,6 +322,29 @@ def validate_research_case(
                 subject_type="PRICE_OBSERVATION",
                 subject_id=observation.observation_id,
                 evaluated_at=evaluation_time,
+            )
+        )
+
+    for claim in clean_case.supplier_identity_claims:
+        issues.extend(
+            _evidence_issues(
+                claim.evidence,
+                subject_type="SUPPLIER_IDENTITY_CLAIM",
+                subject_id=claim.claim_id,
+                evaluated_at=evaluation_time,
+            )
+        )
+        issues.append(
+            ValidationIssue(
+                code="SUPPLIER_IDENTITY_CLAIM_REQUIRES_REVIEW",
+                severity=ValidationSeverity.WARNING,
+                message_fa=(
+                    "این رکورد فقط ادعای منبع درباره هویت حقوقی را نگه می‌دارد و "
+                    "تا بازبینی مستقل، هویت تأمین‌کننده را تأیید نمی‌کند."
+                ),
+                subject_type="SUPPLIER_IDENTITY_CLAIM",
+                subject_id=claim.claim_id,
+                details={"observation_id": claim.observation_id},
             )
         )
 

@@ -110,6 +110,12 @@ authentication. Migration `0007` assigns pre-existing rows to the quarantined
 `legacy` tenant; reconcile those rows to approved tenants before issuing production
 credentials, and back up the database before the migration.
 
+Migration `20260901_0013` creates the supplier-identity claim table and moves no legacy
+data. Back up before upgrade, run `alembic check`, verify the required revision is
+`20260901_0013`, and exercise full downgrade/re-upgrade in the release gate. Treat legal
+names and registration numbers as supplier data under the approved retention/access
+policy even though raw evidence is omitted from claim reads.
+
 Use `/health` only for process liveness and `/ready` for traffic admission. In managed
 mode, readiness returns `200` only when database connectivity works and
 `alembic_version` contains exactly the release revision; otherwise it returns a

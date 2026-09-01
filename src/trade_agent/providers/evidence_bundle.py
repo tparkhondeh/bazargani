@@ -18,6 +18,7 @@ from trade_agent.domain.models import (
     ResearchCase,
     ScenarioInput,
     ScenarioName,
+    SupplierIdentityClaim,
 )
 
 MAX_OBSERVATIONS = 500
@@ -27,6 +28,7 @@ MAX_COSTS_PER_SCENARIO = 100
 MAX_NOTES_PER_KIND = 200
 MAX_NOTE_LENGTH = 5000
 MAX_PRODUCT_ATTRIBUTES = 100
+MAX_SUPPLIER_IDENTITY_CLAIMS = 500
 
 
 def _object(value: Any, label: str) -> dict[str, Any]:
@@ -88,6 +90,14 @@ def _optional_text(value: Any, label: str) -> str | None:
         return None
     if not isinstance(value, str):
         raise PublicInputError(f"{label} must be a string or null")
+    return value
+
+
+def _required_text(value: Any, label: str) -> str:
+    if not isinstance(value, str):
+        raise PublicInputError(f"{label} must be a string")
+    if not value.strip():
+        raise PublicInputError(f"{label} cannot be empty")
     return value
 
 
@@ -224,6 +234,42 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
         )
         for item in observation_items
     )
+    claim_items = _object_list(
+        raw.get("supplier_identity_claims", []),
+        "supplier_identity_claims",
+        MAX_SUPPLIER_IDENTITY_CLAIMS,
+    )
+    supplier_identity_claims = tuple(
+        SupplierIdentityClaim(
+            claim_id=_required_text(
+                item.get("claim_id"),
+                f"supplier_identity_claims[{index}].claim_id",
+            ),
+            observation_id=_required_text(
+                item.get("observation_id"),
+                f"supplier_identity_claims[{index}].observation_id",
+            ),
+            claimed_legal_name=_required_text(
+                item.get("claimed_legal_name"),
+                f"supplier_identity_claims[{index}].claimed_legal_name",
+            ),
+            jurisdiction=_required_text(
+                item.get("jurisdiction"),
+                f"supplier_identity_claims[{index}].jurisdiction",
+            ),
+            registration_number=_required_text(
+                item.get("registration_number"),
+                f"supplier_identity_claims[{index}].registration_number",
+            ),
+            evidence=_evidence(
+                _object(
+                    item["evidence"],
+                    f"supplier_identity_claims[{index}].evidence",
+                )
+            ),
+        )
+        for index, item in enumerate(claim_items)
+    )
     shared_rates = _fx_rates(raw.get("fx_rates", []), "fx_rates")
     scenario_items = _object_list(raw["scenarios"], "scenarios", MAX_SCENARIOS)
     scenarios = tuple(
@@ -268,6 +314,7 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
         destination=str(raw["destination"]),
         observations=observations,
         scenarios=scenarios,
+        supplier_identity_claims=supplier_identity_claims,
         assumptions=_text_list(raw.get("assumptions", []), "assumptions"),
         unknowns=_text_list(raw.get("unknowns", []), "unknowns"),
         product_attributes=_attributes(

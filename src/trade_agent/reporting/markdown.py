@@ -42,6 +42,10 @@ from trade_agent.application.supplier_coverage import (
     SupplierEvidencePoint,
     summarize_supplier_coverage,
 )
+from trade_agent.application.supplier_identity import (
+    SupplierIdentityClaimPoint,
+    summarize_supplier_identity_claims,
+)
 from trade_agent.domain.models import Evidence
 
 _MARKDOWN_SPECIAL = frozenset("\\`*_{}[]()#!|")
@@ -453,6 +457,44 @@ def render_markdown(result: ResearchResult) -> str:
             )
         )
     lines.extend(f"- محدودیت: {_text(item)}" for item in supplier_coverage.limitations)
+
+    supplier_identity_claims = summarize_supplier_identity_claims(
+        tuple(
+            SupplierIdentityClaimPoint(
+                claim_id=claim.claim_id,
+                observation_id=claim.observation_id,
+                quoted_supplier_name=observation_by_id[
+                    claim.observation_id
+                ].supplier_name,
+                claimed_legal_name=claim.claimed_legal_name,
+                jurisdiction=claim.jurisdiction,
+                registration_number=claim.registration_number,
+                source_name=claim.evidence.source_name,
+                source_url=claim.evidence.source_url,
+                retrieved_at=claim.evidence.retrieved_at,
+                evidence_classification=claim.evidence.classification.value,
+                evidence_confidence=claim.evidence.confidence.value,
+                transformation=claim.evidence.transformation,
+            )
+            for claim in case.supplier_identity_claims
+        )
+    )
+    lines.extend(["", "## ادعاهای هویت حقوقی تأمین‌کننده", ""])
+    lines.append(f"- وضعیت: {_code(supplier_identity_claims.status)}")
+    for claim in supplier_identity_claims.claims:
+        quoted_name = claim.quoted_supplier_name or "تأمین‌کننده نامشخص"
+        lines.append(
+            f"- ادعا {_code(claim.claim_id)} برای مشاهده "
+            f"{_code(claim.observation_id)} ({_text(quoted_name)}): "
+            f"نام حقوقی ادعاشده {_text(claim.claimed_legal_name)}، حوزه "
+            f"{_text(claim.jurisdiction)}، شماره ثبت "
+            f"{_code(claim.registration_number)}؛ بازبینی "
+            f"{_code(claim.review_status)} — "
+            f"[شاهد]({_link_target(claim.source_url)})"
+        )
+    lines.extend(
+        f"- محدودیت: {_text(item)}" for item in supplier_identity_claims.limitations
+    )
 
     incoterm_coverage = summarize_incoterm_coverage(
         tuple(

@@ -23,6 +23,7 @@ class ResearchCompletion:
     confidence_label: str
     report_sha256: str
     idempotency_replayed: bool
+    supplier_identity_claim_count: int = 0
 
 
 class ResearchResultWriter(Protocol):

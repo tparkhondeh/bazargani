@@ -59,6 +59,7 @@ from trade_agent.api.schemas import (
     ResearchValidationView,
     ScenarioFXRateView,
     SupplierCoverageSummaryView,
+    SupplierIdentityClaimSummaryView,
     TradeCostCoverageView,
     ValidationErrorDetail,
 )
@@ -787,6 +788,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_supplier_coverage(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/supplier-identity-claims",
+        response_model=SupplierIdentityClaimSummaryView,
+    )
+    def get_supplier_identity_claims(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_supplier_identity_claims(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

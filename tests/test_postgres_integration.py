@@ -16,6 +16,7 @@ from trade_agent.infrastructure.database import (
     LandedCostScenarioRecord,
     OpportunityRecord,
     ResearchReviewRecord,
+    SupplierIdentityClaimRecord,
 )
 
 POSTGRES_URL = os.getenv("TRADE_AGENT_TEST_POSTGRES_URL")
@@ -51,9 +52,27 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0012")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0013")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        bundle["supplier_identity_claims"] = [
+            {
+                "claim_id": "postgres-identity-claim-1",
+                "observation_id": "demo-price-1",
+                "claimed_legal_name": "PostgreSQL Legal Supplier Fixture",
+                "jurisdiction": "PostgreSQL Fixture Jurisdiction",
+                "registration_number": "POSTGRES-FIXTURE-001",
+                "evidence": {
+                    "classification": "FACT",
+                    "source_name": "PostgreSQL synthetic registry fixture",
+                    "source_url": "https://example.com/postgres-synthetic-registry",
+                    "retrieved_at": "2026-09-01T00:00:00Z",
+                    "raw_value": "POSTGRES-SENSITIVE-SYNTHETIC-IDENTITY-BODY",
+                    "confidence": "HIGH",
+                    "transformation": "PostgreSQL identity contract fixture",
+                },
+            }
+        ]
         opportunity_response = self.client.post(
             "/api/v1/opportunities",
             json={
@@ -104,6 +123,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(completed_response.status_code, 200)
         completed = completed_response.json()
         self.assertEqual(completed["status"], "NEEDS_VERIFICATION")
+        self.assertEqual(completed["supplier_identity_claim_count"], 1)
 
         replay = self.client.post(
             f"/api/v1/research-runs/{run['id']}/evidence-bundle",
@@ -250,7 +270,9 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             sum(item["usage_count"] for item in evidence_freshness.json()["items"]),
-            completed["price_observation_count"] + completed["fx_rate_count"],
+            completed["price_observation_count"]
+            + completed["fx_rate_count"]
+            + completed["supplier_identity_claim_count"],
         )
         self.assertNotIn("raw_value", json.dumps(evidence_freshness.json()))
         price_observations = self.client.get(
@@ -348,6 +370,18 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             "UNVERIFIED",
         )
         self.assertNotIn("raw_value", json.dumps(supplier_coverage.json()))
+        identity_claims = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
+        )
+        self.assertEqual(identity_claims.status_code, 200)
+        self.assertEqual(identity_claims.json()["status"], "UNREVIEWED_IDENTITY_CLAIMS")
+        self.assertEqual(identity_claims.json()["claim_count"], 1)
+        self.assertEqual(
+            identity_claims.json()["claims"][0]["registration_number"],
+            "POSTGRES-FIXTURE-001",
+        )
+        self.assertEqual(identity_claims.json()["claims"][0]["review_status"], "UNREVIEWED")
+        self.assertNotIn("raw_value", json.dumps(identity_claims.json()))
 
         additional_ids = {
             self.client.post(
@@ -423,6 +457,11 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .select_from(ResearchReviewRecord)
                 .where(ResearchReviewRecord.tenant_id == "postgres-ci")
             )
+            identity_claim_count = connection.scalar(
+                select(func.count())
+                .select_from(SupplierIdentityClaimRecord)
+                .where(SupplierIdentityClaimRecord.research_run_id == run["id"])
+            )
 
         self.assertEqual(tenant_id, "postgres-ci")
         self.assertIsInstance(total, Decimal)
@@ -430,6 +469,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(len(audit_ids), audit_count)
         self.assertEqual(idempotency_count, 1)
         self.assertEqual(review_count, 1)
+        self.assertEqual(identity_claim_count, 1)
 
 
 if __name__ == "__main__":

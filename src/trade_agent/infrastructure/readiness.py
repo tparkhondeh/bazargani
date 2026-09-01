@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-REQUIRED_SCHEMA_REVISION = "20260901_0012"
+REQUIRED_SCHEMA_REVISION = "20260901_0013"
 
 
 class DatabaseReadiness(TypedDict):

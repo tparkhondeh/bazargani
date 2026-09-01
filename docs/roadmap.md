@@ -121,6 +121,12 @@ names and counts without a misleading percentage. Quote expiry is evaluated agai
 immutable run time, while negotiation/acceptability and remaining term models stay in
 Phase 5.
 
+Immutable offer-scoped supplier identity claims now retain a claimed legal name,
+jurisdiction, registration number, and dedicated evidence inside the result snapshot.
+They remain explicitly unreviewed, do not affect ranking/due diligence, and do not form
+a supplier profile. Append-only claim review, cross-run entity resolution, verified
+profiles, capacity, and certification evidence remain Phase 3/5 work.
+
 ## Phase 3 — First approved real providers
 
 Integrate one manufacturing/wholesale source and one Iranian benchmark source via

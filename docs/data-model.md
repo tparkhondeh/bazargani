@@ -82,6 +82,14 @@ rows remain null and therefore unknown. The fields retain the exact offer/eviden
 relationship; they do not create a mutable supplier profile or a default commercial
 contract, and downgrade removes only the additive fields and lead-time constraint.
 
+Migration `20260901_0013` adds immutable `supplier_identity_claims`. Each row belongs to
+one research run, exact price observation, and evidence record; the external claim ID is
+unique within the run. Required legal name, jurisdiction, and registration number are
+stored as the source's assertion, not a normalized supplier master record. Claim
+evidence participates in the existing fingerprint, usage, freshness, and raw-body
+protection rules. The claim has no verified status column because v0.46 exposes only
+the honest `UNREVIEWED` projection; later review decisions require a separate ledger.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

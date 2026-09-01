@@ -188,6 +188,38 @@ class PriceObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class SupplierIdentityClaim:
+    claim_id: str
+    observation_id: str
+    claimed_legal_name: str
+    jurisdiction: str
+    registration_number: str
+    evidence: Evidence
+
+    def __post_init__(self) -> None:
+        normalized: dict[str, str] = {}
+        for field_name, value, maximum in (
+            ("claim_id", self.claim_id, 200),
+            ("observation_id", self.observation_id, 200),
+            ("claimed_legal_name", self.claimed_legal_name, 300),
+            ("jurisdiction", self.jurisdiction, 100),
+            ("registration_number", self.registration_number, 100),
+        ):
+            if not isinstance(value, str):
+                raise ValueError(f"{field_name} must be a string")
+            text = value.strip()
+            if not text:
+                raise ValueError(f"{field_name} is required")
+            if len(text) > maximum or any(ord(character) < 32 for character in text):
+                raise ValueError(
+                    f"{field_name} must be a safe value of at most {maximum} characters"
+                )
+            normalized[field_name] = text
+        for field_name, value in normalized.items():
+            object.__setattr__(self, field_name, value)
+
+
+@dataclass(frozen=True, slots=True)
 class ProductMatch:
     observation_id: str
     classification: ProductMatchClass
@@ -321,6 +353,7 @@ class ResearchCase:
     destination: str
     observations: tuple[PriceObservation, ...]
     scenarios: tuple[ScenarioInput, ...]
+    supplier_identity_claims: tuple[SupplierIdentityClaim, ...] = ()
     assumptions: tuple[str, ...] = ()
     unknowns: tuple[str, ...] = ()
     product_attributes: dict[str, str] = field(default_factory=dict)
@@ -337,6 +370,22 @@ class ResearchCase:
         observation_ids = [observation.observation_id for observation in self.observations]
         if len(observation_ids) != len(set(observation_ids)):
             raise ValueError("observation_id values must be unique within a research case")
+        observation_id_set = set(observation_ids)
+        claim_ids = [claim.claim_id for claim in self.supplier_identity_claims]
+        if len(claim_ids) != len(set(claim_ids)):
+            raise ValueError("supplier identity claim_id values must be unique")
+        unknown_observation_ids = sorted(
+            {
+                claim.observation_id
+                for claim in self.supplier_identity_claims
+                if claim.observation_id not in observation_id_set
+            }
+        )
+        if unknown_observation_ids:
+            raise ValueError(
+                "supplier identity claims reference unknown observations: "
+                + ", ".join(unknown_observation_ids)
+            )
         invalid_attributes = (
             not str(key).strip() or not str(value).strip()
             for key, value in self.product_attributes.items()

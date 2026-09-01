@@ -324,6 +324,54 @@ class SupplierOfferRankingRecord(Base):
     policy_version: Mapped[str] = mapped_column(String(50))
 
 
+class SupplierIdentityClaimRecord(Base):
+    __tablename__ = "supplier_identity_claims"
+    __table_args__ = (
+        UniqueConstraint(
+            "research_run_id",
+            "external_claim_id",
+            name="uq_supplier_identity_claims_run_external_id",
+        ),
+        CheckConstraint(
+            "length(trim(external_claim_id)) > 0",
+            name="ck_supplier_identity_claims_external_id_required",
+        ),
+        CheckConstraint(
+            "length(trim(claimed_legal_name)) > 0",
+            name="ck_supplier_identity_claims_legal_name_required",
+        ),
+        CheckConstraint(
+            "length(trim(jurisdiction)) > 0",
+            name="ck_supplier_identity_claims_jurisdiction_required",
+        ),
+        CheckConstraint(
+            "length(trim(registration_number)) > 0",
+            name="ck_supplier_identity_claims_registration_required",
+        ),
+        Index(
+            "ix_supplier_identity_claims_run_observation",
+            "research_run_id",
+            "price_observation_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    price_observation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("price_observations.id", ondelete="CASCADE")
+    )
+    evidence_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("evidence.id", ondelete="CASCADE")
+    )
+    external_claim_id: Mapped[str] = mapped_column(String(200))
+    claimed_legal_name: Mapped[str] = mapped_column(String(300))
+    jurisdiction: Mapped[str] = mapped_column(String(100))
+    registration_number: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class FXRateRecord(Base):
     __tablename__ = "fx_rates"
     __table_args__ = (
