@@ -313,6 +313,7 @@ def create_app(
             "quantity_unit": parsed.quantity_unit,
             "origin_market": parsed.origin_market,
             "destination": parsed.destination,
+            "requested_incoterm_code": parsed.requested_incoterm_code,
             "field_confidence": parsed.field_confidence,
             "field_conflicts": parsed.field_conflicts,
             "assumptions": parsed.assumptions,

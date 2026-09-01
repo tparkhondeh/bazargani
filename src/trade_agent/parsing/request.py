@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from trade_agent.application.incoterms import INCOTERMS_2020_CODES
 from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Confidence
 
@@ -72,9 +73,30 @@ _DESTINATION_ALIASES = {
     "tabriz": "Tabriz",
     "iran": "Iran",
 }
+_INCOTERM_MARKER = re.compile(
+    r"(?:اینکوترمز|شرط\s+تحویل|incoterms?|delivery\s+term)",
+    re.IGNORECASE,
+)
+_INCOTERM_CLAUSE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?:اینکوترمز|شرط\s+تحویل)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:،|,|؛|;|\.|\b(?:به|مقصد|کف|تحویل|از|مبدا|مبدأ)\b|$))",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:incoterms?|delivery\s+term)\s*[:：]?\s*"
+        r"(?P<value>.+?)(?=\s*(?:,|;|\.|\b(?:to|destination|delivered|from|origin)\b|$))",
+        re.IGNORECASE,
+    ),
+)
+_INCOTERM_CODE = re.compile(
+    rf"\b(?:{'|'.join(INCOTERMS_2020_CODES)})\b",
+    re.IGNORECASE,
+)
 _PRODUCT_STOP = re.compile(
     r"(?:^|\s+)(?:از|مبدا|مبدأ|به|برای|جهت|با|تحویل|تهیه|خرید|سفارش|و\s+می|و\s+بهای|"
-    r"from|to|for|with|delivered|and)\b",
+    r"اینکوترمز|شرط\s+تحویل|from|to|for|with|delivered|and|incoterms?|"
+    r"delivery\s+term)\b",
     re.IGNORECASE,
 )
 _LEADING_INTENT = re.compile(
@@ -93,6 +115,7 @@ class ParsedTradeRequest:
     quantity_unit: str | None
     origin_market: str | None
     destination: str | None
+    requested_incoterm_code: str | None
     field_confidence: dict[str, Confidence]
     field_conflicts: dict[str, tuple[str, ...]]
     assumptions: tuple[str, ...]
@@ -148,7 +171,7 @@ def _normalize_location(value: str, aliases: dict[str, str]) -> str:
     return aliases.get(normalized.casefold(), normalized)
 
 
-def _ordered_unique_locations(values: list[tuple[int, str]]) -> tuple[str, ...]:
+def _ordered_unique_values(values: list[tuple[int, str]]) -> tuple[str, ...]:
     unique: list[str] = []
     seen: set[str] = set()
     for _, value in sorted(values, key=lambda item: item[0]):
@@ -171,7 +194,7 @@ def _extract_origin_candidates(text: str) -> tuple[str, ...]:
             )
             for match in pattern.finditer(text)
         )
-    return _ordered_unique_locations(matches)
+    return _ordered_unique_values(matches)
 
 
 def _extract_destination_candidates(text: str) -> tuple[str, ...]:
@@ -192,7 +215,19 @@ def _extract_destination_candidates(text: str) -> tuple[str, ...]:
             )
             for match in pattern.finditer(text)
         )
-    return _ordered_unique_locations(matches)
+    return _ordered_unique_values(matches)
+
+
+def _extract_incoterm_candidates(text: str) -> tuple[tuple[str, ...], bool]:
+    marker_present = _INCOTERM_MARKER.search(text) is not None
+    matches: list[tuple[int, str]] = []
+    for pattern in _INCOTERM_CLAUSE_PATTERNS:
+        for clause in pattern.finditer(text):
+            matches.extend(
+                (clause.start("value") + match.start(), match.group().upper())
+                for match in _INCOTERM_CODE.finditer(clause.group("value"))
+            )
+    return _ordered_unique_values(matches), marker_present
 
 
 def parse_trade_request(text: str) -> ParsedTradeRequest:
@@ -212,8 +247,12 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
 
     origin_candidates = _extract_origin_candidates(normalized)
     destination_candidates = _extract_destination_candidates(normalized)
+    incoterm_candidates, incoterm_marker_present = _extract_incoterm_candidates(normalized)
     origin = origin_candidates[0] if len(origin_candidates) == 1 else None
     destination = destination_candidates[0] if len(destination_candidates) == 1 else None
+    requested_incoterm = (
+        incoterm_candidates[0] if len(incoterm_candidates) == 1 else None
+    )
     product = _extract_product(normalized, quantity_match)
 
     field_conflicts: dict[str, tuple[str, ...]] = {}
@@ -221,12 +260,17 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
         field_conflicts["origin_market"] = origin_candidates
     if len(destination_candidates) > 1:
         field_conflicts["destination"] = destination_candidates
+    if len(incoterm_candidates) > 1:
+        field_conflicts["requested_incoterm_code"] = incoterm_candidates
 
     confidence = {
         "product_name": Confidence.HIGH if product else Confidence.UNKNOWN,
         "quantity": Confidence.HIGH if quantity is not None else Confidence.UNKNOWN,
         "origin_market": Confidence.HIGH if origin else Confidence.UNKNOWN,
         "destination": Confidence.HIGH if destination else Confidence.UNKNOWN,
+        "requested_incoterm_code": (
+            Confidence.HIGH if requested_incoterm else Confidence.UNKNOWN
+        ),
     }
     assumptions = ("بازار مبدأ هنوز مشخص نشده است.",) if not origin_candidates else ()
     questions: list[str] = []
@@ -240,6 +284,10 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
         questions.append("چند مقصد متفاوت تشخیص داده شد؛ مقصد نهایی کدام است؟")
     elif destination is None:
         questions.append("مقصد نهایی محاسبه بهای تمام‌شده کجاست؟")
+    if "requested_incoterm_code" in field_conflicts:
+        questions.append("چند کد Incoterm متفاوت اعلام شده است؛ کد نهایی کدام است؟")
+    elif incoterm_marker_present and not incoterm_candidates:
+        questions.append("کد معتبر Incoterm موردنظر چیست؟")
     return ParsedTradeRequest(
         original_text=text,
         normalized_text=normalized,
@@ -248,6 +296,7 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
         quantity_unit=quantity_unit,
         origin_market=origin,
         destination=destination,
+        requested_incoterm_code=requested_incoterm,
         field_confidence=confidence,
         field_conflicts=field_conflicts,
         assumptions=assumptions,

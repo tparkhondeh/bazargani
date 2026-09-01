@@ -42,7 +42,11 @@ The deterministic Persian/English intake parser also accepts bounded open-vocabu
 origins and destinations after explicit location markers. It returns normalized user
 text rather than claiming geographic verification. Multiple distinct location mentions
 clear the selected field, expose `field_conflicts`, and require clarification instead
-of silently choosing the first value.
+of silently choosing the first value. Explicit Incoterm clauses can also yield one
+recognized uppercase requested code. Multiple codes or a clause without a supported
+code block automatic start with a clarification question; standalone code-like product
+text is ignored. This intake preference never sets an offer's named place/version or
+changes a cost calculation.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,

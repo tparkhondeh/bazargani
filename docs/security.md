@@ -209,6 +209,12 @@ a real geography, and require normal UI output encoding. Distinct repeated menti
 returned as bounded conflict candidates and cannot be silently promoted to a selected
 origin or destination. The parser does not call a geocoder or external service.
 
+Requested Incoterm extraction activates only after a controlled marker and returns only
+codes from the shared finite vocabulary. A clause with no recognized code or more than
+one distinct code cannot start automatically. Standalone code-shaped product text is
+not reclassified as a constraint, and the parser cannot write offer terms, declared
+versions, named places, or calculations.
+
 All application responses disable storage and legacy caching, MIME sniffing, framing,
 referrers, camera, microphone, and geolocation. Tenant API responses also include
 `Vary: X-API-Key`. HSTS is deliberately not emitted by the loopback-capable app: the

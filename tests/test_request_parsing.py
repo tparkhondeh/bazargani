@@ -21,6 +21,10 @@ class RequestParsingEvaluationTests(unittest.TestCase):
                 self.assertEqual(parsed.origin_market, expected["origin_market"])
                 self.assertEqual(parsed.destination, expected["destination"])
                 self.assertEqual(
+                    parsed.requested_incoterm_code,
+                    expected.get("requested_incoterm_code"),
+                )
+                self.assertEqual(
                     parsed.field_conflicts,
                     {
                         field: tuple(values)
@@ -44,10 +48,17 @@ class RequestParsingEvaluationTests(unittest.TestCase):
             "100 units pump from Dubai and from UAE delivered to Tehran"
         )
         ambiguous = parse_trade_request("100 units pump ready to ship")
+        unmarked_code = parse_trade_request("100 units CIF pump from China to Tehran")
+        duplicate_code = parse_trade_request(
+            "100 units pump from China to Tehran with Incoterm fob or FOB"
+        )
 
         self.assertEqual(aliases.origin_market, "UAE")
         self.assertEqual(aliases.field_conflicts, {})
         self.assertIsNone(ambiguous.destination)
+        self.assertIsNone(unmarked_code.requested_incoterm_code)
+        self.assertEqual(duplicate_code.requested_incoterm_code, "FOB")
+        self.assertEqual(duplicate_code.field_conflicts, {})
         self.assertIn(
             "مقصد نهایی محاسبه بهای تمام‌شده کجاست؟",
             ambiguous.critical_questions,

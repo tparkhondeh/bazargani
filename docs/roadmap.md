@@ -167,7 +167,10 @@ for new research, progress, result, assumptions, and opportunity history.
 Status: the deterministic intake baseline now handles Persian/English digits, product
 placement, known location aliases, and bounded open-vocabulary locations following
 explicit markers. Conflicting origin/destination mentions are disclosed and block
-automatic start rather than being resolved by first-match order. Constraint extraction,
+automatic start rather than being resolved by first-match order. The first bounded
+constraint extractor recognizes a requested Incoterm code only inside an explicit
+clause, rejects unsupported or conflicting declarations into clarification, and does
+not infer a version/named place or affect calculations. Additional constraint extraction,
 LLM assistance, eval/cost telemetry, and the RTL UI remain future work.
 
 ## Phase 5 — MVP hardening

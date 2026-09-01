@@ -193,6 +193,14 @@ clear the selected field, populate `field_conflicts`, and add a clarification qu
 The parser performs no geocoding or geographic verification, and generic unknown `to`/
 `به` phrases remain unparsed to avoid manufacturing a destination from product text.
 
+Incoterm intake extraction reuses the shared Incoterms 2020 code tuple strictly as a
+recognition vocabulary inside explicitly marked constraint clauses. It uppercases and
+deduplicates recognized codes in source order. A single code becomes
+`requested_incoterm_code`; multiple codes use the existing conflict/clarification path,
+and a marker with no supported code also requires clarification. The reference tuple
+does not assign a declared version, named place, offer term, or cost scenario; only the
+later structured evidence pipeline can create those records.
+
 The data-gap application projection combines persisted validation issues with the
 individual unknown-note snapshot. A pure deterministic function orders issues, counts
 severity and unknown coverage, and derives the review status for both API and report.

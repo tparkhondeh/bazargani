@@ -1043,6 +1043,7 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(parsed["can_start_research"])
         self.assertEqual(parsed["quantity"], 300)
         self.assertEqual(parsed["destination"], "شیراز")
+        self.assertIsNone(parsed["requested_incoterm_code"])
         self.assertEqual(parsed["field_conflicts"], {})
         self.assertEqual(parsed["critical_questions"], [])
         self.assertEqual(len(parsed["assumptions"]), 1)
@@ -1059,6 +1060,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(conflict["field_conflicts"], {"origin_market": ["چین", "ترکیه"]})
         self.assertFalse(conflict["can_start_research"])
         self.assertEqual(len(conflict["critical_questions"]), 1)
+
+        incoterm_response = self.client.post(
+            "/api/v1/requests/parse",
+            json={"text": "100 دستگاه پمپ از چین به تهران با شرط تحویل FOB یا CIF"},
+        )
+        self.assertEqual(incoterm_response.status_code, 200)
+        incoterm = incoterm_response.json()
+        self.assertIsNone(incoterm["requested_incoterm_code"])
+        self.assertEqual(
+            incoterm["field_conflicts"],
+            {"requested_incoterm_code": ["FOB", "CIF"]},
+        )
+        self.assertFalse(incoterm["can_start_research"])
 
     def test_ecb_reference_rate_preserves_provenance_and_stable_errors(self) -> None:
         unauthenticated = self.client.get(

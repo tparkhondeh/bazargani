@@ -26,6 +26,9 @@ unknown or requires human verification?
 - Deterministic intake preserves bounded, explicitly marked origin/destination text
   without claiming geographic verification; conflicting mentions remain visible and
   require clarification instead of first-match selection.
+- An explicitly marked requested Incoterm code is recognized against the controlled
+  vocabulary without inferring a named place, declared version, offer term, or cost;
+  unsupported and conflicting clauses require clarification.
 - Evidence metadata remains traceable to every price/FX use through a content
   fingerprint, while decision-oriented API views avoid duplicating raw source bodies.
 - Evidence freshness is measured against the immutable validation timestamp with the

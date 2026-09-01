@@ -862,6 +862,7 @@ class ParsedTradeRequestView(BaseModel):
     quantity_unit: str | None
     origin_market: str | None
     destination: str | None
+    requested_incoterm_code: str | None
     field_confidence: dict[str, Confidence]
     field_conflicts: dict[str, tuple[str, ...]]
     assumptions: tuple[str, ...]

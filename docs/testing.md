@@ -16,7 +16,10 @@ placement, known aliases, explicitly marked open-vocabulary origins/destinations
 conflicting location mentions, and missing critical fields. Separate regressions prove
 alias deduplication, the 100-character location bound, and that ambiguous generic `to`
 does not invent a destination. It is a baseline for future LLM-assisted parsing, not a
-claim of universal language or geographic coverage.
+claim of universal language or geographic coverage. The 20-case set also locks explicit
+Persian/English Incoterm recognition, unsupported-code clarification, and multi-code
+conflicts. Unit/API regressions prove case-insensitive duplicate codes collapse to one,
+standalone code-like product text is ignored, and no conflict is selected implicitly.
 
 No calculation change passes without exact numeric tests. Network tests are isolated
 from the default suite and never rely on mutable market prices.

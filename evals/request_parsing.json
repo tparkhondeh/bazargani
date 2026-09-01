@@ -78,5 +78,25 @@
     "id": "fa_conflicting_destinations",
     "input": "100 دستگاه پمپ از چین به مقصد چابهار و تحویل در تهران",
     "expected": {"product_name": "پمپ", "quantity": 100, "origin_market": "چین", "destination": null, "field_conflicts": {"destination": ["چابهار", "تهران"]}, "can_start_research": false}
+  },
+  {
+    "id": "fa_explicit_incoterm",
+    "input": "100 دستگاه پمپ از چین به تهران با اینکوترمز FOB",
+    "expected": {"product_name": "پمپ", "quantity": 100, "origin_market": "چین", "destination": "تهران", "requested_incoterm_code": "FOB", "can_start_research": true}
+  },
+  {
+    "id": "en_explicit_incoterm",
+    "input": "100 units pump from China to Tehran with Incoterm DDP",
+    "expected": {"product_name": "pump", "quantity": 100, "origin_market": "China", "destination": "Tehran", "requested_incoterm_code": "DDP", "can_start_research": true}
+  },
+  {
+    "id": "fa_conflicting_incoterms",
+    "input": "100 دستگاه پمپ از چین به تهران با شرط تحویل FOB یا CIF",
+    "expected": {"product_name": "پمپ", "quantity": 100, "origin_market": "چین", "destination": "تهران", "requested_incoterm_code": null, "field_conflicts": {"requested_incoterm_code": ["FOB", "CIF"]}, "can_start_research": false}
+  },
+  {
+    "id": "en_unsupported_incoterm",
+    "input": "100 units pump from China to Tehran with Incoterm XYZ",
+    "expected": {"product_name": "pump", "quantity": 100, "origin_market": "China", "destination": "Tehran", "requested_incoterm_code": null, "can_start_research": false}
   }
 ]
