@@ -2,11 +2,12 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path as FileSystemPath
 from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -104,6 +105,7 @@ from trade_agent.providers.errors import ProviderUnavailableError
 from trade_agent.providers.registry import provider_catalog
 
 logger = logging.getLogger("trade_agent.http")
+UI_ASSET_ROOT = FileSystemPath(__file__).resolve().parent / "static"
 
 
 def create_app(
@@ -297,6 +299,30 @@ def create_app(
         return check_database_readiness(
             database_engine,
             require_migration_head=not resolved.auto_create_schema,
+        )
+
+    @app.get("/ui", include_in_schema=False, response_class=FileResponse)
+    @app.get("/ui/", include_in_schema=False, response_class=FileResponse)
+    def intake_ui() -> FileResponse:
+        return FileResponse(UI_ASSET_ROOT / "index.html", media_type="text/html")
+
+    @app.get(
+        "/ui/assets/app.css",
+        include_in_schema=False,
+        response_class=FileResponse,
+    )
+    def intake_ui_styles() -> FileResponse:
+        return FileResponse(UI_ASSET_ROOT / "app.css", media_type="text/css")
+
+    @app.get(
+        "/ui/assets/app.js",
+        include_in_schema=False,
+        response_class=FileResponse,
+    )
+    def intake_ui_script() -> FileResponse:
+        return FileResponse(
+            UI_ASSET_ROOT / "app.js",
+            media_type="text/javascript",
         )
 
     @app.post("/api/v1/requests/parse", response_model=ParsedTradeRequestView)

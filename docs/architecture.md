@@ -7,8 +7,8 @@ database, scraper, or model dependencies. Application services orchestrate ports
 adapters implement acquisition, persistence, LLM, and delivery concerns.
 
 ```text
-CLI / authenticated FastAPI / future RTL UI
-                 |
+CLI / Persian RTL intake UI / authenticated FastAPI
+                         |
         application services
         /        |         \
    domain   calculation   reporting
@@ -74,6 +74,15 @@ referrer, and browser-permission controls to success and error responses, includ
 body-limit rejections. Authenticated routes also vary on the API-key header as defense
 in depth if an intermediary ignores `no-store`. Transport security remains an edge
 responsibility because the app does not trust arbitrary forwarded-protocol headers.
+
+The first RTL delivery slice is a same-origin, dependency-free HTML/CSS/JavaScript
+shell served from fixed package assets. The shell is public and contains no tenant
+data; its parser call crosses the existing authenticated `/api/v1` boundary. It keeps
+an optional API key only in page memory, clears the field on page exit, never uses
+browser storage, and renders all server/user text through text nodes. A path-scoped CSP
+allows only same-origin script, style, and API connections. This slice is deliberately
+parse-only: workflow mutation waits for one atomic application endpoint rather than
+sequencing opportunity and run creation in a browser.
 
 That same outer boundary catches otherwise unhandled exceptions after lower layers
 have rolled back/closed their contexts. It emits a generic correlated `500` and logs

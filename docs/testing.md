@@ -313,3 +313,11 @@ contract on `403`.
 Supplier identity review API tests likewise require `SUPPLIER_IDENTITY_REVIEWER` for
 queue/history/write access while proving that an authorized credential from another
 tenant still receives an empty queue or tenant-hiding `404`, never an ownership signal.
+
+Persian intake UI tests load the public shell and each fixed asset while API
+authentication is enabled, require the path-scoped CSP and cross-origin isolation
+headers, and confirm the shell does not vary on or embed an API key. Static regressions
+require RTL metadata and same-origin external assets, reject browser credential stores
+and HTML injection sinks, and prove the parser behind the shell still returns `401`
+without a key and a structured result with the approved test credential. CI also builds
+the wheel and fails if any of the three fixed UI assets is absent from the distribution.

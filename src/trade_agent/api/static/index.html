@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>بازرگانی | درخواست پژوهش جدید</title>
+    <link rel="stylesheet" href="/ui/assets/app.css">
+    <script src="/ui/assets/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
+
+    <header class="topbar">
+      <a class="brand" href="/ui" aria-label="صفحه درخواست جدید بازرگانی">
+        <span class="brand-mark" aria-hidden="true">ب</span>
+        <span>
+          <strong>بازرگانی</strong>
+          <small>دستیار پژوهش و سورسینگ</small>
+        </span>
+      </a>
+      <div class="environment-badge">
+        <span class="status-dot" aria-hidden="true"></span>
+        نسخه محلی
+      </div>
+    </header>
+
+    <main id="main-content" class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">درخواست پژوهش جدید</p>
+        <h1 id="page-title">نیاز بازرگانی را روشن و قابل بررسی ثبت کنید.</h1>
+        <p class="intro-copy">
+          متن آزاد شما با قواعد قطعی سامانه به فیلدهای ساخت‌یافته تبدیل می‌شود.
+          این مرحله هنوز پژوهش، قیمت‌گذاری یا تأیید تجاری ایجاد نمی‌کند.
+        </p>
+        <div class="scope-strip" aria-label="محدوده این مرحله">
+          <span>۱. ورود درخواست</span>
+          <span aria-hidden="true">←</span>
+          <strong>۲. بررسی برداشت سامانه</strong>
+          <span aria-hidden="true">←</span>
+          <span class="muted-step">۳. شروع پژوهش — مرحله بعد</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="فضای ثبت و بررسی درخواست">
+        <article class="panel form-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">ورودی</p>
+              <h2>شرح نیاز شما</h2>
+            </div>
+            <span id="character-count" class="character-count">۰ از ۵۰۰۰</span>
+          </div>
+
+          <form id="request-form" novalidate>
+            <label for="api-key">کلید دسترسی API</label>
+            <input
+              id="api-key"
+              name="api-key"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="در محیط محلیِ بدون احراز هویت، خالی بگذارید"
+            >
+            <p class="field-help">
+              فقط برای همین درخواست در حافظه صفحه استفاده می‌شود و در مرورگر ذخیره نخواهد شد.
+            </p>
+
+            <div class="label-row">
+              <label for="request-text">متن درخواست</label>
+              <button id="example-button" class="text-button" type="button">
+                گذاشتن نمونه آموزشی
+              </button>
+            </div>
+            <textarea
+              id="request-text"
+              name="request-text"
+              rows="9"
+              maxlength="5000"
+              required
+              aria-describedby="request-help"
+              placeholder="مثلاً: برای واردات ۳۰۰ دستگاه اسپرسوساز نیمه‌اتوماتیک، مبدأ: ایتالیا، مقصد: تهران، اینکوترمز: FOB"
+            ></textarea>
+            <p id="request-help" class="field-help">
+              کالا، تعداد و مقصد را صریح بنویسید. مبدأ و شرط تحویل در صورت وجود اختیاری‌اند.
+            </p>
+
+            <button id="parse-button" class="primary-button" type="submit">
+              بررسی و ساختاربندی درخواست
+            </button>
+          </form>
+
+          <aside class="privacy-note">
+            <span class="privacy-icon" aria-hidden="true">✓</span>
+            <p>
+              <strong>مرز امن این نسخه</strong>
+              هیچ فرصت، اجرای پژوهش یا داده تجاری با این دکمه ساخته نمی‌شود.
+            </p>
+          </aside>
+        </article>
+
+        <article class="panel result-panel" aria-labelledby="result-title">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">خروجی قطعی پارسر</p>
+              <h2 id="result-title">برداشت سامانه</h2>
+            </div>
+            <span id="result-badge" class="result-badge neutral">در انتظار ورودی</span>
+          </div>
+
+          <div id="result-status" class="result-status" role="status" aria-live="polite">
+            <div class="empty-illustration" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <h3>هنوز درخواستی بررسی نشده است.</h3>
+            <p>پس از ارسال متن، فیلدهای تشخیص‌داده‌شده و سؤال‌های لازم اینجا دیده می‌شوند.</p>
+          </div>
+
+          <div id="parsed-result" class="parsed-result" hidden>
+            <div id="parsed-fields" class="field-grid"></div>
+
+            <section id="questions-section" class="result-section" hidden>
+              <h3>پرسش‌های ضروری پیش از شروع</h3>
+              <ul id="questions-list" class="notice-list question-list"></ul>
+            </section>
+
+            <section id="conflicts-section" class="result-section" hidden>
+              <h3>تعارض‌های تشخیص‌داده‌شده</h3>
+              <ul id="conflicts-list" class="notice-list conflict-list"></ul>
+            </section>
+
+            <section id="assumptions-section" class="result-section" hidden>
+              <h3>موارد اعلام‌نشده</h3>
+              <ul id="assumptions-list" class="notice-list assumption-list"></ul>
+            </section>
+
+            <div class="evidence-boundary">
+              <strong>توجه:</strong>
+              این خروجی فقط برداشت ساخت‌یافته از متن شماست؛ نتیجه پژوهش، قیمت بازار یا شاهد مستقل نیست.
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>بازرگانی — تصمیم‌سازی مبتنی بر مدرک</span>
+      <span>ورودی بدون حدس • خروجی قابل ممیزی</span>
+    </footer>
+  </body>
+</html>

@@ -170,8 +170,11 @@ explicit markers. Conflicting origin/destination mentions are disclosed and bloc
 automatic start rather than being resolved by first-match order. The first bounded
 constraint extractor recognizes a requested Incoterm code only inside an explicit
 clause, rejects unsupported or conflicting declarations into clarification, and does
-not infer a version/named place or affect calculations. Additional constraint extraction,
-LLM assistance, eval/cost telemetry, and the RTL UI remain future work.
+not infer a version/named place or affect calculations. A dependency-free Persian RTL
+intake page now calls that authenticated parser, renders all returned text as untrusted
+text, discloses questions/conflicts/assumptions, and persists neither credentials nor
+workflow state. An atomic start-research use case, progress/result/history screens,
+additional constraint extraction, LLM assistance, and eval/cost telemetry remain.
 
 ## Phase 5 — MVP hardening
 

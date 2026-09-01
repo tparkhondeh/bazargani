@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bazargani-trade-agent"
-version = "0.55.0"
+version = "0.56.0"
 description = "Evidence-first trade research and landed-cost decision engine"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -29,6 +29,9 @@ trade-agent-api = "trade_agent.api.run:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"trade_agent.api" = ["static/*.css", "static/*.html", "static/*.js"]
 
 [tool.ruff]
 line-length = 100

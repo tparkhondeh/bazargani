@@ -50,8 +50,10 @@ changes a cost calculation.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
-and FastAPI endpoints. Automated source adapters and the RTL web UI remain phased work
-documented in `docs/roadmap.md`.
+and FastAPI endpoints. A dependency-free Persian RTL intake page now exposes the
+authenticated deterministic parser without creating workflow records or presenting
+sample content as research output. Automated source adapters and the remaining
+progress/result/history UI remain phased work documented in `docs/roadmap.md`.
 
 ## Run locally
 
@@ -72,6 +74,17 @@ When running from a source checkout without installing the package:
 $env:PYTHONPATH = "src"
 python -m trade_agent.cli examples/demo_case.json --output reports/demo.md
 ```
+
+Start the loopback API and open `http://127.0.0.1:8000/ui` for the Persian intake UI:
+
+```powershell
+python -m trade_agent.api.run
+```
+
+The static shell is public but its parser request still follows API authentication.
+Leave its credential field empty only in authentication-disabled local development.
+The page does not persist the key in browser storage and does not create an opportunity
+or research run; it only displays the parser's bounded structured interpretation.
 
 The example is explicitly labelled `DEMO` and must never be treated as market
 data.
@@ -98,6 +111,7 @@ strategy, open-source evaluation, testing strategy, and roadmap.
 Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 `docs/operations.md` for local commands. Initial endpoints are:
 
+- `GET /ui` (public local UI shell; API data remains authenticated)
 - `GET /health` and `GET /ready`
 - `POST /api/v1/requests/parse`
 - `GET /api/v1/providers`

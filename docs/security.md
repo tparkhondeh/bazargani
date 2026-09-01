@@ -47,6 +47,17 @@ cross-tenant access still receives the same `404` as a missing identifier. OIDC/
 named-user roles, key rotation, revocation, distributed rate limits, and secret-manager
 delivery remain required before public production exposure.
 
+The public `/ui` shell contains only versioned static assets and cannot read tenant
+data without an authenticated API request. Its credential field is a transient
+in-memory convenience for local/staging use: the client never writes the key to local
+storage, session storage, cookies, query strings, or logs and clears the field on page
+exit. Untrusted parser fields are assigned through DOM text nodes rather than HTML
+injection sinks. UI paths receive a strict same-origin Content Security Policy plus
+same-origin opener/resource policies; the API remains `no-store` and does not rely on
+the shell for authorization. API-key entry over plain HTTP is limited to loopback
+development. A non-loopback deployment still requires trusted TLS and the production
+identity controls above.
+
 Every authenticated `/api/v1` request consumes a fixed-window budget keyed by the
 resolved tenant, so multiple active credentials for rotation share the same allowance.
 The default is 120 requests per 60 seconds per process. Exhaustion returns `429` with

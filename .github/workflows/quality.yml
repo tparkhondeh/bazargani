@@ -55,6 +55,25 @@ jobs:
           python -m pip check
           python -m pip_audit -r requirements.lock --strict --progress-spinner off
 
+      - name: Verify installable UI assets
+        run: |
+          python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist").glob("*.whl"))
+          required = {
+              "trade_agent/api/static/app.css",
+              "trade_agent/api/static/app.js",
+              "trade_agent/api/static/index.html",
+          }
+          with ZipFile(wheel) as archive:
+              missing = required.difference(archive.namelist())
+          if missing:
+              raise SystemExit(f"wheel is missing UI assets: {sorted(missing)}")
+          PY
+
       - name: Upgrade PostgreSQL schema
         env:
           TRADE_AGENT_DATABASE_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent

@@ -29,6 +29,9 @@ unknown or requires human verification?
 - An explicitly marked requested Incoterm code is recognized against the controlled
   vocabulary without inferring a named place, declared version, offer term, or cost;
   unsupported and conflicting clauses require clarification.
+- The Persian RTL intake UI presents only the deterministic parser contract, labels
+  sample text as educational input, keeps any API key transient, and cannot promote a
+  parsed request into workflow state until an atomic authenticated start use case exists.
 - Evidence metadata remains traceable to every price/FX use through a content
   fingerprint, while decision-oriented API views avoid duplicating raw source bodies.
 - Evidence freshness is measured against the immutable validation timestamp with the

@@ -13,6 +13,13 @@ python -m alembic upgrade head
 python -m trade_agent.api.run
 ```
 
+Open `http://127.0.0.1:8000/ui` for the local Persian RTL intake page. In the default
+authentication-disabled development mode, leave its API-key field empty. In an
+authenticated local or TLS-protected staging environment, paste the approved key only
+for the current page session; the UI does not persist it. Do not enter a credential on
+a non-loopback plain-HTTP origin. The current page is parse-only and does not create an
+opportunity, start a research run, contact a provider, or deploy anything.
+
 Before a dependency change is committed, resolve and review the exact lock, update
 `THIRD_PARTY_NOTICES.md`, and run the blocking compatibility/advisory checks:
 
