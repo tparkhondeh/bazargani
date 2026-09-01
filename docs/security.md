@@ -79,6 +79,11 @@ that a dependency is defect-free; repeat the gate for every change and release.
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.
 
+The public readiness response reveals only the expected migration revision after a
+successful check. Connectivity failures, missing metadata tables, stale/multiple
+revision states, and database driver details collapse to `503 NOT_READY`; liveness
+stays independent so a database outage does not cause a process restart loop.
+
 Evidence-bundle mutations require bounded, URL-safe idempotency keys. Keys are scoped
 to a research run and bound to a canonical SHA-256 request hash; a key cannot be used
 to substitute a different payload. Keys and hashes are operational metadata, never

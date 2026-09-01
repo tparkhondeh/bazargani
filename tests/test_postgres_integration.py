@@ -48,6 +48,11 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         cls.client_context.__exit__(None, None, None)
 
     def test_full_research_transaction_uses_postgresql_types_and_tenant_scope(self) -> None:
+        readiness = self.client.get("/ready")
+        self.assertEqual(readiness.status_code, 200)
+        self.assertEqual(readiness.json()["schema_mode"], "alembic")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0008")
+
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity_response = self.client.post(
             "/api/v1/opportunities",

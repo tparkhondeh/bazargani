@@ -70,6 +70,13 @@ authentication. Migration `0007` assigns pre-existing rows to the quarantined
 `legacy` tenant; reconcile those rows to approved tenants before issuing production
 credentials, and back up the database before the migration.
 
+Use `/health` only for process liveness and `/ready` for traffic admission. In managed
+mode, readiness returns `200` only when database connectivity works and
+`alembic_version` contains exactly the release revision; otherwise it returns a
+correlation-preserving `503 NOT_READY` with `Retry-After: 5`. Do not route traffic on
+health alone. Auto-create mode reports `schema_revision=unmanaged` and is never a
+production readiness claim.
+
 ## Backup and restore baseline
 
 Before production, implement encrypted `pg_dump --format=custom` backups to a

@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from trade_agent import __version__
@@ -53,6 +53,11 @@ from trade_agent.domain.workflow import (
     VersionConflictError,
 )
 from trade_agent.infrastructure.database import Base, make_session_factory
+from trade_agent.infrastructure.readiness import (
+    DatabaseReadiness,
+    ReadinessError,
+    check_database_readiness,
+)
 from trade_agent.infrastructure.repository import TradeRepository
 from trade_agent.parsing.request import parse_trade_request
 from trade_agent.providers.ecb_fx import EcbFxProvider
@@ -151,6 +156,12 @@ def create_app(
         response.headers["Retry-After"] = str(exc.retry_after_seconds)
         return response
 
+    @app.exception_handler(ReadinessError)
+    async def readiness_failed(request: Request, exc: ReadinessError) -> JSONResponse:
+        response = error(request, 503, "NOT_READY", str(exc))
+        response.headers["Retry-After"] = "5"
+        return response
+
     @app.exception_handler(VersionConflictError)
     async def version_conflict(request: Request, exc: VersionConflictError) -> JSONResponse:
         return error(request, 409, "VERSION_CONFLICT", str(exc))
@@ -194,10 +205,11 @@ def create_app(
         return {"status": "ok"}
 
     @app.get("/ready")
-    def ready() -> dict[str, str]:
-        with database_engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-        return {"status": "ready", "persistence": "database"}
+    def ready() -> DatabaseReadiness:
+        return check_database_readiness(
+            database_engine,
+            require_migration_head=not resolved.auto_create_schema,
+        )
 
     @app.post("/api/v1/requests/parse", response_model=ParsedTradeRequestView)
     def parse_request(

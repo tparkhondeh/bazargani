@@ -44,6 +44,11 @@ Research steps have explicit statuses and eventually persist checkpoints. Each
 provider has timeout, bounded retry, rate-limit handling, caching, and an isolated
 failure result. A run may complete partially with visible data gaps.
 
+Liveness and readiness are separate public orchestration contracts. Liveness does not
+depend on the database. Readiness verifies connectivity and, for Alembic-managed
+environments, exactly one revision equal to the release's tested migration head. A CI
+test keeps the embedded revision contract synchronized with the migration graph.
+
 Result submission uses a scope-and-key idempotency ledger with a SHA-256 canonical
 request hash. The immutable response snapshot and idempotency record commit in one
 transaction. Same-key/same-hash retries replay the snapshot; same-key/different-hash

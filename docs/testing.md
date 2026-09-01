@@ -70,6 +70,11 @@ against that lock. The audit needs network access to current vulnerability data 
 reported known vulnerability blocks the quality job; exceptions must be explicitly
 reviewed and documented rather than silently ignored.
 
+Readiness tests keep the embedded required revision equal to Alembic's single head,
+distinguish unmanaged auto-create mode, accept only the exact managed revision, and
+collapse missing/stale schema into a stable public `503` without database details.
+PostgreSQL integration verifies `/ready` after the real migration upgrade.
+
 SQLite integration connections explicitly enable foreign-key enforcement, so local
 tests reject invalid parent/child flush ordering instead of deferring its discovery to
 PostgreSQL. Parent scenario rows are flushed before their component ledger entries.

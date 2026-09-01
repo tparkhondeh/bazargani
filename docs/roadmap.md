@@ -27,7 +27,9 @@ The append-only approve/reject review ledger, rationale requirement, optimistic
 locking, and protected system-derived statuses are implemented; named-user identity,
 role policy, reassignment, and review queues remain future work.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
-migration rollback/re-upgrade are enforced in CI.
+migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
+database connectivity and the exact release migration head, while liveness remains
+independent.
 Exact Python dependency locking, compatibility verification, third-party inventory,
 and a blocking known-vulnerability audit are enforced in CI; ongoing upgrade review
 and release-time re-audit remain operational responsibilities.

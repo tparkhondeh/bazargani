@@ -85,11 +85,14 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
-`/health` and `/ready` are public for orchestration. Every `/api/v1` endpoint is
-authenticated when `TRADE_AGENT_AUTH_ENABLED=true` and requires `X-API-Key`. Only
-SHA-256 key digests are configured; the resolved tenant and a non-secret key
-fingerprint are propagated into tenant-scoped repository queries and audit events.
-Production configuration fails at startup if authentication is disabled.
+`/health` and `/ready` are public for orchestration. Health reports process liveness;
+readiness checks database connectivity and, when Alembic manages the schema, requires
+the exact migration head shipped with the release. Missing/stale schema returns a
+stable `503 NOT_READY`. Every `/api/v1` endpoint is authenticated when
+`TRADE_AGENT_AUTH_ENABLED=true` and requires `X-API-Key`. Only SHA-256 key digests are
+configured; the resolved tenant and a non-secret key fingerprint are propagated into
+tenant-scoped repository queries and audit events. Production configuration fails at
+startup if authentication is disabled.
 
 Authenticated API traffic has a per-tenant, per-process fixed-window limit (default
 120 requests per 60 seconds). Every key mapped to a tenant shares its budget;

@@ -148,6 +148,7 @@ class ApiTests(unittest.TestCase):
 
     def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
         health = self.client.get("/health", headers={"X-API-Key": ""})
+        readiness = self.client.get("/ready", headers={"X-API-Key": ""})
         missing = self.client.post(
             "/api/v1/requests/parse",
             headers={"X-API-Key": ""},
@@ -160,6 +161,9 @@ class ApiTests(unittest.TestCase):
         )
 
         self.assertEqual(health.status_code, 200)
+        self.assertEqual(readiness.status_code, 200)
+        self.assertEqual(readiness.json()["schema_mode"], "auto-create")
+        self.assertEqual(readiness.json()["schema_revision"], "unmanaged")
         for response in (missing, invalid):
             self.assertEqual(response.status_code, 401)
             self.assertEqual(response.json()["code"], "AUTHENTICATION_REQUIRED")
