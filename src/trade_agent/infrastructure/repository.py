@@ -15,6 +15,10 @@ from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.research import ResearchResult
+from trade_agent.application.sensitivity import (
+    ScenarioCostPoint,
+    analyze_scenario_sensitivity,
+)
 from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Evidence
@@ -982,6 +986,17 @@ class TradeRepository:
 
             scenario_order = {"OPTIMISTIC": 0, "BASE": 1, "CONSERVATIVE": 2}
             scenarios.sort(key=lambda item: (scenario_order.get(item.name, 99), item.id))
+            sensitivity = analyze_scenario_sensitivity(
+                tuple(
+                    ScenarioCostPoint(
+                        name=scenario.name,
+                        quantity=scenario.quantity,
+                        target_currency=scenario.target_currency,
+                        per_unit_amount=scenario.per_unit_amount,
+                    )
+                    for scenario in scenarios
+                )
+            )
             issues = list(
                 session.scalars(
                     select(ValidationIssueRecord)
@@ -1015,6 +1030,7 @@ class TradeRepository:
                 "research_run": run,
                 "validation": validation_view,
                 "scenarios": scenarios,
+                "scenario_sensitivity": asdict(sensitivity),
                 "leading_offers": leading_offers,
                 "report": report,
             }

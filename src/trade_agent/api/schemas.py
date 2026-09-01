@@ -285,6 +285,22 @@ class LandedCostScenarioView(BaseModel):
     per_unit_amount: Decimal
 
 
+class ScenarioSensitivityView(BaseModel):
+    status: str
+    quantity: int | None
+    target_currency: str | None
+    optimistic_per_unit: Decimal | None
+    base_per_unit: Decimal | None
+    conservative_per_unit: Decimal | None
+    optimistic_delta_from_base: Decimal | None
+    optimistic_delta_percent: Decimal | None
+    conservative_delta_from_base: Decimal | None
+    conservative_delta_percent: Decimal | None
+    range_per_unit: Decimal | None
+    range_percent_of_base: Decimal | None
+    limitations: tuple[str, ...]
+
+
 class DecisionReportView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -301,6 +317,7 @@ class OpportunityDecisionView(BaseModel):
     research_run: ResearchRunView
     validation: ResearchValidationView
     scenarios: list[LandedCostScenarioView]
+    scenario_sensitivity: ScenarioSensitivityView
     leading_offers: list[EvidenceBackedSupplierOfferView]
     report: DecisionReportView
 

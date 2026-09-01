@@ -16,6 +16,9 @@ policy-versioned deterministic feature ledger.
 It also ranks actionable supplier offers within comparable unit/currency groups using
 quantity fit, MOQ, product match, evidence quality, commercial completeness, and
 normalized price—while keeping supplier due diligence explicitly unresolved.
+The decision view and new reports also expose exact per-unit deltas and percentage
+sensitivity around the base scenario. Comparison is withheld when scenario quantities
+or currencies differ, and the output explicitly does not claim to be an EOQ model.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -120,7 +123,8 @@ The latest-decision projection returns the newest research run under an opportun
 that actually has an immutable report, together with validation, the three landed-cost
 summaries, and every rank-1 offer (including ties). A newer empty/in-progress run does
 not erase the last evidence-backed decision, and the endpoint never chooses one tied
-supplier arbitrarily.
+supplier arbitrarily. It derives scenario sensitivity at read time using `Decimal`;
+mixed quantity/currency bases return `MIXED_BASIS` without comparison numbers.
 
 Supplier ranking responses are evidence-backed offer views: they include the original
 price/currency, quoted quantity, unit, MOQ, Incoterm, source identity/URL, retrieval

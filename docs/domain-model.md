@@ -85,6 +85,20 @@ consumer receives original price/currency, quoted quantity/unit, MOQ, Incoterm, 
 retrieval time, evidence classification/confidence, and transformation with the score.
 This is an evidence-backed offer view, not a supplier verification profile.
 
+## Scenario-sensitivity policy
+
+Sensitivity compares exactly one `OPTIMISTIC`, `BASE`, and `CONSERVATIVE` scenario.
+It reports each per-unit amount, optimistic and conservative deltas from base, and the
+full per-unit range. Percentages use `Decimal`, round half-up to two decimal places,
+and use the base per-unit amount as denominator.
+
+All three scenario quantities and target currencies must match. Otherwise the result
+is `MIXED_BASIS` and contains no comparison amounts or percentages. A zero base retains
+the comparable amounts and absolute deltas but returns `ZERO_BASE` with no undefined
+percentages. These deltas combine every submitted price, cost, and contingency
+assumption; they are not an economic order quantity calculation or an independently
+observed market range.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

@@ -342,6 +342,12 @@ class ApiTests(unittest.TestCase):
             [scenario["name"] for scenario in body["scenarios"]],
             ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
         )
+        self.assertEqual(body["scenario_sensitivity"]["status"], "COMPARABLE")
+        self.assertEqual(body["scenario_sensitivity"]["base_per_unit"], "630.00000000")
+        self.assertEqual(
+            body["scenario_sensitivity"]["range_percent_of_base"],
+            "25.51",
+        )
         self.assertEqual(
             {offer["supplier_name"] for offer in body["leading_offers"]},
             {"Demo Supplier — NOT REAL", "Demo Supplier Two — NOT REAL"},

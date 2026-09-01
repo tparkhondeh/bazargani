@@ -23,7 +23,8 @@ CLI / authenticated FastAPI / future RTL UI
 - `domain`: immutable vocabulary, evidence, price, FX, research case.
 - `calculation`: currency and landed-cost formulas only.
 - `application`: use cases, deterministic quality validation/deduplication,
-  explainable confidence, product matching, and partial-result orchestration.
+  explainable confidence, product matching, scenario sensitivity, and partial-result
+  orchestration.
 - `application/ranking`: deterministic offer comparison only; it never asserts
   supplier reliability without evidence and never compares incompatible units.
 - `providers`: acquisition contracts and adapters; no business decisions.
@@ -113,6 +114,12 @@ rank-1 rows belong to that same run, avoiding a denormalized recommendation that
 drift from evidence. Empty newer runs are skipped. The projection preserves rank ties
 and leaves report content unmodified; any future HTML UI must render it with a strict
 sanitization policy.
+
+Scenario sensitivity is a pure application calculation over the three immutable
+landed-cost summaries. The same function feeds report generation and the read-time
+latest-decision projection, preventing presentation-specific formulas from drifting.
+It fails closed to `MIXED_BASIS` when quantities or target currencies differ and never
+fills missing comparison values with estimates.
 
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached

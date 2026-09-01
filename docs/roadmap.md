@@ -11,6 +11,11 @@ Validated evidence bundle → product/price observations → point-in-time FX �
 landed-cost scenarios → Persian decision report. CLI, golden tests, explicit demo
 fixture, no invented market facts.
 
+Status: deterministic scenario sensitivity is implemented for equal quantity/currency
+bases, including exact deltas in the API and Persian report. Mixed bases and a zero
+denominator remain explicit non-comparable states; EOQ and quantity-tier optimization
+remain deferred until supported commercial inputs exist.
+
 ## Phase 2 — Persistence and service boundary
 
 PostgreSQL/Alembic repositories, append-only audit trail, FastAPI endpoints,

@@ -18,6 +18,12 @@ future LLM-assisted parsing, not a claim of universal language coverage.
 No calculation change passes without exact numeric tests. Network tests are isolated
 from the default suite and never rely on mutable market prices.
 
+Scenario-sensitivity tests use hand-computed `Decimal` values for base deltas, signed
+percentages, and total range. They also prove that mixed quantity/currency bases emit
+no comparison numbers, a zero base emits no percentages, and missing or duplicate
+scenario names are rejected. API and report tests lock the same derived result across
+both presentation paths.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

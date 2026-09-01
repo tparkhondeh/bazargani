@@ -5,6 +5,7 @@ import re
 from urllib.parse import quote
 
 from trade_agent.application.research import ResearchResult
+from trade_agent.application.sensitivity import analyze_scenario_sensitivity, cost_points
 
 _MARKDOWN_SPECIAL = frozenset("\\`*_{}[]()#!|")
 _BACKTICK_RUN = re.compile(r"`+")
@@ -78,6 +79,27 @@ def render_markdown(result: ResearchResult) -> str:
             f"| {scenario.name.value} | {scenario.total.amount:,.2f} | "
             f"{scenario.per_unit.amount:,.2f} | {scenario.target_currency} |"
         )
+
+    sensitivity = analyze_scenario_sensitivity(cost_points(result.scenarios))
+    lines.extend(["", "## حساسیت سناریوها", ""])
+    if sensitivity.status == "COMPARABLE":
+        lines.extend(
+            [
+                f"- مبنا: {sensitivity.base_per_unit:,.2f} "
+                f"{sensitivity.target_currency} برای {sensitivity.quantity:,} واحد",
+                f"- فاصله OPTIMISTIC با BASE: "
+                f"{sensitivity.optimistic_delta_from_base:,.2f} "
+                f"({sensitivity.optimistic_delta_percent:,.2f}%)",
+                f"- فاصله CONSERVATIVE با BASE: "
+                f"{sensitivity.conservative_delta_from_base:,.2f} "
+                f"({sensitivity.conservative_delta_percent:,.2f}%)",
+                f"- دامنه کل بهای هر واحد: {sensitivity.range_per_unit:,.2f} "
+                f"({sensitivity.range_percent_of_base:,.2f}% از BASE)",
+            ]
+        )
+    else:
+        lines.append(f"- وضعیت: {_code(sensitivity.status)}")
+    lines.extend(f"- محدودیت: {_text(item)}" for item in sensitivity.limitations)
 
     lines.extend(["", "## جزئیات محاسبات", ""])
     for scenario in result.scenarios:

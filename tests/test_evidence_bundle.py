@@ -21,6 +21,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("تطبیق محصول", report)
         self.assertIn("رتبه‌بندی پیشنهادهای تأمین‌کننده", report)
         self.assertIn(r"supplier\_reliability", report)
+        self.assertIn("حساسیت سناریوها", report)
+        self.assertIn("25.51%", report)
 
     def test_duplicate_scenario_names_are_rejected_before_calculation(self) -> None:
         case = load_evidence_bundle(Path("examples/demo_case.json"))
