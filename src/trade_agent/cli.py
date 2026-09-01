@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from trade_agent.application.research import execute_research_case
@@ -23,6 +24,9 @@ def main() -> int:
         args.output.write_text(report, encoding="utf-8")
         print(args.output.resolve())
     else:
+        reconfigure = getattr(sys.stdout, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
         print(report)
     return 0
 

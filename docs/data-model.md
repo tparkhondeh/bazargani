@@ -25,3 +25,8 @@ events, sources, deduplicated evidence, price observations, point-in-time FX rat
 landed-cost scenario/component ledgers, assumptions/unknowns, and immutable Markdown
 report snapshots. Report hashes and append-only result semantics make a completed run
 reproducible and prevent silent overwrite.
+
+Migration `20260831_0003` adds explicit price units plus one immutable validation
+summary and its issue ledger per research run. The summary records policy version,
+evaluation time, disposition, and a 0–100 confidence score; each issue records its
+stable code, severity, subject, Persian explanation, and structured details.

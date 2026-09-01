@@ -6,9 +6,11 @@ reproducible landed-cost decision report.
 ## Current slice
 
 The first slice accepts a JSON research case containing the user's request,
-source-backed price observations, point-in-time FX rates, and explicit cost
-assumptions. It validates provenance, calculates optimistic/base/conservative
-landed-cost scenarios with `Decimal`, and emits a Persian Markdown report.
+source-backed price observations with explicit units, point-in-time FX rates, and
+explicit cost assumptions. It validates provenance and freshness, removes exact
+duplicates, flags conflicts and price outliers, calculates optimistic/base/
+conservative landed-cost scenarios with `Decimal`, and emits a Persian Markdown
+report with an explainable confidence score.
 
 It intentionally does **not** invent prices or scrape arbitrary URLs. Phase 2 adds
 the first PostgreSQL/Alembic persistence boundary, audited research-run state machine,
@@ -62,8 +64,11 @@ Phase 2 adds PostgreSQL/Alembic persistence and a loopback FastAPI service. See
 - `POST /api/v1/research-runs/{id}/transitions`
 - `POST /api/v1/research-runs/{id}/evidence-bundle`
 - `GET /api/v1/research-runs/{id}/report`
+- `GET /api/v1/research-runs/{id}/validation`
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three
-landed-cost scenarios, assumptions/unknowns, an immutable report snapshot, and an
-audit event in one transaction.
+landed-cost scenarios, validation summary/issues, assumptions/unknowns, an immutable
+report snapshot, and an audit event in one transaction. A result with warnings is
+marked `NEEDS_VERIFICATION`; material conflicts are marked `NEEDS_HUMAN_REVIEW`
+instead of being silently reported as complete.

@@ -19,7 +19,9 @@ development environment, backup/restore procedure.
 
 Status: core foundation implemented. Remaining hardening includes explicit idempotency
 keys for bundle submission, PostgreSQL integration in CI, authentication/tenant scope,
-and production backup rehearsal.
+and production backup rehearsal. Deterministic data-quality validation, exact
+observation deduplication, persisted validation issues, and explainable confidence are
+implemented; semantic product matching remains in Phase 3.
 
 ## Phase 3 — First approved real providers
 

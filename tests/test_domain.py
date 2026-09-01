@@ -1,8 +1,14 @@
 import unittest
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
-from trade_agent.domain.models import Confidence, Evidence, EvidenceClass, Money
+from trade_agent.domain.models import (
+    Confidence,
+    Evidence,
+    EvidenceClass,
+    Money,
+    PriceObservation,
+)
 
 
 class DomainTests(unittest.TestCase):
@@ -26,6 +32,25 @@ class DomainTests(unittest.TestCase):
                 datetime(2026, 8, 31),
                 "10 USD",
                 Confidence.MEDIUM,
+            )
+
+    def test_price_observation_requires_explicit_unit(self) -> None:
+        evidence = Evidence(
+            EvidenceClass.FACT,
+            "source",
+            "https://example.com/item",
+            datetime(2026, 8, 31, tzinfo=UTC),
+            "10 USD",
+            Confidence.HIGH,
+        )
+        with self.assertRaisesRegex(ValueError, "unit"):
+            PriceObservation(
+                observation_id="price-1",
+                product_name="item",
+                unit_price=Money(Decimal("10"), "USD"),
+                quantity=1,
+                unit=" ",
+                evidence=evidence,
             )
 
 

@@ -50,12 +50,20 @@ def load_evidence_bundle(path: Path) -> ResearchCase:
 
 
 def parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
+    try:
+        return _parse_evidence_bundle(raw)
+    except KeyError as exc:
+        raise ValueError(f"missing required evidence bundle field: {exc.args[0]}") from None
+
+
+def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
     observations = tuple(
         PriceObservation(
             observation_id=str(item["observation_id"]),
             product_name=str(item["product_name"]),
             unit_price=_money(item["unit_price"]),
             quantity=int(item["quantity"]),
+            unit=str(item["unit"]),
             evidence=_evidence(item["evidence"]),
             supplier_name=item.get("supplier_name"),
             minimum_order_quantity=item.get("minimum_order_quantity"),

@@ -22,7 +22,8 @@ CLI / future FastAPI / future RTL UI
 
 - `domain`: immutable vocabulary, evidence, price, FX, research case.
 - `calculation`: currency and landed-cost formulas only.
-- `application`: use cases, validation, partial-result orchestration.
+- `application`: use cases, deterministic quality validation/deduplication,
+  explainable confidence, and partial-result orchestration.
 - `providers`: acquisition contracts and adapters; no business decisions.
 - `reporting`: presentation from an already-computed result.
 - future `infrastructure`: PostgreSQL, queues, telemetry, HTTP clients.
@@ -45,4 +46,3 @@ failure result. A run may complete partially with visible data gaps.
 Development, test, and production use environment-specific configuration validated
 at startup. Secrets come from environment/secret managers and are redacted from
 structured logs. No environment-specific business rules belong in source code.
-

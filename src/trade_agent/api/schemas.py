@@ -63,7 +63,30 @@ class ResearchCompletionView(BaseModel):
     price_observation_count: int
     fx_rate_count: int
     scenario_count: int
+    validation_disposition: str
+    validation_issue_count: int
+    confidence_score: int = Field(ge=0, le=100)
+    confidence_label: Confidence
     report_sha256: str
+
+
+class ValidationIssueView(BaseModel):
+    code: str
+    severity: str
+    message_fa: str
+    subject_type: str
+    subject_id: str | None
+    details: dict[str, Any] | None
+
+
+class ResearchValidationView(BaseModel):
+    research_run_id: str
+    policy_version: str
+    disposition: str
+    confidence_score: int = Field(ge=0, le=100)
+    confidence_label: Confidence
+    evaluated_at: datetime
+    issues: list[ValidationIssueView]
 
 
 class DecisionReportView(BaseModel):

@@ -16,6 +16,7 @@ class OpportunityStatus(StrEnum):
 class ResearchRunStatus(StrEnum):
     CREATED = "CREATED"
     RUNNING = "RUNNING"
+    NEEDS_VERIFICATION = "NEEDS_VERIFICATION"
     NEEDS_HUMAN_REVIEW = "NEEDS_HUMAN_REVIEW"
     PARTIAL = "PARTIAL"
     COMPLETED = "COMPLETED"
@@ -28,9 +29,19 @@ RESEARCH_TRANSITIONS: dict[ResearchRunStatus, frozenset[ResearchRunStatus]] = {
     ResearchRunStatus.RUNNING: frozenset(
         {
             ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+            ResearchRunStatus.NEEDS_VERIFICATION,
             ResearchRunStatus.PARTIAL,
             ResearchRunStatus.COMPLETED,
             ResearchRunStatus.FAILED,
+            ResearchRunStatus.CANCELLED,
+        }
+    ),
+    ResearchRunStatus.NEEDS_VERIFICATION: frozenset(
+        {
+            ResearchRunStatus.RUNNING,
+            ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+            ResearchRunStatus.PARTIAL,
+            ResearchRunStatus.COMPLETED,
             ResearchRunStatus.CANCELLED,
         }
     ),

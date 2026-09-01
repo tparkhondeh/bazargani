@@ -144,6 +144,7 @@ class PriceObservationRecord(Base):
     original_amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
     original_currency: Mapped[str] = mapped_column(String(3))
     quantity: Mapped[int] = mapped_column(Integer)
+    unit: Mapped[str] = mapped_column(String(50))
     minimum_order_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     incoterm: Mapped[str | None] = mapped_column(String(10), nullable=True)
     product_variant: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -227,6 +228,44 @@ class ResearchNoteRecord(Base):
     )
     kind: Mapped[str] = mapped_column(String(20))
     text: Mapped[str] = mapped_column(Text)
+
+
+class ResearchValidationRecord(Base):
+    __tablename__ = "research_validations"
+    __table_args__ = (
+        CheckConstraint(
+            "confidence_score >= 0 AND confidence_score <= 100",
+            name="ck_research_validations_confidence_range",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE"), unique=True
+    )
+    policy_version: Mapped[str] = mapped_column(String(50))
+    disposition: Mapped[str] = mapped_column(String(30))
+    confidence_score: Mapped[int] = mapped_column(Integer)
+    confidence_label: Mapped[str] = mapped_column(String(20))
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ValidationIssueRecord(Base):
+    __tablename__ = "validation_issues"
+    __table_args__ = (
+        Index("ix_validation_issues_run_severity", "research_run_id", "severity"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    code: Mapped[str] = mapped_column(String(80))
+    severity: Mapped[str] = mapped_column(String(20))
+    message_fa: Mapped[str] = mapped_column(Text)
+    subject_type: Mapped[str] = mapped_column(String(50))
+    subject_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
 class DecisionReportRecord(Base):

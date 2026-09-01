@@ -17,3 +17,9 @@ future LLM-assisted parsing, not a claim of universal language coverage.
 
 No calculation change passes without exact numeric tests. Network tests are isolated
 from the default suite and never rely on mutable market prices.
+
+The deterministic validation suite fixes its evaluation timestamp and covers clean
+fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
+product conflicts, and quantity/MOQ incompatibility. API integration tests verify
+that the validation ledger and non-complete run status are persisted atomically with
+the decision report.

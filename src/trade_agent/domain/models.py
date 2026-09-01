@@ -69,6 +69,7 @@ class PriceObservation:
     product_name: str
     unit_price: Money
     quantity: int
+    unit: str
     evidence: Evidence
     supplier_name: str | None = None
     minimum_order_quantity: int | None = None
@@ -77,12 +78,20 @@ class PriceObservation:
     market_layer: str = "UNKNOWN"
 
     def __post_init__(self) -> None:
+        if not self.observation_id.strip():
+            raise ValueError("observation_id is required")
+        if not self.product_name.strip():
+            raise ValueError("price observation product_name is required")
         if self.quantity <= 0:
             raise ValueError("quantity must be positive")
         if self.unit_price.amount < 0:
             raise ValueError("unit price cannot be negative")
         if self.minimum_order_quantity is not None and self.minimum_order_quantity <= 0:
             raise ValueError("minimum_order_quantity must be positive")
+        unit = self.unit.strip().upper()
+        if not unit or len(unit) > 50 or any(ord(character) < 32 for character in unit):
+            raise ValueError("price observation unit must be a non-empty safe value")
+        object.__setattr__(self, "unit", unit)
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +186,13 @@ class ResearchCase:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        required_text = (self.case_id, self.product_name, self.destination)
+        if not all(value.strip() for value in required_text):
+            raise ValueError("case_id, product_name, and destination are required")
         if self.quantity <= 0:
             raise ValueError("case quantity must be positive")
         if not self.scenarios:
             raise ValueError("at least one scenario is required")
+        observation_ids = [observation.observation_id for observation in self.observations]
+        if len(observation_ids) != len(set(observation_ids)):
+            raise ValueError("observation_id values must be unique within a research case")

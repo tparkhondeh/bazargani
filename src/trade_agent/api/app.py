@@ -24,6 +24,7 @@ from trade_agent.api.schemas import (
     ResearchCompletionView,
     ResearchRunTransition,
     ResearchRunView,
+    ResearchValidationView,
 )
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.config import Settings, get_settings
@@ -60,7 +61,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.2.0",
+        version="0.3.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -213,6 +214,13 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     )
     def get_research_report(run_id: str) -> Any:
         return repository.get_research_report(run_id)
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/validation",
+        response_model=ResearchValidationView,
+    )
+    def get_research_validation(run_id: str) -> Any:
+        return repository.get_research_validation(run_id)
 
     return app
 

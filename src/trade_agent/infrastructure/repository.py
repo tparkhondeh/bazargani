@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.research import ResearchResult
+from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.models import Evidence
 from trade_agent.domain.workflow import (
     InvalidTransitionError,
@@ -30,7 +31,9 @@ from trade_agent.infrastructure.database import (
     PriceObservationRecord,
     ResearchNoteRecord,
     ResearchRunRecord,
+    ResearchValidationRecord,
     SourceRecord,
+    ValidationIssueRecord,
 )
 
 
@@ -173,6 +176,7 @@ class TradeRepository:
                         original_amount=observation.unit_price.amount,
                         original_currency=observation.unit_price.currency,
                         quantity=observation.quantity,
+                        unit=observation.unit,
                         minimum_order_quantity=observation.minimum_order_quantity,
                         incoterm=observation.incoterm,
                         product_variant=observation.product_variant,
@@ -249,6 +253,32 @@ class TradeRepository:
                         )
                     )
 
+            validation = result.validation
+            session.add(
+                ResearchValidationRecord(
+                    id=str(uuid4()),
+                    research_run_id=run_id,
+                    policy_version=validation.policy_version,
+                    disposition=validation.disposition.value,
+                    confidence_score=validation.confidence_score,
+                    confidence_label=validation.confidence_label.value,
+                    evaluated_at=validation.evaluated_at,
+                )
+            )
+            for issue in validation.issues:
+                session.add(
+                    ValidationIssueRecord(
+                        id=str(uuid4()),
+                        research_run_id=run_id,
+                        code=issue.code,
+                        severity=issue.severity.value,
+                        message_fa=issue.message_fa,
+                        subject_type=issue.subject_type,
+                        subject_id=issue.subject_id,
+                        details=issue.details,
+                    )
+                )
+
             report_hash = hashlib.sha256(report_markdown.encode("utf-8")).hexdigest()
             session.add(
                 DecisionReportRecord(
@@ -261,7 +291,12 @@ class TradeRepository:
                     generated_at=datetime.now(UTC),
                 )
             )
-            run.status = ResearchRunStatus.COMPLETED.value
+            target_status = {
+                ValidationDisposition.PASSED: ResearchRunStatus.COMPLETED,
+                ValidationDisposition.NEEDS_VERIFICATION: ResearchRunStatus.NEEDS_VERIFICATION,
+                ValidationDisposition.NEEDS_HUMAN_REVIEW: ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+            }[validation.disposition]
+            run.status = target_status.value
             run.version += 1
             run.updated_at = datetime.now(UTC)
             self._audit(
@@ -276,6 +311,10 @@ class TradeRepository:
                     "price_observation_count": len(result.case.observations),
                     "fx_rate_count": len(fx_keys),
                     "scenario_count": len(result.scenarios),
+                    "validation_disposition": validation.disposition.value,
+                    "validation_issue_count": len(validation.issues),
+                    "confidence_score": validation.confidence_score,
+                    "confidence_label": validation.confidence_label.value,
                     "report_sha256": report_hash,
                     "version": run.version,
                 },
@@ -283,12 +322,16 @@ class TradeRepository:
 
         return ResearchCompletion(
             research_run_id=run_id,
-            status=ResearchRunStatus.COMPLETED.value,
+            status=target_status.value,
             version=expected_version + 1,
             evidence_count=len(evidence_cache),
             price_observation_count=len(result.case.observations),
             fx_rate_count=len(fx_keys),
             scenario_count=len(result.scenarios),
+            validation_disposition=validation.disposition.value,
+            validation_issue_count=len(validation.issues),
+            confidence_score=validation.confidence_score,
+            confidence_label=validation.confidence_label.value,
             report_sha256=report_hash,
         )
 
@@ -301,6 +344,40 @@ class TradeRepository:
                 raise KeyError("research report not found")
             session.expunge(report)
             return report
+
+    def get_research_validation(self, run_id: str) -> dict[str, Any]:
+        with self._session_factory() as session:
+            validation = session.scalar(
+                select(ResearchValidationRecord).where(
+                    ResearchValidationRecord.research_run_id == run_id
+                )
+            )
+            if validation is None:
+                raise KeyError("research validation not found")
+            issues = session.scalars(
+                select(ValidationIssueRecord)
+                .where(ValidationIssueRecord.research_run_id == run_id)
+                .order_by(ValidationIssueRecord.severity, ValidationIssueRecord.code)
+            ).all()
+            return {
+                "research_run_id": run_id,
+                "policy_version": validation.policy_version,
+                "disposition": validation.disposition,
+                "confidence_score": validation.confidence_score,
+                "confidence_label": validation.confidence_label,
+                "evaluated_at": validation.evaluated_at,
+                "issues": [
+                    {
+                        "code": issue.code,
+                        "severity": issue.severity,
+                        "message_fa": issue.message_fa,
+                        "subject_type": issue.subject_type,
+                        "subject_id": issue.subject_id,
+                        "details": issue.details,
+                    }
+                    for issue in issues
+                ],
+            }
 
     @staticmethod
     def _evidence_fingerprint(evidence: Evidence) -> str:

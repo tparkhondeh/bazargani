@@ -5,6 +5,7 @@ from trade_agent.application.research import ResearchResult
 
 def render_markdown(result: ResearchResult) -> str:
     case = result.case
+    validation = result.validation
     lines = [
         f"# گزارش تصمیم بازرگانی — {case.product_name}",
         "",
@@ -12,12 +13,34 @@ def render_markdown(result: ResearchResult) -> str:
         f"- تعداد: {case.quantity:,}",
         f"- مقصد: {case.destination}",
         f"- تعداد مشاهدات قیمت: {len(case.observations)}",
+        f"- وضعیت اعتبارسنجی: `{validation.disposition.value}`",
+        f"- امتیاز اعتماد توضیح‌پذیر: {validation.confidence_score}/100 "
+        f"(`{validation.confidence_label.value}`)",
+        "",
+        "## کیفیت داده و نیاز به بازبینی",
+        "",
+        f"- نسخه سیاست اعتبارسنجی: `{validation.policy_version}`",
+        f"- زمان ارزیابی: {validation.evaluated_at.isoformat()}",
+        "- روش امتیازدهی: شروع از ۱۰۰؛ هر هشدار ۱۰- و هر خطا ۳۰- (حداقل صفر).",
+    ]
+    if validation.issues:
+        lines.extend(
+            f"- **{issue.severity.value} / {issue.code}** "
+            f"(`{issue.subject_type}:{issue.subject_id or '-'}`) — {issue.message_fa}"
+            for issue in validation.issues
+        )
+    else:
+        lines.append("- خطای کیفیت داده شناسایی نشد.")
+
+    lines.extend(
+        [
         "",
         "## خلاصه سناریوها",
         "",
         "| سناریو | کل بهای تمام‌شده | بهای هر واحد | ارز |",
         "|---|---:|---:|---|",
-    ]
+        ]
+    )
     for scenario in result.scenarios:
         lines.append(
             f"| {scenario.name.value} | {scenario.total.amount:,.2f} | "
@@ -39,6 +62,7 @@ def render_markdown(result: ResearchResult) -> str:
         lines.append(
             f"- [{observation.evidence.source_name}]({observation.evidence.source_url}): "
             f"{observation.unit_price.amount} {observation.unit_price.currency}، "
+            f"واحد `{observation.unit}`، "
             f"کلاس `{observation.evidence.classification.value}`، "
             f"اعتماد `{observation.evidence.confidence.value}`"
         )

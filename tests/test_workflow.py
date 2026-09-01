@@ -15,6 +15,12 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidTransitionError, "invalid research transition"):
             ensure_research_transition(ResearchRunStatus.COMPLETED, ResearchRunStatus.RUNNING)
 
+    def test_verification_result_can_be_escalated(self) -> None:
+        ensure_research_transition(
+            ResearchRunStatus.NEEDS_VERIFICATION,
+            ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

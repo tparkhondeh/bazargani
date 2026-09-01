@@ -15,6 +15,8 @@ from trade_agent.infrastructure.database import (
     FXRateRecord,
     LandedCostScenarioRecord,
     PriceObservationRecord,
+    ResearchValidationRecord,
+    ValidationIssueRecord,
 )
 
 
@@ -122,7 +124,10 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(completed_response.status_code, 200)
         completed = completed_response.json()
-        self.assertEqual(completed["status"], "COMPLETED")
+        self.assertEqual(completed["status"], "NEEDS_VERIFICATION")
+        self.assertEqual(completed["validation_disposition"], "NEEDS_VERIFICATION")
+        self.assertGreater(completed["validation_issue_count"], 0)
+        self.assertLess(completed["confidence_score"], 100)
         self.assertEqual(completed["evidence_count"], 2)
         self.assertEqual(completed["price_observation_count"], 1)
         self.assertEqual(completed["fx_rate_count"], 1)
@@ -132,6 +137,15 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(report_response.status_code, 200)
         self.assertIn("گزارش تصمیم بازرگانی", report_response.json()["content"])
         self.assertEqual(report_response.json()["content_sha256"], completed["report_sha256"])
+
+        validation_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/validation"
+        )
+        self.assertEqual(validation_response.status_code, 200)
+        validation = validation_response.json()
+        self.assertEqual(validation["disposition"], "NEEDS_VERIFICATION")
+        self.assertEqual(len(validation["issues"]), completed["validation_issue_count"])
+        self.assertIn("ASSUMED_COST_COMPONENTS", {item["code"] for item in validation["issues"]})
 
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 2)
@@ -147,6 +161,14 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(
                 connection.scalar(select(func.count()).select_from(DecisionReportRecord)),
                 1,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(ResearchValidationRecord)),
+                1,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(ValidationIssueRecord)),
+                completed["validation_issue_count"],
             )
 
     def test_bundle_mismatch_rolls_back_all_results(self) -> None:
@@ -174,6 +196,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json()["code"], "INVALID_INPUT")
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 0)
+
+    def test_bundle_missing_explicit_unit_has_validation_error_contract(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        del bundle["observations"][0]["unit"]
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(f"/api/v1/opportunities/{opportunity['id']}/research-runs").json()
+        self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        )
+
+        response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            json={"expected_version": 2, "bundle": bundle},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["code"], "INVALID_INPUT")
+        self.assertIn("unit", response.json()["message"])
 
 
 if __name__ == "__main__":

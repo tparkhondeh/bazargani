@@ -15,6 +15,10 @@ class ResearchCompletion:
     price_observation_count: int
     fx_rate_count: int
     scenario_count: int
+    validation_disposition: str
+    validation_issue_count: int
+    confidence_score: int
+    confidence_label: str
     report_sha256: str
 
 
