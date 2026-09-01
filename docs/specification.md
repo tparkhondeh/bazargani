@@ -48,6 +48,9 @@ unknown or requires human verification?
 - Provider failure produces partial results and explicit data gaps.
 - A low-confidence or incomplete result is marked `NEEDS_VERIFICATION` or
   `NEEDS_HUMAN_REVIEW`.
+- Persisted validation issues and individually declared unknowns are exposed as a
+  tenant-scoped structured data-gap summary; an empty recorded set is never presented
+  as proof of commercial completeness.
 - Completing or rejecting a review-required result records the authenticated actor,
   rationale, decision, tenant, and exact run version without rewriting evidence.
 - Opportunity lifecycle changes follow an explicit version-checked policy, preserve

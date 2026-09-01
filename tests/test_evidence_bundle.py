@@ -17,6 +17,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertEqual(len(result.scenarios), 3)
         self.assertIn("DEMO-NOT-MARKET-DATA", report)
         self.assertIn("مجهولات", report)
+        self.assertIn("خلاصه شکاف‌های داده", report)
+        self.assertIn("مجهول اعلام‌شده: 1", report)
         self.assertIn("https://example.com/demo-supplier", report)
         self.assertIn("EXACT_VARIANT", report)
         self.assertIn("تطبیق محصول", report)

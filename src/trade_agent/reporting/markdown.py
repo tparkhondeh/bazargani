@@ -4,6 +4,7 @@ import html
 import re
 from urllib.parse import quote
 
+from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
 from trade_agent.application.price_distribution import (
     DistributionPricePoint,
     analyze_price_distribution,
@@ -73,6 +74,32 @@ def render_markdown(result: ResearchResult) -> str:
         )
     else:
         lines.append("- خطای کیفیت داده شناسایی نشد.")
+
+    data_gaps = summarize_data_gaps(
+        tuple(
+            DataGapIssue(
+                code=issue.code,
+                severity=issue.severity.value,
+                message_fa=issue.message_fa,
+                subject_type=issue.subject_type,
+                subject_id=issue.subject_id,
+                details=issue.details,
+            )
+            for issue in validation.issues
+        ),
+        case.unknowns,
+    )
+    lines.extend(
+        [
+            "",
+            "## خلاصه شکاف‌های داده",
+            "",
+            f"- وضعیت: {_code(data_gaps.status)}",
+            f"- خطا: {data_gaps.error_count}؛ هشدار: {data_gaps.warning_count}؛ "
+            f"مجهول اعلام‌شده: {data_gaps.declared_unknown_count}",
+        ]
+    )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in data_gaps.limitations)
 
     lines.extend(
         [

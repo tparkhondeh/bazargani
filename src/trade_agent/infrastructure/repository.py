@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
 from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
@@ -1105,6 +1106,58 @@ class TradeRepository:
                     }
                     for issue in issues
                 ],
+            }
+
+    def get_research_data_gaps(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            validation = session.scalar(
+                select(ResearchValidationRecord).where(
+                    ResearchValidationRecord.research_run_id == run_id
+                )
+            )
+            if validation is None:
+                raise KeyError("research validation not found")
+            issue_records = tuple(
+                session.scalars(
+                    select(ValidationIssueRecord).where(
+                        ValidationIssueRecord.research_run_id == run_id
+                    )
+                )
+            )
+            unknowns = tuple(
+                session.scalars(
+                    select(ResearchNoteRecord.text).where(
+                        ResearchNoteRecord.research_run_id == run_id,
+                        ResearchNoteRecord.kind == "UNKNOWN",
+                    )
+                )
+            )
+            summary = summarize_data_gaps(
+                tuple(
+                    DataGapIssue(
+                        code=issue.code,
+                        severity=issue.severity,
+                        message_fa=issue.message_fa,
+                        subject_type=issue.subject_type,
+                        subject_id=issue.subject_id,
+                        details=issue.details,
+                    )
+                    for issue in issue_records
+                ),
+                unknowns,
+            )
+            return {
+                "research_run_id": run_id,
+                "validation_disposition": validation.disposition,
+                "confidence_score": validation.confidence_score,
+                "confidence_label": validation.confidence_label,
+                **asdict(summary),
             }
 
     def get_landed_cost_scenarios(

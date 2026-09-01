@@ -117,6 +117,13 @@ the latest opportunity decision. They are not opportunity workflow notes and can
 patched in place. A correction belongs to a new research run whose dependant results
 are explicitly recalculated.
 
+The data-gap summary is a read projection over the immutable validation issue ledger
+and declared unknown notes. Errors take precedence over warnings; otherwise any warning
+or declared unknown requires verification. Counts remain separate because one
+`DECLARED_UNKNOWNS` validation issue can refer to multiple individually preserved
+unknown statements. `NO_RECORDED_GAPS` means only that this ledger is empty, not that
+supplier, logistics, customs, payment, or market coverage is complete.
+
 The evidence catalog is a read projection over immutable, deduplicated evidence. Each
 entry has a SHA-256 fingerprint and one or more deterministic usage references:
 `PRICE_OBSERVATION` points to the external observation ID and `FX_RATE` identifies the

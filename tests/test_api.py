@@ -435,6 +435,7 @@ class ApiTests(unittest.TestCase):
             for resource in (
                 "report",
                 "validation",
+                "data-gaps",
                 "landed-cost-scenarios",
                 "fx-rates",
                 "assumptions",
@@ -958,6 +959,7 @@ class ApiTests(unittest.TestCase):
         report_response = self.client.get(f"/api/v1/research-runs/{run['id']}/report")
         self.assertEqual(report_response.status_code, 200)
         self.assertIn("گزارش تصمیم بازرگانی", report_response.json()["content"])
+        self.assertIn("خلاصه شکاف‌های داده", report_response.json()["content"])
         self.assertIn("توزیع قیمت‌های مشاهده‌شده", report_response.json()["content"])
         self.assertEqual(report_response.json()["content_sha256"], completed["report_sha256"])
 
@@ -977,6 +979,27 @@ class ApiTests(unittest.TestCase):
             "INSUFFICIENT_SUPPLIER_COMPARISON",
             {item["code"] for item in validation["issues"]},
         )
+
+        gaps_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/data-gaps"
+        )
+        self.assertEqual(gaps_response.status_code, 200)
+        gaps = gaps_response.json()
+        self.assertEqual(gaps["research_run_id"], run["id"])
+        self.assertEqual(gaps["status"], "GAPS_REQUIRE_VERIFICATION")
+        self.assertEqual(gaps["validation_disposition"], "NEEDS_VERIFICATION")
+        self.assertEqual(gaps["confidence_score"], validation["confidence_score"])
+        self.assertEqual(gaps["confidence_label"], validation["confidence_label"])
+        self.assertEqual(gaps["issue_count"], len(validation["issues"]))
+        self.assertEqual(gaps["error_count"], 0)
+        self.assertEqual(gaps["warning_count"], len(validation["issues"]))
+        self.assertEqual(gaps["declared_unknown_count"], len(bundle["unknowns"]))
+        self.assertEqual(gaps["declared_unknowns"], sorted(bundle["unknowns"]))
+        self.assertEqual(
+            [item["code"] for item in gaps["issues"]],
+            sorted(item["code"] for item in validation["issues"]),
+        )
+        self.assertNotIn("raw_value", json.dumps(gaps))
 
         ledger_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"

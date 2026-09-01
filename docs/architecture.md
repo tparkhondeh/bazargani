@@ -140,6 +140,12 @@ immutable snapshot so a UI does not need to parse report Markdown. Input parsing
 requires bounded non-empty strings; audit events retain counts and run lineage rather
 than duplicating commercial note contents.
 
+The data-gap application projection combines persisted validation issues with the
+individual unknown-note snapshot. A pure deterministic function orders issues, counts
+severity and unknown coverage, and derives the review status for both API and report.
+It does not mutate the run or infer completeness from missing records; tenant ownership
+is checked before either source collection is read.
+
 The evidence-catalog projection joins tenant-owned evidence to source metadata, then
 builds deterministic usage references from price observations and scenario-linked FX
 rows. It exposes the stored SHA-256 fingerprint but not `raw_value`. This keeps normal

@@ -21,6 +21,10 @@ evidence bodies; automated Iran-market FX sources remain blocked on source appro
 Structured assumption/unknown snapshots are implemented at run and latest-decision
 level. A correction/recalculation workflow that creates a successor run remains future
 work; immutable completed runs are not edited in place.
+A structured data-gap projection now combines validation errors/warnings and individual
+declared unknowns for API and report consumers, while explicitly refusing to equate an
+empty ledger with commercial completeness. Provider-attributed runtime gaps remain part
+of the future resumable acquisition pipeline.
 A tenant-scoped evidence catalog now connects deduplicated source metadata and content
 fingerprints to price/FX usages without returning raw bodies. Role-gated raw-evidence
 review, retention rules, and legal export policy remain future governance work.

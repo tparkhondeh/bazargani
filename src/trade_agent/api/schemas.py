@@ -264,6 +264,21 @@ class ResearchValidationView(BaseModel):
     issues: list[ValidationIssueView]
 
 
+class ResearchDataGapsView(BaseModel):
+    research_run_id: str
+    status: str
+    validation_disposition: str
+    confidence_score: int = Field(ge=0, le=100)
+    confidence_label: Confidence
+    issue_count: int = Field(ge=0)
+    error_count: int = Field(ge=0)
+    warning_count: int = Field(ge=0)
+    declared_unknown_count: int = Field(ge=0)
+    issues: tuple[ValidationIssueView, ...]
+    declared_unknowns: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+
 class ProductMatchView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

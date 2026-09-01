@@ -163,6 +163,20 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(decision_notes.status_code, 200)
         self.assertEqual(decision_notes.json()["assumptions"], bundle["assumptions"])
         self.assertEqual(latest_decision.json()["unknowns"], bundle["unknowns"])
+        data_gaps = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/data-gaps"
+        )
+        self.assertEqual(data_gaps.status_code, 200)
+        self.assertEqual(data_gaps.json()["status"], "GAPS_REQUIRE_VERIFICATION")
+        self.assertEqual(
+            data_gaps.json()["declared_unknown_count"],
+            len(bundle["unknowns"]),
+        )
+        self.assertEqual(
+            data_gaps.json()["issue_count"],
+            completed["validation_issue_count"],
+        )
+        self.assertNotIn("raw_value", json.dumps(data_gaps.json()))
         evidence_catalog = self.client.get(
             f"/api/v1/research-runs/{run['id']}/evidence"
         )
