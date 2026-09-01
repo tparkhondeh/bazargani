@@ -49,6 +49,7 @@ from trade_agent.application.reference_rates import (
     ReferenceRateProvider,
 )
 from trade_agent.config import Settings, get_settings
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
@@ -185,9 +186,13 @@ def create_app(
     async def invalid_transition(request: Request, exc: InvalidTransitionError) -> JSONResponse:
         return error(request, 409, "INVALID_TRANSITION", str(exc))
 
-    @app.exception_handler(ValueError)
-    async def invalid_input(request: Request, exc: ValueError) -> JSONResponse:
+    @app.exception_handler(PublicInputError)
+    async def public_invalid_input(request: Request, exc: PublicInputError) -> JSONResponse:
         return error(request, 422, "INVALID_INPUT", str(exc))
+
+    @app.exception_handler(ValueError)
+    async def invalid_input(request: Request, _: ValueError) -> JSONResponse:
+        return error(request, 422, "INVALID_INPUT", "request input is invalid")
 
     @app.exception_handler(ProviderUnavailableError)
     async def provider_unavailable(

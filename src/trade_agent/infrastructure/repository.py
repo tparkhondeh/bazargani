@@ -16,6 +16,7 @@ from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.validation import ValidationDisposition
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Evidence
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
@@ -63,7 +64,7 @@ class TradeRepository:
         actor_id: str,
     ) -> OpportunityRecord:
         if quantity <= 0:
-            raise ValueError("quantity must be positive")
+            raise PublicInputError("quantity must be positive")
         now = datetime.now(UTC)
         record = OpportunityRecord(
             id=str(uuid4()),
@@ -76,7 +77,7 @@ class TradeRepository:
             updated_at=now,
         )
         if not record.product_name or not record.target_market:
-            raise ValueError("product_name and target_market are required")
+            raise PublicInputError("product_name and target_market are required")
         with self._session_factory.begin() as session:
             session.add(record)
             self._audit(
@@ -112,7 +113,7 @@ class TradeRepository:
         after: PageCursor | None,
     ) -> tuple[list[OpportunityRecord], str | None]:
         if not 1 <= limit <= 100:
-            raise ValueError("page limit must be between 1 and 100")
+            raise PublicInputError("page limit must be between 1 and 100")
         with self._session_factory() as session:
             statement = select(OpportunityRecord).where(
                 OpportunityRecord.tenant_id == tenant_id
@@ -154,7 +155,7 @@ class TradeRepository:
         after: PageCursor | None,
     ) -> tuple[list[AuditEventRecord], str | None]:
         if not 1 <= limit <= 100:
-            raise ValueError("page limit must be between 1 and 100")
+            raise PublicInputError("page limit must be between 1 and 100")
         with self._session_factory() as session:
             statement = select(AuditEventRecord).where(
                 AuditEventRecord.tenant_id == tenant_id
@@ -236,7 +237,7 @@ class TradeRepository:
         after: PageCursor | None,
     ) -> tuple[list[ResearchRunRecord], str | None]:
         if not 1 <= limit <= 100:
-            raise ValueError("page limit must be between 1 and 100")
+            raise PublicInputError("page limit must be between 1 and 100")
         with self._session_factory() as session:
             opportunity = session.scalar(
                 select(OpportunityRecord.id).where(
@@ -335,7 +336,7 @@ class TradeRepository:
     ) -> ResearchReviewRecord:
         normalized_rationale = rationale.strip()
         if not 3 <= len(normalized_rationale) <= 2_000:
-            raise ValueError("review rationale must contain 3 to 2000 characters")
+            raise PublicInputError("review rationale must contain 3 to 2000 characters")
         with self._session_factory.begin() as session:
             run = session.scalar(
                 select(ResearchRunRecord)
@@ -478,7 +479,7 @@ class TradeRepository:
         actor_id: str,
     ) -> ResearchCompletion:
         if not idempotency_key.strip() or len(idempotency_key) > 128:
-            raise ValueError("idempotency_key must contain 1 to 128 characters")
+            raise PublicInputError("idempotency_key must contain 1 to 128 characters")
         with self._session_factory.begin() as session:
             idempotency = session.scalar(
                 select(IdempotencyRecord).where(
@@ -521,15 +522,15 @@ class TradeRepository:
             if opportunity is None:
                 raise KeyError("opportunity not found")
             if opportunity.quantity != result.case.quantity:
-                raise ValueError("bundle quantity does not match the opportunity")
+                raise PublicInputError("bundle quantity does not match the opportunity")
             if normalize_product_text(opportunity.product_name) != normalize_product_text(
                 result.case.product_name
             ):
-                raise ValueError("bundle product_name does not match the opportunity")
+                raise PublicInputError("bundle product_name does not match the opportunity")
             if normalize_product_text(opportunity.target_market) != normalize_product_text(
                 result.case.destination
             ):
-                raise ValueError("bundle destination does not match the opportunity")
+                raise PublicInputError("bundle destination does not match the opportunity")
 
             evidence_cache: dict[str, EvidenceRecord] = {}
             observation_records: dict[str, PriceObservationRecord] = {}

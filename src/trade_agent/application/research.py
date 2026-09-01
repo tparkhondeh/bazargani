@@ -12,6 +12,7 @@ from trade_agent.application.validation import (
     validate_supplier_rankings,
 )
 from trade_agent.calculation.landed_cost import calculate_landed_cost
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import (
     LandedCostResult,
     ProductMatch,
@@ -37,9 +38,9 @@ def execute_research_case(
     required = {ScenarioName.OPTIMISTIC, ScenarioName.BASE, ScenarioName.CONSERVATIVE}
     missing = required - names
     if missing:
-        raise ValueError(f"missing required scenarios: {', '.join(sorted(missing))}")
+        raise PublicInputError(f"missing required scenarios: {', '.join(sorted(missing))}")
     if len(names) != len(case.scenarios):
-        raise ValueError("scenario names must be unique within a research case")
+        raise PublicInputError("scenario names must be unique within a research case")
 
     clean_case, validation = validate_research_case(case, evaluated_at=evaluated_at)
     matches = match_research_case(clean_case)

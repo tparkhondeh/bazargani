@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 
 import httpx
 
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Confidence, Evidence, EvidenceClass, FXRate
 from trade_agent.providers.errors import ProviderUnavailableError
 from trade_agent.providers.http import (
@@ -28,7 +29,7 @@ class EcbFxProvider:
     def latest_reference_rate(self, quote_currency: str) -> FXRate:
         currency = quote_currency.strip().upper()
         if currency == "EUR" or not _CURRENCY.fullmatch(currency):
-            raise ValueError("quote currency must be a non-EUR three-letter code")
+            raise PublicInputError("quote currency must be a non-EUR three-letter code")
         url = (
             f"https://{ECB_HOST}/service/data/EXR/D.{currency}.EUR.SP00.A"
             "?format=csvdata&detail=dataonly&lastNObservations=1"

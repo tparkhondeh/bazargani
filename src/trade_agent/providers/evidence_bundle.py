@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import (
     Confidence,
     CostInput,
@@ -29,23 +30,23 @@ MAX_PRODUCT_ATTRIBUTES = 100
 
 def _object(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
-        raise ValueError(f"{label} must be an object")
+        raise PublicInputError(f"{label} must be an object")
     return value
 
 
 def _object_list(value: Any, label: str, maximum: int) -> list[dict[str, Any]]:
     if not isinstance(value, list):
-        raise ValueError(f"{label} must be an array")
+        raise PublicInputError(f"{label} must be an array")
     if len(value) > maximum:
-        raise ValueError(f"{label} cannot contain more than {maximum} items")
+        raise PublicInputError(f"{label} cannot contain more than {maximum} items")
     return [_object(item, f"{label}[{index}]") for index, item in enumerate(value)]
 
 
 def _text_list(value: Any, label: str) -> tuple[str, ...]:
     if not isinstance(value, list):
-        raise ValueError(f"{label} must be an array")
+        raise PublicInputError(f"{label} must be an array")
     if len(value) > MAX_NOTES_PER_KIND:
-        raise ValueError(
+        raise PublicInputError(
             f"{label} cannot contain more than {MAX_NOTES_PER_KIND} items"
         )
     return tuple(map(str, value))
@@ -54,7 +55,7 @@ def _text_list(value: Any, label: str) -> tuple[str, ...]:
 def _attributes(value: Any, label: str) -> dict[str, str]:
     attributes = _object(value, label)
     if len(attributes) > MAX_PRODUCT_ATTRIBUTES:
-        raise ValueError(
+        raise PublicInputError(
             f"{label} cannot contain more than {MAX_PRODUCT_ATTRIBUTES} items"
         )
     return {str(key): str(item) for key, item in attributes.items()}
@@ -62,11 +63,11 @@ def _attributes(value: Any, label: str) -> dict[str, str]:
 
 def _decimal(value: Any) -> Decimal:
     if isinstance(value, float):
-        raise ValueError("JSON decimals must be strings or integers, never floats")
+        raise PublicInputError("JSON decimals must be strings or integers, never floats")
     try:
         return Decimal(str(value))
     except InvalidOperation:
-        raise ValueError("decimal values must contain a valid base-10 number") from None
+        raise PublicInputError("decimal values must contain a valid base-10 number") from None
 
 
 def _optional_text(value: Any) -> str | None:
@@ -79,7 +80,7 @@ def _optional_positive_int(value: Any, label: str) -> int | None:
     try:
         parsed = int(value)
     except (TypeError, ValueError):
-        raise ValueError(f"{label} must be an integer") from None
+        raise PublicInputError(f"{label} must be an integer") from None
     return parsed
 
 
@@ -102,7 +103,7 @@ def _money(data: dict[str, Any]) -> Money:
 def load_evidence_bundle(path: Path) -> ResearchCase:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError("evidence bundle root must be an object")
+        raise PublicInputError("evidence bundle root must be an object")
     return parse_evidence_bundle(raw)
 
 
@@ -110,7 +111,9 @@ def parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
     try:
         return _parse_evidence_bundle(raw)
     except KeyError as exc:
-        raise ValueError(f"missing required evidence bundle field: {exc.args[0]}") from None
+        raise PublicInputError(
+            f"missing required evidence bundle field: {exc.args[0]}"
+        ) from None
 
 
 def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:

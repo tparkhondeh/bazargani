@@ -809,6 +809,38 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn(secret, response.text)
         self.assertNotIn("input", response.text)
 
+    def test_non_public_value_error_does_not_reflect_domain_identifier(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        secret = "COMMERCIAL-SECRET-COST-CODE-998877"
+        bundle["scenarios"][0]["costs"][0]["code"] = secret
+        bundle["scenarios"][0]["costs"][0]["money"]["amount"] = "-1"
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        )
+
+        response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "non-reflective-domain-error"},
+            json={"expected_version": 2, "bundle": bundle},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["code"], "INVALID_INPUT")
+        self.assertEqual(response.json()["message"], "request input is invalid")
+        self.assertNotIn(secret, response.text)
+
     def test_oversized_request_is_rejected_with_stable_contract(self) -> None:
         correlation_id = "343f80ba-1d47-4a56-aee5-901cbff70cb2"
         response = self.client.post(

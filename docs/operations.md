@@ -58,6 +58,11 @@ It is capped at 50 concrete issues plus an omission marker and intentionally doe
 echo rejected values. Correlate server-side investigation by `correlation_id`; do not
 add raw request bodies to application or proxy logs.
 
+For `422 INVALID_INPUT`, only the explicit public-input error class may return a
+specific reason. A generic `request input is invalid` can represent a rejected domain
+invariant; investigate by correlation ID and never expose the underlying exception or
+payload in a client-facing response.
+
 `TRADE_AGENT_API_RATE_LIMIT_REQUESTS` defaults to `120` and is bounded to 1–100,000;
 `TRADE_AGENT_API_RATE_LIMIT_WINDOW_SECONDS` defaults to `60` and is bounded to
 1–3,600. This budget is per tenant **and per application process**. Configure a

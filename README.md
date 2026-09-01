@@ -143,3 +143,8 @@ Schema-validation failures return `422 REQUEST_VALIDATION_FAILED` with at most 5
 safe details containing an allowlisted field location, validation type, and generic
 message. Raw input, Pydantic context, and error URLs are never reflected; additional
 errors are represented by an explicit omission marker.
+
+Domain/parser failures use `422 INVALID_INPUT`. Only deliberately authored
+`PublicInputError` messages may provide a specific safe reason; every other
+`ValueError` is reduced to `request input is invalid`, so identifiers embedded in
+invariant failures are not reflected to clients.

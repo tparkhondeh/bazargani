@@ -50,6 +50,11 @@ into exception message/context/URL fields, then prove none is reflected. They ve
 the allowlisted location/type/generic-message contract and enforce the 50-detail bound
 plus explicit omission marker.
 
+Domain-error regression tests place a synthetic secret in a negative cost identifier,
+exercise the full opportunity/run/bundle endpoint, and verify that the raw invariant
+message is replaced by the generic `INVALID_INPUT` reason. Separate tests retain safe
+specific messages for explicitly public missing-unit and destination-mismatch errors.
+
 Authentication integration tests run with authentication enabled and cover missing,
 invalid, and valid keys; public health; tenant/actor audit attribution; and identical
 `404` responses for cross-tenant aggregate reads and mutations. Configuration tests

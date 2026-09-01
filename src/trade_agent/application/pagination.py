@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
+from trade_agent.domain.errors import PublicInputError
+
 MAX_CURSOR_LENGTH = 512
 
 
@@ -34,7 +36,7 @@ def decode_cursor(value: str | None) -> PageCursor | None:
     if value is None:
         return None
     if not value or len(value) > MAX_CURSOR_LENGTH:
-        raise ValueError("invalid pagination cursor")
+        raise PublicInputError("invalid pagination cursor")
     try:
         padding = "=" * (-len(value) % 4)
         decoded = base64.b64decode(
@@ -56,5 +58,5 @@ def decode_cursor(value: str | None) -> PageCursor | None:
         TypeError,
         json.JSONDecodeError,
     ):
-        raise ValueError("invalid pagination cursor") from None
+        raise PublicInputError("invalid pagination cursor") from None
     return PageCursor(created_at=created_at.astimezone(UTC), record_id=record_id)

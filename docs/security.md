@@ -99,3 +99,8 @@ their raw representation may include rejected input and context. The public `422
 contract emits at most 50 allowlisted locations and internal validation types with
 generic messages, then an omission marker; unknown location names are replaced with
 `field` and raw input, context, and error URLs are discarded.
+
+Domain/parser `ValueError` text is also non-public by default because invariant
+messages can contain cost codes, observation identifiers, currencies, or other input.
+Only explicitly reviewed `PublicInputError` messages built from controlled labels may
+cross the API boundary; all other values collapse to a generic `INVALID_INPUT` reason.

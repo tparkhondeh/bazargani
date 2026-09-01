@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Confidence
 
 _DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
@@ -93,15 +94,15 @@ def _extract_product(text: str, quantity_match: re.Match[str] | None) -> str | N
     if candidate.casefold() in {"واردات", "برای واردات", "قیمت", "import", "sourcing"}:
         return None
     if len(candidate) > 300:
-        raise ValueError("extracted product name is too long")
+        raise PublicInputError("extracted product name is too long")
     return candidate
 
 
 def parse_trade_request(text: str) -> ParsedTradeRequest:
     if not text or not text.strip():
-        raise ValueError("request text is required")
+        raise PublicInputError("request text is required")
     if len(text) > 5000:
-        raise ValueError("request text exceeds 5000 characters")
+        raise PublicInputError("request text exceeds 5000 characters")
     normalized = _normalize(text)
     quantity_match = _QUANTITY.search(normalized)
     quantity: int | None = None
@@ -109,7 +110,7 @@ def parse_trade_request(text: str) -> ParsedTradeRequest:
     if quantity_match is not None:
         quantity = int(quantity_match.group("number").replace(",", "").replace("٬", ""))
         if quantity <= 0:
-            raise ValueError("quantity must be positive")
+            raise PublicInputError("quantity must be positive")
         quantity_unit = quantity_match.group("unit")
 
     origin = next(
