@@ -160,6 +160,12 @@ authorized run history but is not duplicated into audit payloads; audit records 
 predecessor ID and source version. Successors copy no raw evidence, report, or calculated
 row, preventing stale historical values from silently becoming current inputs.
 
+The supplier identity review queue applies the tenant predicate through the owning
+research run before returning any claim. It exposes the same bounded claim and source
+metadata already available to an authorized tenant, but omits raw evidence, review
+rationale, reviewer actor identity, and audit metadata. Collection reads return an empty
+page rather than revealing whether another tenant has matching review work.
+
 POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length` is
 missing. The default application limit is 2 MB and the reverse proxy must enforce an
 equal or smaller limit in production. Evidence collections have separate item-count

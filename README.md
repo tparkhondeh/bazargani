@@ -95,6 +95,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/providers/ecb-fx-reference/health`
 - `GET /api/v1/reference-rates/ecb/{quote_currency}`
 - `GET /api/v1/audit-events`
+- `GET /api/v1/supplier-identity-review-queue`
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
@@ -246,6 +247,13 @@ calculations, and reports are never copied as current input. Its full corrected 
 must pass the normal deterministic pipeline, and only a successor with a new immutable
 report can become the latest decision. Run history exposes the predecessor link and
 reason while audit metadata omits the reason's commercial text.
+
+The supplier identity review queue is a bounded tenant-scoped projection of only
+`UNREVIEWED` and `INCONCLUSIVE` offer-scoped claims. It folds the latest append-only
+review, supports exact status filtering and keyset pagination, and includes opportunity
+context plus source provenance for triage. Resolved claims leave the queue. Raw evidence,
+review rationale, and reviewer identity are deliberately excluded, and queue membership
+never means that a supplier identity is verified.
 
 The run evidence catalog returns each deduplicated evidence record's source metadata,
 classification, confidence, transformation, SHA-256 fingerprint, and deterministic

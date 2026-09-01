@@ -25,7 +25,8 @@ technical characters so every review resource has one unambiguous path.
 - Conflicting or superseding human judgments remain visible instead of being overwritten.
 - Optimistic concurrency prevents a stale reviewer from silently replacing a newer state.
 - Evidence support can be triaged without creating a false `VERIFIED` supplier profile.
-- API-key fingerprints provide credential attribution only; named users and role-based
-  review authorization remain a production hardening requirement.
+- ADR 0034 adds a read-only actionable review queue. API-key fingerprints still provide
+  credential attribution only; named users, role authorization, assignment, and
+  escalation remain production hardening requirements.
 - Migration `20260901_0014` is additive and must pass parity, PostgreSQL constraints,
   backup, and full rollback/re-upgrade gates before deployment.

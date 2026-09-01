@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -2201,6 +2201,138 @@ class TradeRepository:
             summary = summarize_supplier_identity_claims(points)
             return {"research_run_id": run_id, **asdict(summary)}
 
+    def list_supplier_identity_review_queue(
+        self,
+        *,
+        tenant_id: str,
+        status: SupplierIdentityReviewStatus | None,
+        limit: int,
+        after: PageCursor | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        actionable_statuses = (
+            SupplierIdentityReviewStatus.UNREVIEWED,
+            SupplierIdentityReviewStatus.INCONCLUSIVE,
+        )
+        if status is not None and status not in actionable_statuses:
+            raise PublicInputError("review queue status must be actionable")
+        if not 1 <= limit <= 100:
+            raise PublicInputError("page limit must be between 1 and 100")
+
+        with self._session_factory() as session:
+            latest_versions = (
+                select(
+                    SupplierIdentityClaimReviewRecord.supplier_identity_claim_id.label(
+                        "claim_id"
+                    ),
+                    SupplierIdentityClaimReviewRecord.research_run_id.label("run_id"),
+                    func.max(
+                        SupplierIdentityClaimReviewRecord.resulting_version
+                    ).label("review_version"),
+                )
+                .where(SupplierIdentityClaimReviewRecord.tenant_id == tenant_id)
+                .group_by(
+                    SupplierIdentityClaimReviewRecord.supplier_identity_claim_id,
+                    SupplierIdentityClaimReviewRecord.research_run_id,
+                )
+                .subquery()
+            )
+            effective_status = func.coalesce(
+                SupplierIdentityClaimReviewRecord.resulting_status,
+                SupplierIdentityReviewStatus.UNREVIEWED.value,
+            )
+            included_statuses = (
+                (status.value,)
+                if status is not None
+                else tuple(item.value for item in actionable_statuses)
+            )
+            statement = (
+                select(
+                    SupplierIdentityClaimRecord,
+                    PriceObservationRecord,
+                    EvidenceRecord,
+                    SourceRecord,
+                    ResearchRunRecord,
+                    OpportunityRecord,
+                    SupplierIdentityClaimReviewRecord,
+                )
+                .join(
+                    ResearchRunRecord,
+                    ResearchRunRecord.id
+                    == SupplierIdentityClaimRecord.research_run_id,
+                )
+                .join(
+                    OpportunityRecord,
+                    OpportunityRecord.id == ResearchRunRecord.opportunity_id,
+                )
+                .join(
+                    PriceObservationRecord,
+                    and_(
+                        PriceObservationRecord.id
+                        == SupplierIdentityClaimRecord.price_observation_id,
+                        PriceObservationRecord.research_run_id
+                        == SupplierIdentityClaimRecord.research_run_id,
+                    ),
+                )
+                .join(
+                    EvidenceRecord,
+                    and_(
+                        EvidenceRecord.id == SupplierIdentityClaimRecord.evidence_id,
+                        EvidenceRecord.research_run_id
+                        == SupplierIdentityClaimRecord.research_run_id,
+                    ),
+                )
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .outerjoin(
+                    latest_versions,
+                    and_(
+                        latest_versions.c.claim_id == SupplierIdentityClaimRecord.id,
+                        latest_versions.c.run_id
+                        == SupplierIdentityClaimRecord.research_run_id,
+                    ),
+                )
+                .outerjoin(
+                    SupplierIdentityClaimReviewRecord,
+                    and_(
+                        SupplierIdentityClaimReviewRecord.tenant_id == tenant_id,
+                        SupplierIdentityClaimReviewRecord.supplier_identity_claim_id
+                        == SupplierIdentityClaimRecord.id,
+                        SupplierIdentityClaimReviewRecord.research_run_id
+                        == SupplierIdentityClaimRecord.research_run_id,
+                        SupplierIdentityClaimReviewRecord.resulting_version
+                        == latest_versions.c.review_version,
+                    ),
+                )
+                .where(
+                    ResearchRunRecord.tenant_id == tenant_id,
+                    effective_status.in_(included_statuses),
+                )
+            )
+            if after is not None:
+                statement = statement.where(
+                    or_(
+                        SupplierIdentityClaimRecord.created_at < after.created_at,
+                        and_(
+                            SupplierIdentityClaimRecord.created_at == after.created_at,
+                            SupplierIdentityClaimRecord.id < after.record_id,
+                        ),
+                    )
+                )
+            rows = session.execute(
+                statement.order_by(
+                    SupplierIdentityClaimRecord.created_at.desc(),
+                    SupplierIdentityClaimRecord.id.desc(),
+                ).limit(limit + 1)
+            ).all()
+            has_more = len(rows) > limit
+            page = rows[:limit]
+            next_cursor = (
+                encode_cursor(page[-1][0].created_at, page[-1][0].id)
+                if has_more and page
+                else None
+            )
+            items = [self._supplier_identity_queue_item(*row) for row in page]
+            return items, next_cursor
+
     def record_supplier_identity_claim_review(
         self,
         *,
@@ -2441,6 +2573,50 @@ class TradeRepository:
             "previous_version": review.previous_version,
             "resulting_version": review.resulting_version,
             "created_at": _database_utc(review.created_at),
+        }
+
+    @staticmethod
+    def _supplier_identity_queue_item(
+        claim: SupplierIdentityClaimRecord,
+        observation: PriceObservationRecord,
+        evidence: EvidenceRecord,
+        source: SourceRecord,
+        run: ResearchRunRecord,
+        opportunity: OpportunityRecord,
+        latest_review: SupplierIdentityClaimReviewRecord | None,
+    ) -> dict[str, Any]:
+        return {
+            "research_run_id": run.id,
+            "opportunity_id": opportunity.id,
+            "product_name": opportunity.product_name,
+            "opportunity_quantity": opportunity.quantity,
+            "target_market": opportunity.target_market,
+            "claim_id": claim.external_claim_id,
+            "observation_id": observation.external_observation_id,
+            "quoted_supplier_name": observation.supplier_name,
+            "claimed_legal_name": claim.claimed_legal_name,
+            "jurisdiction": claim.jurisdiction,
+            "registration_number": claim.registration_number,
+            "review_status": (
+                latest_review.resulting_status
+                if latest_review is not None
+                else SupplierIdentityReviewStatus.UNREVIEWED.value
+            ),
+            "review_version": (
+                latest_review.resulting_version if latest_review is not None else 0
+            ),
+            "latest_reviewed_at": (
+                _database_utc(latest_review.created_at)
+                if latest_review is not None
+                else None
+            ),
+            "source_name": source.name,
+            "source_url": evidence.source_url,
+            "retrieved_at": _database_utc(evidence.retrieved_at),
+            "evidence_classification": evidence.classification,
+            "evidence_confidence": evidence.confidence,
+            "transformation": evidence.transformation,
+            "claim_created_at": _database_utc(claim.created_at),
         }
 
     @staticmethod

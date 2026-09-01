@@ -104,6 +104,11 @@ the repository additionally enforces same tenant/opportunity and a report-bearin
 An index supports predecessor-to-successor history. Result tables remain linked only to
 their own run, so lineage never aliases or copies evidence, scenarios, or reports.
 
+The supplier identity review queue adds no table. It joins tenant-owned research runs to
+claims, source/offer context, and a grouped maximum review version, then filters the
+effective state to `UNREVIEWED` or `INCONCLUSIVE`. Pagination uses the immutable claim
+`(created_at, id)` pair; concurrent reviews can change membership between HTTP pages.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

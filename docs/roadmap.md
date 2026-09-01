@@ -59,7 +59,7 @@ tenant-scoped repositories, and actor-aware audit events are implemented as the
 service-to-service baseline. Atomic bundle-submission idempotency is implemented.
 The append-only approve/reject review ledger, rationale requirement, optimistic
 locking, and protected system-derived statuses are implemented; named-user identity,
-role policy, reassignment, and review queues remain future work.
+role policy, reassignment, and run-approval review queues remain future work.
 The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
 with atomic audit history and terminal won/lost states. The initial transition graph
 still requires commercial stakeholder validation before production activation.
@@ -128,9 +128,10 @@ jurisdiction, registration number, and dedicated evidence inside the result snap
 They begin explicitly unreviewed, do not affect ranking/due diligence, and do not form
 a supplier profile. A tenant-scoped append-only review ledger now records versioned
 evidence-supported, evidence-contradicted, or inconclusive decisions without rewriting
-the report or claiming verified identity. Named reviewer identity/roles, review queues,
-cross-run entity resolution, verified profiles, capacity, and certification evidence
-remain Phase 3/5 work.
+the report or claiming verified identity. A bounded tenant review-queue projection now
+surfaces only unreviewed and inconclusive claims with opportunity/source context. Named
+reviewer identity/roles, assignment/escalation, cross-run entity resolution, verified
+profiles, capacity, and certification evidence remain Phase 3/5 work.
 
 ## Phase 3 — First approved real providers
 

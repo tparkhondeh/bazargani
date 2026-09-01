@@ -1800,6 +1800,11 @@ class ApiTests(unittest.TestCase):
             f"/api/v1/research-runs/{run['id']}/supplier-identity-claims",
             headers={"X-API-Key": self.other_api_key},
         )
+        initial_queue = self.client.get("/api/v1/supplier-identity-review-queue")
+        other_tenant_queue = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            headers={"X-API-Key": self.other_api_key},
+        )
 
         self.assertEqual(completed_response.status_code, 200)
         completed = completed_response.json()
@@ -1823,6 +1828,18 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("raw_value", json.dumps(claims))
         self.assertNotIn(raw_evidence, json.dumps(claims))
         self.assertEqual(hidden.status_code, 404)
+        self.assertEqual(initial_queue.status_code, 200)
+        self.assertEqual(initial_queue.json()["included_statuses"], ["UNREVIEWED", "INCONCLUSIVE"])
+        self.assertEqual(len(initial_queue.json()["items"]), 1)
+        initial_queue_item = initial_queue.json()["items"][0]
+        self.assertEqual(initial_queue_item["claim_id"], "demo-identity-claim-1")
+        self.assertEqual(initial_queue_item["review_status"], "UNREVIEWED")
+        self.assertEqual(initial_queue_item["review_version"], 0)
+        self.assertEqual(initial_queue_item["opportunity_id"], opportunity["id"])
+        self.assertEqual(initial_queue_item["research_run_id"], run["id"])
+        self.assertNotIn(raw_evidence, json.dumps(initial_queue.json()))
+        self.assertEqual(other_tenant_queue.status_code, 200)
+        self.assertEqual(other_tenant_queue.json()["items"], [])
 
         evidence_catalog = self.client.get(
             f"/api/v1/research-runs/{run['id']}/evidence"
@@ -1887,6 +1904,7 @@ class ApiTests(unittest.TestCase):
                 "expected_version": 0,
             },
         )
+        resolved_queue = self.client.get("/api/v1/supplier-identity-review-queue")
         second_review = self.client.post(
             review_path,
             json={
@@ -1913,6 +1931,8 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(first_review_body["reviewer_actor_id"].startswith("api-key:"))
         self.assertEqual(stale_review.status_code, 409)
         self.assertEqual(stale_review.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(resolved_queue.status_code, 200)
+        self.assertEqual(resolved_queue.json()["items"], [])
         self.assertEqual(second_review.status_code, 201)
         self.assertEqual(second_review.json()["previous_status"], "EVIDENCE_SUPPORTED")
         self.assertEqual(second_review.json()["resulting_status"], "INCONCLUSIVE")
@@ -1927,6 +1947,87 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(reviewed_claim["review_status"], "INCONCLUSIVE")
         self.assertEqual(reviewed_claim["review_version"], 2)
         self.assertIsNotNone(reviewed_claim["latest_reviewed_at"])
+
+        second_bundle = deepcopy(bundle)
+        second_raw_evidence = "SENSITIVE-SYNTHETIC-QUEUE-EVIDENCE-112233"
+        second_bundle["supplier_identity_claims"][0] = {
+            **second_bundle["supplier_identity_claims"][0],
+            "claim_id": "demo-identity-claim-2",
+            "claimed_legal_name": "Second Queue Supplier — NOT REAL",
+            "registration_number": "SYNTHETIC-REG-002",
+            "evidence": {
+                **second_bundle["supplier_identity_claims"][0]["evidence"],
+                "source_url": "https://example.com/second-synthetic-registry",
+                "raw_value": second_raw_evidence,
+            },
+        }
+        second_opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": second_bundle["product_name"],
+                "quantity": second_bundle["quantity"],
+                "target_market": second_bundle["destination"],
+            },
+        ).json()
+        second_run = self.client.post(
+            f"/api/v1/opportunities/{second_opportunity['id']}/research-runs"
+        ).json()
+        second_running = self.client.post(
+            f"/api/v1/research-runs/{second_run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        second_completion = self.client.post(
+            f"/api/v1/research-runs/{second_run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "identity-review-queue-second-bundle"},
+            json={"expected_version": second_running["version"], "bundle": second_bundle},
+        )
+        self.assertEqual(second_completion.status_code, 200)
+
+        first_queue_page = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            params={"limit": 1},
+        ).json()
+        second_queue_page = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            params={"limit": 1, "after": first_queue_page["next_cursor"]},
+        ).json()
+        paged_queue_items = [*first_queue_page["items"], *second_queue_page["items"]]
+        self.assertEqual(
+            {item["claim_id"] for item in paged_queue_items},
+            {"demo-identity-claim-1", "demo-identity-claim-2"},
+        )
+        self.assertIsNotNone(first_queue_page["next_cursor"])
+        self.assertIsNone(second_queue_page["next_cursor"])
+        self.assertEqual(
+            self.client.get(
+                "/api/v1/supplier-identity-review-queue",
+                params={"status": "UNREVIEWED"},
+            ).json()["items"][0]["claim_id"],
+            "demo-identity-claim-2",
+        )
+        inconclusive_queue = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            params={"status": "INCONCLUSIVE"},
+        ).json()
+        self.assertEqual(inconclusive_queue["included_statuses"], ["INCONCLUSIVE"])
+        self.assertEqual(inconclusive_queue["items"][0]["claim_id"], "demo-identity-claim-1")
+        self.assertEqual(inconclusive_queue["items"][0]["review_version"], 2)
+        queue_json = json.dumps(paged_queue_items)
+        self.assertNotIn(raw_evidence, queue_json)
+        self.assertNotIn(second_raw_evidence, queue_json)
+        self.assertNotIn("another independent source", queue_json)
+        self.assertNotIn("reviewer_actor_id", queue_json)
+        invalid_queue_status = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            params={"status": "EVIDENCE_SUPPORTED"},
+        )
+        malformed_queue_cursor = self.client.get(
+            "/api/v1/supplier-identity-review-queue",
+            params={"after": "not-a-cursor"},
+        )
+        self.assertEqual(invalid_queue_status.status_code, 422)
+        self.assertEqual(malformed_queue_cursor.status_code, 422)
+        self.assertEqual(malformed_queue_cursor.json()["code"], "INVALID_INPUT")
 
         ranking = self.client.get(
             f"/api/v1/research-runs/{run['id']}/supplier-offer-rankings"

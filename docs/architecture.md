@@ -123,6 +123,12 @@ the successor, audit event, and idempotency response. No result/evidence rows ar
 The ordinary pipeline must produce a new report before latest-decision selection changes;
 the predecessor remains byte-for-byte unchanged.
 
+The supplier identity review queue is a read-only tenant projection over immutable
+claims and the latest row of each append-only review ledger. It includes only
+`UNREVIEWED` and `INCONCLUSIVE` states, joins opportunity and source context, and orders
+by immutable claim creation time plus ID for bounded keyset pagination. It does not
+create a mutable queue table, duplicate evidence, or modify review state on read.
+
 The opportunity decision view also builds the executive summary from those same joined
 validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
 opportunity policy identical and prevents a client from combining a summary with a

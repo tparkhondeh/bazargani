@@ -2,7 +2,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
@@ -64,6 +64,7 @@ from trade_agent.api.schemas import (
     SupplierIdentityClaimReviewSubmit,
     SupplierIdentityClaimReviewView,
     SupplierIdentityClaimSummaryView,
+    SupplierIdentityReviewQueuePageView,
     TradeCostCoverageView,
     ValidationErrorDetail,
 )
@@ -83,6 +84,7 @@ from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
     OpportunityStatus,
+    SupplierIdentityReviewStatus,
     VersionConflictError,
 )
 from trade_agent.infrastructure.database import Base, make_session_factory
@@ -393,6 +395,44 @@ def create_app(
             after=decode_cursor(after),
         )
         return {"items": items, "next_cursor": next_cursor}
+
+    @app.get(
+        "/api/v1/supplier-identity-review-queue",
+        response_model=SupplierIdentityReviewQueuePageView,
+    )
+    def list_supplier_identity_review_queue(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        status: Annotated[
+            Literal["UNREVIEWED", "INCONCLUSIVE"] | None,
+            Query(),
+        ] = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
+    ) -> Any:
+        requested_status = (
+            SupplierIdentityReviewStatus(status) if status is not None else None
+        )
+        items, next_cursor = repository.list_supplier_identity_review_queue(
+            tenant_id=authenticated.tenant_id,
+            status=requested_status,
+            limit=limit,
+            after=decode_cursor(after),
+        )
+        included_statuses = (
+            (requested_status.value,)
+            if requested_status is not None
+            else ("UNREVIEWED", "INCONCLUSIVE")
+        )
+        return {
+            "items": items,
+            "included_statuses": included_statuses,
+            "next_cursor": next_cursor,
+            "limitations": (
+                "queue state describes evidence review, not verified supplier identity",
+                "claims remain offer-scoped and are not merged into supplier profiles",
+                "raw evidence, review rationale, and reviewer identity are omitted",
+            ),
+        }
 
     @app.get("/api/v1/opportunities/{opportunity_id}", response_model=OpportunityView)
     def get_opportunity(

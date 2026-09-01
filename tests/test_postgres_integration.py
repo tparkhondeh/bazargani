@@ -418,6 +418,23 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(identity_claims.json()["claims"][0]["review_status"], "UNREVIEWED")
         self.assertEqual(identity_claims.json()["claims"][0]["review_version"], 0)
         self.assertNotIn("raw_value", json.dumps(identity_claims.json()))
+        identity_review_queue = self.client.get(
+            "/api/v1/supplier-identity-review-queue"
+        )
+        self.assertEqual(identity_review_queue.status_code, 200)
+        self.assertEqual(len(identity_review_queue.json()["items"]), 1)
+        self.assertEqual(
+            identity_review_queue.json()["items"][0]["claim_id"],
+            "postgres-identity-claim-1",
+        )
+        self.assertEqual(
+            identity_review_queue.json()["items"][0]["review_status"],
+            "UNREVIEWED",
+        )
+        self.assertNotIn(
+            "POSTGRES-SENSITIVE-SYNTHETIC-IDENTITY-BODY",
+            json.dumps(identity_review_queue.json()),
+        )
 
         identity_review_path = (
             f"/api/v1/research-runs/{run['id']}/supplier-identity-claims/"
@@ -443,6 +460,9 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         reviewed_identity_claims = self.client.get(
             f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
         )
+        resolved_identity_review_queue = self.client.get(
+            "/api/v1/supplier-identity-review-queue"
+        )
         report_after_identity_review = self.client.get(
             f"/api/v1/research-runs/{run['id']}/report"
         )
@@ -465,6 +485,8 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             "EVIDENCE_SUPPORTED",
         )
         self.assertEqual(reviewed_identity_claims.json()["claims"][0]["review_version"], 1)
+        self.assertEqual(resolved_identity_review_queue.status_code, 200)
+        self.assertEqual(resolved_identity_review_queue.json()["items"], [])
         self.assertEqual(report_after_identity_review.status_code, 200)
         self.assertEqual(
             report_after_identity_review.json()["content_sha256"],

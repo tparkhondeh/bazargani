@@ -160,6 +160,11 @@ starts with no evidence/results, and must receive a complete corrected bundle th
 the normal pipeline. Multiple intentional successor attempts may coexist; only a
 report-bearing run participates in latest-decision selection.
 
+Supplier identity review work is a projection, not a mutable entity. It folds each
+offer-scoped claim with its latest append-only review and includes only `UNREVIEWED` or
+`INCONCLUSIVE` items. Resolving an item changes projection membership without deleting
+the claim or its review history and without creating a verified supplier aggregate.
+
 The data-gap summary is a read projection over the immutable validation issue ledger
 and declared unknown notes. Errors take precedence over warnings; otherwise any warning
 or declared unknown requires verification. Counts remain separate because one

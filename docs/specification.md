@@ -101,6 +101,9 @@ unknown or requires human verification?
   source run under an expected-version lock. It copies no evidence or result rows; the
   corrected full bundle is recalculated normally, while the predecessor report/hash
   remains unchanged and visible in history.
+- The review worklist contains only tenant-owned, offer-scoped identity claims whose
+  latest append-only state is `UNREVIEWED` or `INCONCLUSIVE`; resolved claims disappear
+  without erasing history, and queue membership never asserts verified identity.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,
   headings, or additional links; client rendering remains separately sanitized.
 - Every automated provider exposes controlled scope/limitations/terms status and a

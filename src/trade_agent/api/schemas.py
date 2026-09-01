@@ -476,6 +476,22 @@ class SupplierIdentityClaimReviewView(BaseModel):
     created_at: AwareDatetime
 
 
+class SupplierIdentityReviewQueueItemView(SupplierIdentityClaimView):
+    research_run_id: str
+    opportunity_id: str
+    product_name: str
+    opportunity_quantity: int = Field(gt=0)
+    target_market: str
+    claim_created_at: AwareDatetime
+
+
+class SupplierIdentityReviewQueuePageView(BaseModel):
+    items: list[SupplierIdentityReviewQueueItemView]
+    included_statuses: tuple[Literal["UNREVIEWED", "INCONCLUSIVE"], ...]
+    next_cursor: str | None
+    limitations: tuple[str, ...]
+
+
 class IncotermEvidenceGroupView(BaseModel):
     code: str
     recognized: bool

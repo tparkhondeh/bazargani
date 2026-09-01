@@ -280,3 +280,9 @@ the reason, the predecessor hash never changes, and latest-decision advances onl
 the corrected bundle creates a new report. PostgreSQL integration exercises native
 self-reference/check constraints, idempotency persistence, migration `20260901_0015`,
 and rollback/re-upgrade.
+
+Supplier identity review-queue tests fold the latest append-only review state, include
+only unreviewed or inconclusive claims, remove evidence-supported claims, filter exact
+actionable statuses, and traverse keyset pages without duplicates. They also prove
+tenant isolation and omission of raw evidence, rationale, and reviewer identity.
+PostgreSQL integration confirms the same unreviewed-to-resolved projection behavior.
