@@ -714,32 +714,7 @@ class TradeRepository:
                     )
                 )
 
-            fx_keys: set[tuple[str, str, str, datetime | None]] = set()
-            for scenario_input in result.case.scenarios:
-                for rate in scenario_input.fx_rates:
-                    key = (
-                        rate.base_currency,
-                        rate.quote_currency,
-                        rate.rate_type,
-                        rate.effective_at,
-                    )
-                    if key in fx_keys:
-                        continue
-                    fx_keys.add(key)
-                    evidence = self._evidence(session, run_id, rate.evidence, evidence_cache)
-                    session.add(
-                        FXRateRecord(
-                            id=str(uuid4()),
-                            research_run_id=run_id,
-                            evidence_id=evidence.id,
-                            base_currency=rate.base_currency,
-                            quote_currency=rate.quote_currency,
-                            rate=rate.rate,
-                            rate_type=rate.rate_type,
-                            effective_at=rate.effective_at,
-                        )
-                    )
-
+            scenario_records: dict[str, LandedCostScenarioRecord] = {}
             for scenario_result in result.scenarios:
                 scenario_record = LandedCostScenarioRecord(
                     id=str(uuid4()),
@@ -753,6 +728,7 @@ class TradeRepository:
                 )
                 session.add(scenario_record)
                 session.flush()
+                scenario_records[scenario_result.name.value] = scenario_record
                 seen_codes: set[str] = set()
                 for component in scenario_result.components:
                     if component.code in seen_codes:
@@ -772,6 +748,36 @@ class TradeRepository:
                             formula=component.formula,
                         )
                     )
+
+            fx_rate_count = 0
+            for scenario_input in result.case.scenarios:
+                scenario_record = scenario_records[scenario_input.name.value]
+                fx_keys: set[tuple[str, str, str, datetime | None]] = set()
+                for rate in scenario_input.fx_rates:
+                    key = (
+                        rate.base_currency,
+                        rate.quote_currency,
+                        rate.rate_type,
+                        rate.effective_at,
+                    )
+                    if key in fx_keys:
+                        continue
+                    fx_keys.add(key)
+                    evidence = self._evidence(session, run_id, rate.evidence, evidence_cache)
+                    session.add(
+                        FXRateRecord(
+                            id=str(uuid4()),
+                            research_run_id=run_id,
+                            scenario_id=scenario_record.id,
+                            evidence_id=evidence.id,
+                            base_currency=rate.base_currency,
+                            quote_currency=rate.quote_currency,
+                            rate=rate.rate,
+                            rate_type=rate.rate_type,
+                            effective_at=rate.effective_at,
+                        )
+                    )
+                    fx_rate_count += 1
 
             for kind, notes in (
                 ("ASSUMPTION", result.case.assumptions),
@@ -844,7 +850,7 @@ class TradeRepository:
                     "price_observation_count": len(result.case.observations),
                     "product_match_count": len(result.product_matches),
                     "supplier_ranking_count": len(result.supplier_rankings),
-                    "fx_rate_count": len(fx_keys),
+                    "fx_rate_count": fx_rate_count,
                     "scenario_count": len(result.scenarios),
                     "validation_disposition": validation.disposition.value,
                     "validation_issue_count": len(validation.issues),
@@ -863,7 +869,7 @@ class TradeRepository:
                 price_observation_count=len(result.case.observations),
                 product_match_count=len(result.product_matches),
                 supplier_ranking_count=len(result.supplier_rankings),
-                fx_rate_count=len(fx_keys),
+                fx_rate_count=fx_rate_count,
                 scenario_count=len(result.scenarios),
                 validation_disposition=validation.disposition.value,
                 validation_issue_count=len(validation.issues),
@@ -1148,6 +1154,63 @@ class TradeRepository:
                 ],
                 "scenario_sensitivity": asdict(sensitivity),
             }
+
+    def get_research_fx_rates(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[dict[str, Any]]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = list(
+                session.execute(
+                    select(
+                        FXRateRecord,
+                        LandedCostScenarioRecord,
+                        EvidenceRecord,
+                        SourceRecord,
+                    )
+                    .join(
+                        LandedCostScenarioRecord,
+                        LandedCostScenarioRecord.id == FXRateRecord.scenario_id,
+                    )
+                    .join(EvidenceRecord, EvidenceRecord.id == FXRateRecord.evidence_id)
+                    .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                    .where(
+                        FXRateRecord.research_run_id == run_id,
+                        LandedCostScenarioRecord.research_run_id == run_id,
+                        EvidenceRecord.research_run_id == run_id,
+                    )
+                ).all()
+            )
+            scenario_order = {"OPTIMISTIC": 0, "BASE": 1, "CONSERVATIVE": 2}
+            rows.sort(
+                key=lambda row: (
+                    scenario_order.get(row[1].name, 99),
+                    row[0].base_currency,
+                    row[0].quote_currency,
+                    row[0].rate_type,
+                    row[0].id,
+                )
+            )
+            return [
+                {
+                    "scenario_name": scenario.name,
+                    "base_currency": rate.base_currency,
+                    "quote_currency": rate.quote_currency,
+                    "rate": rate.rate,
+                    "rate_type": rate.rate_type,
+                    "effective_at": rate.effective_at,
+                    "source_name": source.name,
+                    "source_url": evidence.source_url,
+                    "retrieved_at": evidence.retrieved_at,
+                    "evidence_classification": evidence.classification,
+                    "evidence_confidence": evidence.confidence,
+                    "transformation": evidence.transformation,
+                }
+                for rate, scenario, evidence, source in rows
+            ]
 
     def get_product_matches(
         self, run_id: str, *, tenant_id: str

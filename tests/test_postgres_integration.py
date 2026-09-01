@@ -51,7 +51,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0009")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0010")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity_response = self.client.post(
@@ -148,6 +148,14 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(
             cost_ledger.json()["scenario_sensitivity"]["status"],
             "COMPARABLE",
+        )
+        persisted_rates = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/fx-rates"
+        )
+        self.assertEqual(persisted_rates.status_code, 200)
+        self.assertEqual(
+            [item["scenario_name"] for item in persisted_rates.json()],
+            ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
         )
 
         additional_ids = {

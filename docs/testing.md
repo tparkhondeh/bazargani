@@ -29,6 +29,13 @@ Calculation-ledger API tests verify semantic scenario/component ordering, exact 
 absence of raw evidence, and cross-tenant `404` behavior. The PostgreSQL integration
 path repeats component reconciliation against migrated production types.
 
+Scenario-FX tests assign synthetic rates of 90/100/110 to optimistic/base/conservative
+inputs, lock their exact per-unit outputs and sensitivity, then read the rates back with
+the correct scenario/source lineage. Regression tests retain the legacy shared-rate
+input shape, reject ambiguous duplicate identities within one scenario, omit raw
+evidence from API views, and enforce cross-tenant `404`. PostgreSQL CI upgrades and
+rolls back the scenario foreign-key migration and exercises the resulting read path.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

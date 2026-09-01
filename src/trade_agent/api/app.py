@@ -46,6 +46,7 @@ from trade_agent.api.schemas import (
     ResearchRunTransition,
     ResearchRunView,
     ResearchValidationView,
+    ScenarioFXRateView,
     ValidationErrorDetail,
 )
 from trade_agent.api.validation_errors import safe_validation_details
@@ -555,6 +556,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_landed_cost_scenarios(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/fx-rates",
+        response_model=list[ScenarioFXRateView],
+    )
+    def get_research_fx_rates(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_research_fx_rates(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

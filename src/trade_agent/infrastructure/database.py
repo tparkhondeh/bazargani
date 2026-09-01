@@ -316,20 +316,25 @@ class FXRateRecord(Base):
     __tablename__ = "fx_rates"
     __table_args__ = (
         UniqueConstraint(
-            "research_run_id",
+            "scenario_id",
             "base_currency",
             "quote_currency",
             "rate_type",
             "effective_at",
-            name="uq_fx_run_pair_type_effective",
+            name="uq_fx_scenario_pair_type_effective",
+            postgresql_nulls_not_distinct=True,
         ),
         CheckConstraint("rate > 0", name="ck_fx_rates_positive"),
         Index("ix_fx_rates_run_pair", "research_run_id", "base_currency", "quote_currency"),
+        Index("ix_fx_rates_scenario", "scenario_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     research_run_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    scenario_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("landed_cost_scenarios.id", ondelete="CASCADE")
     )
     evidence_id: Mapped[str] = mapped_column(String(36), ForeignKey("evidence.id"))
     base_currency: Mapped[str] = mapped_column(String(3))

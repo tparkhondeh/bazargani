@@ -25,6 +25,10 @@ class MarkdownReportingTests(unittest.TestCase):
         hostile_scenarios = tuple(
             replace(
                 scenario,
+                fx_rates=tuple(
+                    replace(rate, evidence=hostile_evidence)
+                    for rate in scenario.fx_rates
+                ),
                 costs=tuple(
                     replace(cost, label_fa="</li><script>steal()</script>")
                     for cost in scenario.costs

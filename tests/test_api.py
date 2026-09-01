@@ -434,6 +434,7 @@ class ApiTests(unittest.TestCase):
                 "report",
                 "validation",
                 "landed-cost-scenarios",
+                "fx-rates",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -912,7 +913,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(completed["price_observation_count"], 1)
         self.assertEqual(completed["product_match_count"], 1)
         self.assertEqual(completed["supplier_ranking_count"], 1)
-        self.assertEqual(completed["fx_rate_count"], 1)
+        self.assertEqual(completed["fx_rate_count"], 3)
         self.assertEqual(completed["scenario_count"], 3)
 
         replay_response = self.client.post(
@@ -1002,6 +1003,20 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(ledger["scenario_sensitivity"]["range_percent_of_base"], "25.51")
         self.assertNotIn("raw_value", json.dumps(ledger))
 
+        fx_response = self.client.get(f"/api/v1/research-runs/{run['id']}/fx-rates")
+        self.assertEqual(fx_response.status_code, 200)
+        persisted_rates = fx_response.json()
+        self.assertEqual(
+            [item["scenario_name"] for item in persisted_rates],
+            ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
+        )
+        self.assertEqual({item["rate"] for item in persisted_rates}, {"100.000000000000"})
+        self.assertTrue(all(item["rate_type"] == "SYNTHETIC_TEST" for item in persisted_rates))
+        self.assertTrue(
+            all(item["evidence_classification"] == "ASSUMPTION" for item in persisted_rates)
+        )
+        self.assertNotIn("raw_value", json.dumps(persisted_rates))
+
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"
         )
@@ -1048,7 +1063,7 @@ class ApiTests(unittest.TestCase):
                 connection.scalar(select(func.count()).select_from(SupplierOfferRankingRecord)),
                 1,
             )
-            self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 1)
+            self.assertEqual(connection.scalar(select(func.count()).select_from(FXRateRecord)), 3)
             self.assertEqual(
                 connection.scalar(select(func.count()).select_from(LandedCostScenarioRecord)),
                 3,
@@ -1073,6 +1088,72 @@ class ApiTests(unittest.TestCase):
                 connection.scalar(select(func.count()).select_from(AuditEventRecord)),
                 4,
             )
+
+    def test_scenario_specific_fx_is_persisted_with_exact_lineage(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        scenario_rates = {
+            "OPTIMISTIC": "90",
+            "BASE": "100",
+            "CONSERVATIVE": "110",
+        }
+        for scenario in bundle["scenarios"]:
+            scenario_rate = deepcopy(bundle["fx_rates"][0])
+            scenario_rate["rate"] = scenario_rates[scenario["name"]]
+            scenario_rate["rate_type"] = "SYNTHETIC_SCENARIO"
+            scenario_rate["evidence"]["raw_value"] = (
+                f"Synthetic {scenario['name']} FX assumption: {scenario_rate['rate']}"
+            )
+            scenario["fx_rates"] = [scenario_rate]
+
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        running = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        completed = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "scenario-specific-fx"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        )
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.json()["fx_rate_count"], 3)
+
+        persisted_rates = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/fx-rates"
+        ).json()
+        self.assertEqual(
+            {item["scenario_name"]: item["rate"] for item in persisted_rates},
+            {
+                "OPTIMISTIC": "90.000000000000",
+                "BASE": "100.000000000000",
+                "CONSERVATIVE": "110.000000000000",
+            },
+        )
+        ledger = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/landed-cost-scenarios"
+        ).json()
+        self.assertEqual(
+            {item["name"]: item["per_unit_amount"] for item in ledger["scenarios"]},
+            {
+                "OPTIMISTIC": "527.85000000",
+                "BASE": "630.00000000",
+                "CONSERVATIVE": "797.50000000",
+            },
+        )
+        self.assertEqual(
+            ledger["scenario_sensitivity"]["range_percent_of_base"],
+            "42.80",
+        )
 
     def test_bundle_mismatch_rolls_back_all_results(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

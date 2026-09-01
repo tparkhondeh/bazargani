@@ -127,6 +127,13 @@ keeps product cost first, named costs deterministic, and contingency last. The J
 view exposes formulas and evidence classes for auditability, omits raw evidence bodies,
 and derives sensitivity through the shared application function.
 
+FX inputs are parsed as a shared collection with optional per-scenario overrides.
+Persistence creates scenario rows first, then stores each rate with a required scenario
+foreign key and its deduplicated evidence reference. The authenticated FX read model
+joins scenario, rate, evidence, and source under the tenant-owned run; it deliberately
+omits raw evidence bodies while retaining the provenance needed to reproduce the
+conversion decision.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

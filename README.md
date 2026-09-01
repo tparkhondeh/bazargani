@@ -6,8 +6,8 @@ reproducible landed-cost decision report.
 ## Current slice
 
 The first slice accepts a JSON research case containing the user's request,
-source-backed price observations with explicit units, point-in-time FX rates, and
-explicit cost assumptions. It validates provenance and freshness, removes exact
+source-backed price observations with explicit units, scenario-linked point-in-time
+FX rates, and explicit cost assumptions. It validates provenance and freshness, removes exact
 duplicates, flags conflicts and price outliers, calculates optimistic/base/
 conservative landed-cost scenarios with `Decimal`, and emits a Persian Markdown
 report with an explainable confidence score. Each retained price is also classified
@@ -90,6 +90,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/report`
 - `GET /api/v1/research-runs/{id}/validation`
 - `GET /api/v1/research-runs/{id}/landed-cost-scenarios`
+- `GET /api/v1/research-runs/{id}/fx-rates`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -176,6 +177,15 @@ amounts plus each component's code, Persian label, amount, currency, evidence cl
 and formula. It also returns the same deterministic scenario sensitivity used by the
 latest-decision projection. Access is tenant-scoped and raw evidence bodies are omitted.
 
+Each scenario may override the bundle-level `fx_rates` collection. Persisted rates are
+linked to the exact landed-cost scenario that consumed them, so optimistic/base/
+conservative FX assumptions remain historically reproducible. The run-level FX endpoint
+returns the scenario name, pair, exact rate, rate type, effective/retrieval times,
+source provenance, evidence class/confidence, and transformation without exposing raw
+evidence bodies. Duplicate pair/type/effective-time identities inside one scenario are
+rejected instead of relying on graph traversal order. New Persian reports include the
+same scenario/rate/source lineage with escaped source labels and links.
+
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain
 text, Markdown control characters are escaped, and link targets are percent-encoded.
@@ -190,7 +200,8 @@ transaction as the research result.
 
 Mutating HTTP requests are capped at 2,000,000 bytes by default, including chunked
 requests without `Content-Length`; oversized requests receive `413 REQUEST_TOO_LARGE`.
-The evidence parser also caps observations (500), FX rates (100), scenarios (3),
+The evidence parser also caps observations (500), each shared or scenario FX-rate
+collection (100), scenarios (3),
 costs per scenario (100), notes per kind (200), and product attributes (100).
 
 Schema-validation failures return `422 REQUEST_VALIDATION_FAILED` with at most 50

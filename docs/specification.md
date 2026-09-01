@@ -26,7 +26,8 @@ unknown or requires human verification?
 - A price requires source URL, retrieval timestamp, currency, unit, quantity or
   tier context, product variant, and confidence label.
 - Original values remain immutable; normalized values record transformation.
-- FX is point-in-time and tied to a source and rate type.
+- FX is point-in-time and tied to a source, rate type, and exact consuming scenario;
+  scenarios may explicitly use different evidence-classified FX inputs.
 - Calculations expose every component and use decimal arithmetic.
 - Structured run results expose scenario totals, component amounts, currency,
   evidence class, and formula without requiring Markdown parsing or copying raw evidence.

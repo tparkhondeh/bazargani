@@ -15,6 +15,9 @@ Status: deterministic scenario sensitivity is implemented for equal quantity/cur
 bases, including exact deltas in the API and Persian report. Mixed bases and a zero
 denominator remain explicit non-comparable states; EOQ and quantity-tier optimization
 remain deferred until supported commercial inputs exist.
+Scenario-specific point-in-time FX overrides and persisted scenario lineage are also
+implemented. A provenance-rich run endpoint exposes the exact rates used without raw
+evidence bodies; automated Iran-market FX sources remain blocked on source approval.
 
 ## Phase 2 — Persistence and service boundary
 

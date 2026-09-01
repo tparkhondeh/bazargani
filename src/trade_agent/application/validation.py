@@ -344,13 +344,34 @@ def validate_research_case(
                 )
             )
 
-    unique_rates: dict[tuple[str, str, str, datetime | None], Evidence] = {}
+    unique_rates: dict[
+        tuple[str, str, Decimal, str, datetime | None, Evidence],
+        set[str],
+    ] = {}
     for scenario in case.scenarios:
         for rate in scenario.fx_rates:
-            key = (rate.base_currency, rate.quote_currency, rate.rate_type, rate.effective_at)
-            unique_rates.setdefault(key, rate.evidence)
-    for (base, quote, rate_type, effective_at), evidence in unique_rates.items():
-        subject_id = f"{base}/{quote}:{rate_type}:{effective_at or 'unspecified'}"
+            key = (
+                rate.base_currency,
+                rate.quote_currency,
+                rate.rate,
+                rate.rate_type,
+                rate.effective_at,
+                rate.evidence,
+            )
+            unique_rates.setdefault(key, set()).add(scenario.name.value)
+    for (
+        base,
+        quote,
+        value,
+        rate_type,
+        effective_at,
+        evidence,
+    ), scenario_names in unique_rates.items():
+        scenarios = ",".join(sorted(scenario_names))
+        subject_id = (
+            f"{scenarios}:{base}/{quote}:{value}:{rate_type}:"
+            f"{effective_at or 'unspecified'}"
+        )
         issues.extend(
             _evidence_issues(
                 evidence,

@@ -64,6 +64,12 @@ Migration `20260901_0009` adds nullable `next_action`, timezone-aware `deadline`
 aggregate's existing optimistic version; audit payloads retain changed field names and
 the resulting version without duplicating commercial values.
 
+Migration `20260901_0010` adds a required scenario foreign key to each FX-rate row and
+changes uniqueness from run-level to scenario-level pair/type/effective time. Existing
+shared rate rows are expanded across their three historical scenarios during upgrade.
+New writes preserve different rate values and provenance per scenario; the downgrade
+collapses scenario multiplicity because the legacy schema cannot represent it.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

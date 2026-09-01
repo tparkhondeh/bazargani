@@ -104,6 +104,13 @@ components. It preserves the scenario basis, total/per-unit values, component cu
 evidence class, and formula. It does not embed raw source bodies, and it does not permit
 clients to mutate or recalculate an immutable research run.
 
+Every persisted FX rate belongs to one landed-cost scenario. A shared bundle rate is
+expanded into explicit optimistic/base/conservative lineage; an optional scenario
+`fx_rates` collection overrides the shared collection. Pair, rate type, and effective
+time must be unique inside a scenario, including when effective time is absent. The
+exact rate and evidence remain distinct across scenarios, so a scenario assumption is
+never silently relabelled as a shared fact.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

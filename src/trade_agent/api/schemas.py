@@ -164,6 +164,28 @@ class ReferenceRateView(BaseModel):
     evidence: EvidenceView
 
 
+class ScenarioFXRateView(BaseModel):
+    scenario_name: str
+    base_currency: str
+    quote_currency: str
+    rate: Decimal
+    rate_type: str
+    effective_at: AwareDatetime | None
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    evidence_classification: str
+    evidence_confidence: Confidence
+    transformation: str | None
+
+    @field_validator("effective_at", "retrieved_at", mode="before")
+    @classmethod
+    def normalize_naive_database_time(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
 class ProviderView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

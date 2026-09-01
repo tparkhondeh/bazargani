@@ -100,6 +100,25 @@ def _money(data: dict[str, Any]) -> Money:
     return Money(amount=_decimal(data["amount"]), currency=str(data["currency"]))
 
 
+def _fx_rates(value: Any, label: str) -> tuple[FXRate, ...]:
+    rate_items = _object_list(value, label, MAX_FX_RATES)
+    return tuple(
+        FXRate(
+            base_currency=str(item["base_currency"]),
+            quote_currency=str(item["quote_currency"]),
+            rate=_decimal(item["rate"]),
+            evidence=_evidence(_object(item["evidence"], f"{label} evidence")),
+            rate_type=str(item["rate_type"]),
+            effective_at=(
+                datetime.fromisoformat(str(item["effective_at"]).replace("Z", "+00:00"))
+                if item.get("effective_at")
+                else None
+            ),
+        )
+        for item in rate_items
+    )
+
+
 def load_evidence_bundle(path: Path) -> ResearchCase:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -143,22 +162,7 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
         )
         for item in observation_items
     )
-    rate_items = _object_list(raw["fx_rates"], "fx_rates", MAX_FX_RATES)
-    rates = tuple(
-        FXRate(
-            base_currency=str(item["base_currency"]),
-            quote_currency=str(item["quote_currency"]),
-            rate=_decimal(item["rate"]),
-            evidence=_evidence(_object(item["evidence"], "FX evidence")),
-            rate_type=str(item["rate_type"]),
-            effective_at=(
-                datetime.fromisoformat(str(item["effective_at"]).replace("Z", "+00:00"))
-                if item.get("effective_at")
-                else None
-            ),
-        )
-        for item in rate_items
-    )
+    shared_rates = _fx_rates(raw.get("fx_rates", []), "fx_rates")
     scenario_items = _object_list(raw["scenarios"], "scenarios", MAX_SCENARIOS)
     scenarios = tuple(
         ScenarioInput(
@@ -183,7 +187,11 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
                 )
             ),
             target_currency=str(item["target_currency"]),
-            fx_rates=rates,
+            fx_rates=(
+                _fx_rates(item["fx_rates"], f"scenario {item['name']} fx_rates")
+                if "fx_rates" in item
+                else shared_rates
+            ),
             purchase_price_multiplier=_decimal(item.get("purchase_price_multiplier", "1")),
             cost_multiplier=_decimal(item.get("cost_multiplier", "1")),
             unexpected_cost_rate=_decimal(item.get("unexpected_cost_rate", "0")),

@@ -101,6 +101,22 @@ def render_markdown(result: ResearchResult) -> str:
         lines.append(f"- وضعیت: {_code(sensitivity.status)}")
     lines.extend(f"- محدودیت: {_text(item)}" for item in sensitivity.limitations)
 
+    lines.extend(["", "## نرخ‌های ارز سناریوها", ""])
+    for scenario_input in result.case.scenarios:
+        if not scenario_input.fx_rates:
+            lines.append(f"- {_code(scenario_input.name.value)}: نرخ تبدیل ثبت نشده است.")
+            continue
+        for rate in scenario_input.fx_rates:
+            effective_at = rate.effective_at.isoformat() if rate.effective_at else "نامشخص"
+            lines.append(
+                f"- {_code(scenario_input.name.value)}: 1 {_code(rate.base_currency)} = "
+                f"{rate.rate} {_code(rate.quote_currency)}؛ نوع {_code(rate.rate_type)}؛ "
+                f"زمان مؤثر {_code(effective_at)}؛ کلاس "
+                f"{_code(rate.evidence.classification.value)}؛ "
+                f"[{_text(rate.evidence.source_name)}]"
+                f"({_link_target(rate.evidence.source_url)})"
+            )
+
     lines.extend(["", "## جزئیات محاسبات", ""])
     for scenario in result.scenarios:
         lines.extend([f"### {_text(scenario.name.value)}", ""])
