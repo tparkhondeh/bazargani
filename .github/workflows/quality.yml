@@ -70,6 +70,7 @@ jobs:
         run: python -m unittest tests.test_postgres_integration -v
 
       - name: Verify full migration rollback and re-upgrade
+        if: always()
         env:
           TRADE_AGENT_DATABASE_URL: postgresql+psycopg://trade_agent:ci-only-password@127.0.0.1:5432/trade_agent
         run: |

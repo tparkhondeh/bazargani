@@ -58,3 +58,7 @@ model/migration parity, executes the authenticated evidence-to-report transactio
 against PostgreSQL (including Decimal, JSON, tenant, audit, and idempotency behavior),
 then verifies a complete rollback and re-upgrade. The PostgreSQL test skips locally
 unless `TRADE_AGENT_TEST_POSTGRES_URL` is explicitly configured.
+
+SQLite integration connections explicitly enable foreign-key enforcement, so local
+tests reject invalid parent/child flush ordering instead of deferring its discovery to
+PostgreSQL. Parent scenario rows are flushed before their component ledger entries.

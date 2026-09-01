@@ -418,6 +418,7 @@ class TradeRepository:
                     created_at=datetime.now(UTC),
                 )
                 session.add(scenario_record)
+                session.flush()
                 seen_codes: set[str] = set()
                 for component in scenario_result.components:
                     if component.code in seen_codes:

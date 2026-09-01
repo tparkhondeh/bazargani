@@ -51,6 +51,9 @@ class ApiTests(unittest.TestCase):
         self.client = self.client_context.__enter__()
         self.client.headers.update({"X-API-Key": self.api_key})
 
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one(), 1)
+
     def tearDown(self) -> None:
         self.client_context.__exit__(None, None, None)
 

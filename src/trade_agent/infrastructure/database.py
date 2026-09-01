@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
 )
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
@@ -30,6 +31,14 @@ from sqlalchemy.orm import (
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def _enable_sqlite_foreign_keys(dbapi_connection: Any, _: Any) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
 
 
 class Base(DeclarativeBase):
@@ -381,4 +390,10 @@ class DecisionReportRecord(Base):
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
+    if engine.dialect.name == "sqlite" and not event.contains(
+        engine,
+        "connect",
+        _enable_sqlite_foreign_keys,
+    ):
+        event.listen(engine, "connect", _enable_sqlite_foreign_keys)
     return sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
