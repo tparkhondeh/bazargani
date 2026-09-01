@@ -27,6 +27,11 @@ active production database.
 RPO/RTO, encryption key ownership, retention period, and storage destination require
 stakeholder approval. No production deployment is authorized until these are set.
 
+Idempotency records currently follow research-result retention. Before production,
+approve a minimum retry window and a cleanup job that never removes keys while clients
+may still retry; monitor uniqueness conflicts and replay volume without logging raw
+bundle content.
+
 ## Production discovery (2026-08-31)
 
 - `bazargani.wealthos.ir` returns HTTP 200 through MizbanCloud.
@@ -35,4 +40,3 @@ stakeholder approval. No production deployment is authorized until these are set
   the separate `pr.wealthos.ir` Personal Brand project; it must not be modified.
 - Server Python 3.6 is below this project's requirement; deployment needs an isolated
   Python 3.12+ runtime/container or an approved alternate host setup.
-

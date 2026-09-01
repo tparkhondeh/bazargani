@@ -27,3 +27,7 @@ user identity, reports, and production infrastructure.
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.
 
+Evidence-bundle mutations require bounded, URL-safe idempotency keys. Keys are scoped
+to a research run and bound to a canonical SHA-256 request hash; a key cannot be used
+to substitute a different payload. Keys and hashes are operational metadata, never
+authorization credentials.

@@ -71,6 +71,7 @@ class ResearchCompletionView(BaseModel):
     confidence_score: int = Field(ge=0, le=100)
     confidence_label: Confidence
     report_sha256: str
+    idempotency_replayed: bool
 
 
 class ValidationIssueView(BaseModel):

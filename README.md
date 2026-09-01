@@ -79,3 +79,9 @@ landed-cost scenarios, validation summary/issues, assumptions/unknowns, an immut
 report snapshot, and an audit event in one transaction. A result with warnings is
 marked `NEEDS_VERIFICATION`; material conflicts are marked `NEEDS_HUMAN_REVIEW`
 instead of being silently reported as complete.
+
+Every evidence-bundle submission also requires an `Idempotency-Key` header containing
+1–128 URL-safe identifier characters. An exact retry returns the original immutable
+completion with `idempotency_replayed=true`; reusing the key for a different run body
+returns `409 IDEMPOTENCY_CONFLICT`. The idempotency record is committed in the same
+transaction as the research result.

@@ -13,6 +13,7 @@ from trade_agent.infrastructure.database import (
     DecisionReportRecord,
     EvidenceRecord,
     FXRateRecord,
+    IdempotencyRecord,
     LandedCostScenarioRecord,
     PriceObservationRecord,
     ProductMatchRecord,
@@ -121,11 +122,13 @@ class ApiTests(unittest.TestCase):
 
         completed_response = self.client.post(
             f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "demo-bundle-completion"},
             json={"expected_version": running["version"], "bundle": bundle},
         )
 
         self.assertEqual(completed_response.status_code, 200)
         completed = completed_response.json()
+        self.assertFalse(completed["idempotency_replayed"])
         self.assertEqual(completed["status"], "NEEDS_VERIFICATION")
         self.assertEqual(completed["validation_disposition"], "NEEDS_VERIFICATION")
         self.assertGreater(completed["validation_issue_count"], 0)
@@ -136,6 +139,38 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(completed["supplier_ranking_count"], 1)
         self.assertEqual(completed["fx_rate_count"], 1)
         self.assertEqual(completed["scenario_count"], 3)
+
+        replay_response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "demo-bundle-completion"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        )
+        self.assertEqual(replay_response.status_code, 200)
+        replayed = replay_response.json()
+        self.assertTrue(replayed["idempotency_replayed"])
+        self.assertEqual(replayed["version"], completed["version"])
+        self.assertEqual(replayed["report_sha256"], completed["report_sha256"])
+
+        conflicting_bundle = json.loads(json.dumps(bundle, ensure_ascii=False))
+        conflicting_bundle["metadata"]["retry_payload_changed"] = True
+        conflict_response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "demo-bundle-completion"},
+            json={"expected_version": running["version"], "bundle": conflicting_bundle},
+        )
+        self.assertEqual(conflict_response.status_code, 409)
+        self.assertEqual(conflict_response.json()["code"], "IDEMPOTENCY_CONFLICT")
+
+        invalid_conflict_response = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "demo-bundle-completion"},
+            json={"expected_version": running["version"], "bundle": {}},
+        )
+        self.assertEqual(invalid_conflict_response.status_code, 409)
+        self.assertEqual(
+            invalid_conflict_response.json()["code"],
+            "IDEMPOTENCY_CONFLICT",
+        )
 
         report_response = self.client.get(f"/api/v1/research-runs/{run['id']}/report")
         self.assertEqual(report_response.status_code, 200)
@@ -211,6 +246,14 @@ class ApiTests(unittest.TestCase):
                 connection.scalar(select(func.count()).select_from(ValidationIssueRecord)),
                 completed["validation_issue_count"],
             )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(IdempotencyRecord)),
+                1,
+            )
+            self.assertEqual(
+                connection.scalar(select(func.count()).select_from(AuditEventRecord)),
+                4,
+            )
 
     def test_bundle_mismatch_rolls_back_all_results(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
@@ -230,6 +273,7 @@ class ApiTests(unittest.TestCase):
 
         response = self.client.post(
             f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "mismatched-product"},
             json={"expected_version": 2, "bundle": bundle},
         )
 
@@ -257,6 +301,7 @@ class ApiTests(unittest.TestCase):
 
         response = self.client.post(
             f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "missing-unit"},
             json={"expected_version": 2, "bundle": bundle},
         )
 
@@ -282,6 +327,7 @@ class ApiTests(unittest.TestCase):
 
         response = self.client.post(
             f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "mismatched-destination"},
             json={"expected_version": 2, "bundle": bundle},
         )
 
@@ -289,6 +335,15 @@ class ApiTests(unittest.TestCase):
         self.assertIn("destination", response.json()["message"])
         with self.engine.connect() as connection:
             self.assertEqual(connection.scalar(select(func.count()).select_from(EvidenceRecord)), 0)
+
+    def test_evidence_bundle_requires_idempotency_key(self) -> None:
+        response = self.client.post(
+            "/api/v1/research-runs/not-used/evidence-bundle",
+            json={"expected_version": 1, "bundle": {}},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["code"], "REQUEST_VALIDATION_FAILED")
 
 
 if __name__ == "__main__":

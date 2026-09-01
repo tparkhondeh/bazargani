@@ -70,6 +70,10 @@ class VersionConflictError(RuntimeError):
     pass
 
 
+class IdempotencyConflictError(RuntimeError):
+    pass
+
+
 def ensure_research_transition(current: ResearchRunStatus, target: ResearchRunStatus) -> None:
     if target not in RESEARCH_TRANSITIONS[current]:
         raise InvalidTransitionError(f"invalid research transition: {current} -> {target}")

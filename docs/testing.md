@@ -35,3 +35,8 @@ evidence tradeoffs, neutral single-offer pricing, MOQ ineligibility, missing FX,
 anonymous suppliers, and deterministic tied ranks. Integration tests verify the
 ranking ledger and unknown diligence factors are returned by the API and committed in
 the same result transaction.
+
+Idempotency integration tests cover required-header validation, first-write response,
+same-key/same-payload replay without duplicate rows, stable report/version hashes, and
+same-key/different-payload conflict. The database unique constraint is retained as the
+final concurrent-write guard.

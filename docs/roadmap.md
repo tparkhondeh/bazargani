@@ -17,9 +17,10 @@ PostgreSQL/Alembic repositories, append-only audit trail, FastAPI endpoints,
 idempotency, research-run state machine, structured logs/correlation IDs, Docker
 development environment, backup/restore procedure.
 
-Status: core foundation implemented. Remaining hardening includes explicit idempotency
-keys for bundle submission, PostgreSQL integration in CI, authentication/tenant scope,
-and production backup rehearsal. Deterministic data-quality validation, exact
+Status: core foundation implemented. Remaining hardening includes PostgreSQL
+integration in CI, authentication/tenant scope, idempotency retention/cleanup policy,
+and production backup rehearsal. Atomic bundle-submission idempotency is implemented.
+Deterministic data-quality validation, exact
 observation deduplication, persisted validation issues, and explainable confidence are
 implemented. The deterministic product-match baseline and persistence are implemented;
 assisted/semantic matching evaluation remains in Phase 3.

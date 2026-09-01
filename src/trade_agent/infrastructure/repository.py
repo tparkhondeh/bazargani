@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from trade_agent.application.matching import normalize_product_text
@@ -15,6 +17,7 @@ from trade_agent.application.research import ResearchResult
 from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.models import Evidence
 from trade_agent.domain.workflow import (
+    IdempotencyConflictError,
     InvalidTransitionError,
     OpportunityStatus,
     ResearchRunStatus,
@@ -26,6 +29,7 @@ from trade_agent.infrastructure.database import (
     DecisionReportRecord,
     EvidenceRecord,
     FXRateRecord,
+    IdempotencyRecord,
     LandedCostComponentRecord,
     LandedCostScenarioRecord,
     OpportunityRecord,
@@ -137,8 +141,67 @@ class TradeRepository:
         report_markdown: str,
         expected_version: int,
         correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
     ) -> ResearchCompletion:
+        scope = f"research-result:{run_id}"
+        try:
+            return self._persist_research_result_once(
+                run_id=run_id,
+                result=result,
+                report_markdown=report_markdown,
+                expected_version=expected_version,
+                correlation_id=correlation_id,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                scope=scope,
+            )
+        except IntegrityError:
+            replay = self._load_idempotent_completion(
+                scope=scope,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+            )
+            if replay is None:
+                raise
+            return replay
+
+    def replay_research_result(
+        self,
+        *,
+        run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> ResearchCompletion | None:
+        return self._load_idempotent_completion(
+            scope=f"research-result:{run_id}",
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+
+    def _persist_research_result_once(
+        self,
+        *,
+        run_id: str,
+        result: ResearchResult,
+        report_markdown: str,
+        expected_version: int,
+        correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
+        scope: str,
+    ) -> ResearchCompletion:
+        if not idempotency_key.strip() or len(idempotency_key) > 128:
+            raise ValueError("idempotency_key must contain 1 to 128 characters")
         with self._session_factory.begin() as session:
+            idempotency = session.scalar(
+                select(IdempotencyRecord).where(
+                    IdempotencyRecord.scope == scope,
+                    IdempotencyRecord.idempotency_key == idempotency_key,
+                )
+            )
+            if idempotency is not None:
+                return self._completion_from_idempotency(idempotency, request_hash)
             statement = (
                 select(ResearchRunRecord).where(ResearchRunRecord.id == run_id).with_for_update()
             )
@@ -386,22 +449,35 @@ class TradeRepository:
                 },
             )
 
-        return ResearchCompletion(
-            research_run_id=run_id,
-            status=target_status.value,
-            version=expected_version + 1,
-            evidence_count=len(evidence_cache),
-            price_observation_count=len(result.case.observations),
-            product_match_count=len(result.product_matches),
-            supplier_ranking_count=len(result.supplier_rankings),
-            fx_rate_count=len(fx_keys),
-            scenario_count=len(result.scenarios),
-            validation_disposition=validation.disposition.value,
-            validation_issue_count=len(validation.issues),
-            confidence_score=validation.confidence_score,
-            confidence_label=validation.confidence_label.value,
-            report_sha256=report_hash,
-        )
+            completion = ResearchCompletion(
+                research_run_id=run_id,
+                status=target_status.value,
+                version=expected_version + 1,
+                evidence_count=len(evidence_cache),
+                price_observation_count=len(result.case.observations),
+                product_match_count=len(result.product_matches),
+                supplier_ranking_count=len(result.supplier_rankings),
+                fx_rate_count=len(fx_keys),
+                scenario_count=len(result.scenarios),
+                validation_disposition=validation.disposition.value,
+                validation_issue_count=len(validation.issues),
+                confidence_score=validation.confidence_score,
+                confidence_label=validation.confidence_label.value,
+                report_sha256=report_hash,
+                idempotency_replayed=False,
+            )
+            session.add(
+                IdempotencyRecord(
+                    id=str(uuid4()),
+                    scope=scope,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    response_payload=asdict(completion),
+                    created_at=datetime.now(UTC),
+                )
+            )
+
+        return completion
 
     def get_research_report(self, run_id: str) -> DecisionReportRecord:
         with self._session_factory() as session:
@@ -482,6 +558,36 @@ class TradeRepository:
             for record in records:
                 session.expunge(record)
             return records
+
+    def _load_idempotent_completion(
+        self,
+        *,
+        scope: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> ResearchCompletion | None:
+        with self._session_factory() as session:
+            record = session.scalar(
+                select(IdempotencyRecord).where(
+                    IdempotencyRecord.scope == scope,
+                    IdempotencyRecord.idempotency_key == idempotency_key,
+                )
+            )
+            if record is None:
+                return None
+            return self._completion_from_idempotency(record, request_hash)
+
+    @staticmethod
+    def _completion_from_idempotency(
+        record: IdempotencyRecord,
+        request_hash: str,
+    ) -> ResearchCompletion:
+        if record.request_hash != request_hash:
+            raise IdempotencyConflictError(
+                "idempotency key was already used with a different request payload"
+            )
+        completion = ResearchCompletion(**record.response_payload)
+        return replace(completion, idempotency_replayed=True)
 
     @staticmethod
     def _evidence_fingerprint(evidence: Evidence) -> str:

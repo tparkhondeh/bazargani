@@ -43,6 +43,11 @@ Research steps have explicit statuses and eventually persist checkpoints. Each
 provider has timeout, bounded retry, rate-limit handling, caching, and an isolated
 failure result. A run may complete partially with visible data gaps.
 
+Result submission uses a scope-and-key idempotency ledger with a SHA-256 canonical
+request hash. The immutable response snapshot and idempotency record commit in one
+transaction. Same-key/same-hash retries replay the snapshot; same-key/different-hash
+requests fail explicitly, including after a concurrent unique-key race.
+
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated

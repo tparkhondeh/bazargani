@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, text
@@ -30,7 +30,11 @@ from trade_agent.api.schemas import (
 )
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.config import Settings, get_settings
-from trade_agent.domain.workflow import InvalidTransitionError, VersionConflictError
+from trade_agent.domain.workflow import (
+    IdempotencyConflictError,
+    InvalidTransitionError,
+    VersionConflictError,
+)
 from trade_agent.infrastructure.database import Base, make_session_factory
 from trade_agent.infrastructure.repository import TradeRepository
 from trade_agent.parsing.request import parse_trade_request
@@ -63,7 +67,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.5.0",
+        version="0.6.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -105,6 +109,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     @app.exception_handler(VersionConflictError)
     async def version_conflict(request: Request, exc: VersionConflictError) -> JSONResponse:
         return error(request, 409, "VERSION_CONFLICT", str(exc))
+
+    @app.exception_handler(IdempotencyConflictError)
+    async def idempotency_conflict(
+        request: Request, exc: IdempotencyConflictError
+    ) -> JSONResponse:
+        return error(request, 409, "IDEMPOTENCY_CONFLICT", str(exc))
 
     @app.exception_handler(InvalidTransitionError)
     async def invalid_transition(request: Request, exc: InvalidTransitionError) -> JSONResponse:
@@ -200,6 +210,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     def submit_evidence_bundle(
         run_id: str,
         payload: EvidenceBundleSubmit,
+        idempotency_key: str = Header(
+            alias="Idempotency-Key",
+            min_length=1,
+            max_length=128,
+            pattern=r"^[A-Za-z0-9._:-]+$",
+        ),
         correlation_id: str = Depends(correlation),
     ) -> Any:
         return complete_research_run_from_bundle(
@@ -208,6 +224,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             bundle=payload.bundle,
             expected_version=payload.expected_version,
             correlation_id=correlation_id,
+            idempotency_key=idempotency_key,
         )
 
     @app.get(

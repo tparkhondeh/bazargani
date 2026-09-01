@@ -22,9 +22,18 @@ class ResearchCompletion:
     confidence_score: int
     confidence_label: str
     report_sha256: str
+    idempotency_replayed: bool
 
 
 class ResearchResultWriter(Protocol):
+    def replay_research_result(
+        self,
+        *,
+        run_id: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> ResearchCompletion | None: ...
+
     def persist_research_result(
         self,
         *,
@@ -33,4 +42,6 @@ class ResearchResultWriter(Protocol):
         report_markdown: str,
         expected_version: int,
         correlation_id: str,
+        idempotency_key: str,
+        request_hash: str,
     ) -> ResearchCompletion: ...

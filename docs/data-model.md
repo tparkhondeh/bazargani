@@ -41,3 +41,8 @@ price observation. It stores quantity eligibility, comparison group, normalized
 price, rankability/rank, every score component, unresolved diligence factors,
 explanations, and policy version. This is an offer score, not an unsupported supplier
 trust score.
+
+Migration `20260831_0006` adds `idempotency_records`, uniquely keyed by operation
+scope and client key. It stores only the canonical request hash and immutable response
+payload, not a duplicate raw evidence bundle. Result and idempotency writes share one
+transaction so a failed result cannot leave a false successful replay marker.
