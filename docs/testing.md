@@ -52,6 +52,12 @@ quantity terms, product variant/attributes, market layer, product-match class/sc
 source metadata, and raw-evidence omission. Cross-tenant reads return `404`, and the
 PostgreSQL path compares the returned observation count with the completion ledger.
 
+Quantity-analysis unit tests lock sorting and adjacent changes of `-10.00%` and
+`-5.56%`, prevent anonymous/incompatible grouping, and cover empty/non-comparable
+statuses. A variant-isolation regression proves different canonical product keys never
+share a series. API/report tests verify requested quantity, source-backed points, explicit
+null EOQ range, tenant isolation, and consistent PostgreSQL projection behavior.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

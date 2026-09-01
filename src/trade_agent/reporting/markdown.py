@@ -4,6 +4,11 @@ import html
 import re
 from urllib.parse import quote
 
+from trade_agent.application.quantity import (
+    QuantityPricePoint,
+    analyze_quantity_points,
+    quantity_product_key,
+)
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.sensitivity import analyze_scenario_sensitivity, cost_points
 
@@ -183,6 +188,69 @@ def render_markdown(result: ResearchResult) -> str:
         lines.extend(f"  - {_text(reason)}" for reason in ranking.explanation_fa)
     if not result.supplier_rankings:
         lines.append("- پیشنهادی برای رتبه‌بندی وجود ندارد.")
+
+    ranking_by_observation = {
+        ranking.observation_id: ranking for ranking in result.supplier_rankings
+    }
+    quantity_points: list[QuantityPricePoint] = []
+    for observation in case.observations:
+        ranking = ranking_by_observation[observation.observation_id]
+        normalized_price = ranking.normalized_unit_price
+        quantity_points.append(
+            QuantityPricePoint(
+                observation_id=observation.observation_id,
+                supplier_name=observation.supplier_name,
+                product_name=observation.product_name,
+                product_variant=observation.product_variant,
+                product_group_key=quantity_product_key(
+                    observation.product_name,
+                    observation.product_variant,
+                    observation.product_attributes,
+                ),
+                comparison_group=ranking.comparison_group,
+                quoted_quantity=observation.quantity,
+                minimum_order_quantity=observation.minimum_order_quantity,
+                eligible_for_requested_quantity=ranking.eligible_for_quantity,
+                original_amount=observation.unit_price.amount,
+                original_currency=observation.unit_price.currency,
+                normalized_amount=(normalized_price.amount if normalized_price else None),
+                normalized_currency=(
+                    normalized_price.currency if normalized_price else None
+                ),
+                source_name=observation.evidence.source_name,
+                source_url=observation.evidence.source_url,
+            )
+        )
+    quantity_analysis = analyze_quantity_points(case.quantity, tuple(quantity_points))
+    lines.extend(["", "## تحلیل تعداد", ""])
+    lines.append(f"- وضعیت: {_code(quantity_analysis.status)}")
+    lines.append(f"- تعداد درخواستی: {quantity_analysis.requested_quantity:,}")
+    for offer_series in quantity_analysis.series:
+        supplier = offer_series.supplier_name or "تأمین‌کننده نامشخص"
+        variant = offer_series.product_variant or "نامشخص"
+        lines.append(
+            f"- {_text(supplier)} — محصول {_text(offer_series.product_name)}، "
+            f"variant {_code(variant)}، گروه {_code(offer_series.comparison_group)}"
+        )
+        for point in offer_series.points:
+            normalized = (
+                f"{point.normalized_amount} "
+                f"{_code(point.normalized_currency or 'UNKNOWN')}"
+                if point.normalized_amount is not None
+                else "غیرقابل‌مقایسه"
+            )
+            change = (
+                f"؛ تغییر نسبت به نقطه قبل "
+                f"{point.normalized_change_from_previous_percent}%"
+                if point.normalized_change_from_previous_percent is not None
+                else ""
+            )
+            lines.append(
+                f"  - تعداد {point.quoted_quantity:,}: {normalized}{change} — "
+                f"[{_text(point.source_name)}]({_link_target(point.source_url)})"
+            )
+    lines.append("- بازه سفارش اقتصادی: محاسبه نشده")
+    lines.extend(f"- محدودیت: {_text(item)}" for item in quantity_analysis.limitations)
 
     lines.extend(["", "## فرض‌ها", ""])
     lines.extend(f"- {_text(item)}" for item in case.assumptions)

@@ -40,6 +40,7 @@ from trade_agent.api.schemas import (
     ParseRequestInput,
     ProductMatchView,
     ProviderView,
+    QuantityAnalysisView,
     ReferenceRateView,
     ResearchAssumptionsView,
     ResearchCompletionView,
@@ -611,6 +612,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_price_observations(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/quantity-analysis",
+        response_model=QuantityAnalysisView,
+    )
+    def get_quantity_analysis(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_quantity_analysis(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

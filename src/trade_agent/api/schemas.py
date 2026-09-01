@@ -354,6 +354,37 @@ class EvidenceBackedPriceObservationView(BaseModel):
         return value
 
 
+class QuantityTierPointView(BaseModel):
+    observation_id: str
+    quoted_quantity: int
+    minimum_order_quantity: int | None
+    eligible_for_requested_quantity: bool
+    original_amount: Decimal
+    original_currency: str
+    normalized_amount: Decimal | None
+    normalized_currency: str | None
+    normalized_change_from_previous_percent: Decimal | None
+    source_name: str
+    source_url: str
+
+
+class QuantityOfferSeriesView(BaseModel):
+    supplier_name: str | None
+    product_name: str
+    product_variant: str | None
+    comparison_group: str
+    points: tuple[QuantityTierPointView, ...]
+
+
+class QuantityAnalysisView(BaseModel):
+    status: str
+    requested_quantity: int
+    series: tuple[QuantityOfferSeriesView, ...]
+    economic_order_range_min: int | None
+    economic_order_range_max: int | None
+    limitations: tuple[str, ...]
+
+
 class LandedCostScenarioView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

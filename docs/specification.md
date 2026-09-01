@@ -36,6 +36,9 @@ unknown or requires human verification?
 - Structured run results expose scenario totals, component amounts, currency,
   evidence class, and formula without requiring Markdown parsing or copying raw evidence.
 - Three scenarios are supported without silently changing evidence.
+- Quantity analysis compares only observed points with the same supplier, canonical
+  product/variant identity, and compatible normalized units/currencies, and withholds
+  EOQ when its required economic inputs are absent.
 - Scenario sensitivity exposes exact per-unit deltas and percentages only when all
   three scenarios share quantity and target currency; it never masquerades as EOQ.
 - Provider failure produces partial results and explicit data gaps.

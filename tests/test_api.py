@@ -440,6 +440,7 @@ class ApiTests(unittest.TestCase):
                 "assumptions",
                 "evidence",
                 "price-observations",
+                "quantity-analysis",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -1067,6 +1068,28 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(observation["product_match_classification"], "EXACT_VARIANT")
         self.assertEqual(observation["product_match_score"], 100)
         self.assertNotIn("raw_value", json.dumps(observations))
+
+        quantity_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/quantity-analysis"
+        )
+        self.assertEqual(quantity_response.status_code, 200)
+        quantity_analysis = quantity_response.json()
+        self.assertEqual(quantity_analysis["status"], "OBSERVED_QUOTES_ONLY")
+        self.assertEqual(quantity_analysis["requested_quantity"], 10)
+        self.assertEqual(len(quantity_analysis["series"]), 1)
+        self.assertEqual(
+            quantity_analysis["series"][0]["product_name"],
+            bundle["product_name"],
+        )
+        self.assertEqual(quantity_analysis["series"][0]["product_variant"], "DEMO")
+        self.assertEqual(quantity_analysis["series"][0]["points"][0]["quoted_quantity"], 10)
+        self.assertIsNone(
+            quantity_analysis["series"][0]["points"][0][
+                "normalized_change_from_previous_percent"
+            ]
+        )
+        self.assertIsNone(quantity_analysis["economic_order_range_min"])
+        self.assertIsNone(quantity_analysis["economic_order_range_max"])
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

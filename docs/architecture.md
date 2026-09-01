@@ -152,6 +152,13 @@ the original commercial fields beside BASE-scenario normalization and match meta
 avoiding client-side joins that could combine different runs. Raw evidence remains
 outside this view.
 
+Quantity analysis is a pure application calculation over evidence-backed observation
+points projected by the repository. It uses exact decimal arithmetic and deterministic
+product/supplier/group/quantity ordering; both the API and report call the same function.
+The canonical product grouping key includes name, variant, and sorted attributes so
+different products cannot form a false tier series. The module
+does not extrapolate continuous tiers, supplier capacity, negotiation margin, or EOQ.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

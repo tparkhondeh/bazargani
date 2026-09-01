@@ -26,6 +26,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("25.51%", report)
         self.assertIn("نرخ‌های ارز سناریوها", report)
         self.assertEqual(report.count("1 `USD` = 100 `IRR`"), 3)
+        self.assertIn("تحلیل تعداد", report)
+        self.assertIn("بازه سفارش اقتصادی: محاسبه نشده", report)
 
     def test_duplicate_scenario_names_are_rejected_before_calculation(self) -> None:
         case = load_evidence_bundle(Path("examples/demo_case.json"))

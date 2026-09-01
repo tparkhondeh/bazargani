@@ -130,6 +130,14 @@ remain authoritative source values. `normalized_amount` is the deterministic BAS
 scenario currency conversion used for comparison and may be null when no FX path
 exists; it is not an independently observed price.
 
+Quantity analysis groups observations by identified supplier, canonical product name/
+variant/attributes, and comparison group. Anonymous observations and distinct variants
+remain separate. Points are ordered by quoted quantity, and an adjacent normalized-
+price change is calculated only when both comparable values exist.
+The status distinguishes no observations, no comparable prices, and observed quotes.
+Economic order range stays null because observed quotes alone do not provide demand,
+ordering cost, holding cost, lead time, service level, or capacity evidence.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

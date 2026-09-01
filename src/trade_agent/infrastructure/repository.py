@@ -14,6 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from trade_agent.application.matching import normalize_product_text
 from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
+from trade_agent.application.quantity import (
+    QuantityPricePoint,
+    analyze_quantity_points,
+    quantity_product_key,
+)
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.sensitivity import (
     ScenarioCostPoint,
@@ -1394,6 +1399,68 @@ class TradeRepository:
                 }
                 for observation, match, ranking, evidence, source in rows
             ]
+
+    def get_quantity_analysis(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            run = self._require_research_run(session, run_id, tenant_id)
+            opportunity = session.scalar(
+                select(OpportunityRecord).where(
+                    OpportunityRecord.id == run.opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
+            if opportunity is None:
+                raise KeyError("opportunity not found")
+            rows = session.execute(
+                select(
+                    PriceObservationRecord,
+                    SupplierOfferRankingRecord,
+                    EvidenceRecord,
+                    SourceRecord,
+                )
+                .join(
+                    SupplierOfferRankingRecord,
+                    SupplierOfferRankingRecord.price_observation_id
+                    == PriceObservationRecord.id,
+                )
+                .join(EvidenceRecord, EvidenceRecord.id == PriceObservationRecord.evidence_id)
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .where(
+                    PriceObservationRecord.research_run_id == run_id,
+                    SupplierOfferRankingRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+            ).all()
+            points = tuple(
+                QuantityPricePoint(
+                    observation_id=observation.external_observation_id,
+                    supplier_name=observation.supplier_name,
+                    product_name=observation.product_name,
+                    product_variant=observation.product_variant,
+                    product_group_key=quantity_product_key(
+                        observation.product_name,
+                        observation.product_variant,
+                        observation.product_attributes,
+                    ),
+                    comparison_group=ranking.comparison_group,
+                    quoted_quantity=observation.quantity,
+                    minimum_order_quantity=observation.minimum_order_quantity,
+                    eligible_for_requested_quantity=ranking.eligible_for_quantity,
+                    original_amount=observation.original_amount,
+                    original_currency=observation.original_currency,
+                    normalized_amount=ranking.normalized_amount,
+                    normalized_currency=ranking.normalized_currency,
+                    source_name=source.name,
+                    source_url=evidence.source_url,
+                )
+                for observation, ranking, evidence, source in rows
+            )
+            return asdict(analyze_quantity_points(opportunity.quantity, points))
 
     def get_product_matches(
         self, run_id: str, *, tenant_id: str

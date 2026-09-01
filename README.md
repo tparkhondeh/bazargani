@@ -94,6 +94,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/assumptions`
 - `GET /api/v1/research-runs/{id}/evidence`
 - `GET /api/v1/research-runs/{id}/price-observations`
+- `GET /api/v1/research-runs/{id}/quantity-analysis`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -206,6 +207,13 @@ quantity/unit/MOQ/Incoterm, product variant and attributes, market layer, source
 provenance, deterministic product-match result, and normalized comparison price in one
 tenant-scoped view. The normalized amount uses the BASE scenario FX path and remains a
 derived comparison value; it does not overwrite or relabel the original price.
+
+Quantity analysis groups observed quotes only within the same supplier, canonical
+product identity, and normalized unit/currency group, orders them by quoted quantity,
+and calculates exact `Decimal`
+price changes between adjacent observed points. Anonymous suppliers are never merged.
+The API and Persian report explicitly leave economic order range null/uncomputed until
+demand, ordering, holding, lead-time, and service-level inputs are supplied.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

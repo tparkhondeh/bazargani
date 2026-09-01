@@ -27,6 +27,9 @@ review, retention rules, and legal export policy remain future governance work.
 An evidence-backed price-observation projection now provides original offer context,
 BASE-normalized comparison values, product match, and source metadata for future price
 distribution and Iranian benchmark UI. Actual approved benchmark acquisition remains.
+Observed-quote quantity analysis is implemented with deterministic per-supplier series
+and adjacent normalized price deltas in the API and Persian report. True EOQ/economic
+order range remains deferred until the required operational/economic inputs exist.
 
 ## Phase 2 — Persistence and service boundary
 

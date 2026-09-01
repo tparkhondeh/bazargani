@@ -175,6 +175,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(price_observations.status_code, 200)
         self.assertEqual(len(price_observations.json()), completed["price_observation_count"])
         self.assertEqual(price_observations.json()[0]["normalized_currency"], "IRR")
+        quantity_analysis = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/quantity-analysis"
+        )
+        self.assertEqual(quantity_analysis.status_code, 200)
+        self.assertEqual(quantity_analysis.json()["status"], "OBSERVED_QUOTES_ONLY")
+        self.assertIsNone(quantity_analysis.json()["economic_order_range_min"])
 
         additional_ids = {
             self.client.post(
