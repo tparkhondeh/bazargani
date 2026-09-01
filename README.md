@@ -67,6 +67,8 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/opportunities/{id}`
 - `POST /api/v1/opportunities/{id}/research-runs`
 - `POST /api/v1/research-runs/{id}/transitions`
+- `POST /api/v1/research-runs/{id}/reviews`
+- `GET /api/v1/research-runs/{id}/reviews`
 - `POST /api/v1/research-runs/{id}/evidence-bundle`
 - `GET /api/v1/research-runs/{id}/report`
 - `GET /api/v1/research-runs/{id}/validation`
@@ -78,6 +80,13 @@ authenticated when `TRADE_AGENT_AUTH_ENABLED=true` and requires `X-API-Key`. Onl
 SHA-256 key digests are configured; the resolved tenant and a non-secret key
 fingerprint are propagated into tenant-scoped repository queries and audit events.
 Production configuration fails at startup if authentication is disabled.
+
+Statuses derived from validation cannot be manually promoted to `COMPLETED` through
+the generic transition endpoint. An authenticated actor must record an `APPROVE` or
+`REJECT` review with a rationale and expected version. The decision, status/version
+change, actor fingerprint, and audit event commit atomically; cross-tenant review
+access returns `404`. API-key attribution is a service baseline, not proof of a named
+human identity—OIDC/roles remain required for production user accountability.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

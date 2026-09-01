@@ -129,6 +129,58 @@ class IdempotencyRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class ResearchReviewRecord(Base):
+    __tablename__ = "research_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "decision IN ('APPROVE', 'REJECT')",
+            name="ck_research_reviews_decision",
+        ),
+        CheckConstraint(
+            "resulting_version = previous_version + 1",
+            name="ck_research_reviews_version_increment",
+        ),
+        CheckConstraint(
+            "previous_version > 0",
+            name="ck_research_reviews_previous_version_positive",
+        ),
+        CheckConstraint(
+            "previous_status IN "
+            "('NEEDS_VERIFICATION', 'NEEDS_HUMAN_REVIEW', 'PARTIAL')",
+            name="ck_research_reviews_previous_status",
+        ),
+        CheckConstraint(
+            "resulting_status IN ('COMPLETED', 'CANCELLED')",
+            name="ck_research_reviews_resulting_status",
+        ),
+        CheckConstraint(
+            "(decision = 'APPROVE' AND resulting_status = 'COMPLETED') OR "
+            "(decision = 'REJECT' AND resulting_status = 'CANCELLED')",
+            name="ck_research_reviews_decision_status",
+        ),
+        Index(
+            "ix_research_reviews_tenant_run_created",
+            "tenant_id",
+            "research_run_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    reviewer_actor_id: Mapped[str] = mapped_column(String(100))
+    decision: Mapped[str] = mapped_column(String(30))
+    rationale: Mapped[str] = mapped_column(Text)
+    previous_status: Mapped[str] = mapped_column(String(30))
+    resulting_status: Mapped[str] = mapped_column(String(30))
+    previous_version: Mapped[int] = mapped_column(Integer)
+    resulting_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class SourceRecord(Base):
     __tablename__ = "sources"
 

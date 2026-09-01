@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from trade_agent.domain.models import Confidence
-from trade_agent.domain.workflow import ResearchRunStatus
+from trade_agent.domain.workflow import ResearchReviewDecision, ResearchRunStatus
 
 
 class ErrorBody(BaseModel):
@@ -49,6 +49,27 @@ class ResearchRunView(BaseModel):
 class ResearchRunTransition(BaseModel):
     target_status: ResearchRunStatus
     expected_version: int = Field(gt=0)
+
+
+class ResearchReviewSubmit(BaseModel):
+    decision: ResearchReviewDecision
+    rationale: str = Field(min_length=3, max_length=2_000)
+    expected_version: int = Field(gt=0)
+
+
+class ResearchReviewView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    research_run_id: str
+    reviewer_actor_id: str
+    decision: ResearchReviewDecision
+    rationale: str
+    previous_status: ResearchRunStatus
+    resulting_status: ResearchRunStatus
+    previous_version: int
+    resulting_version: int
+    created_at: datetime
 
 
 class EvidenceBundleSubmit(BaseModel):

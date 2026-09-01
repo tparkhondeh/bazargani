@@ -61,6 +61,11 @@ ports. Aggregate reads and writes include tenant predicates; an identifier owned
 another tenant is deliberately indistinguishable from a missing identifier (`404`).
 Health/readiness remain public and expose no tenant data.
 
+System-derived research outcomes and operator actions use separate paths. The generic
+transition route permits only operational lifecycle changes; a review-required result
+can reach `COMPLETED` or `CANCELLED` only through an append-only review decision. The
+review row, locked run version update, and audit event share one transaction.
+
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated

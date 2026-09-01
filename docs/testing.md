@@ -62,3 +62,9 @@ unless `TRADE_AGENT_TEST_POSTGRES_URL` is explicitly configured.
 SQLite integration connections explicitly enable foreign-key enforcement, so local
 tests reject invalid parent/child flush ordering instead of deferring its discovery to
 PostgreSQL. Parent scenario rows are flushed before their component ledger entries.
+
+Review workflow tests prove that manual transitions cannot fabricate system outcomes,
+wrong versions conflict, other tenants receive `404`, and approve/reject map only from
+reviewable states to terminal outcomes. API and PostgreSQL integration tests verify
+that the review row, actor/rationale, run status/version, and audit event persist
+atomically.

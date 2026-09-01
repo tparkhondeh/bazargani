@@ -27,6 +27,8 @@ from trade_agent.api.schemas import (
     ParseRequestInput,
     ProductMatchView,
     ResearchCompletionView,
+    ResearchReviewSubmit,
+    ResearchReviewView,
     ResearchRunTransition,
     ResearchRunView,
     ResearchValidationView,
@@ -62,7 +64,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.8.0",
+        version="0.9.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -233,6 +235,40 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             correlation_id=correlation_id,
             tenant_id=authenticated.tenant_id,
             actor_id=authenticated.actor_id,
+        )
+
+    @app.post(
+        "/api/v1/research-runs/{run_id}/reviews",
+        response_model=ResearchReviewView,
+        status_code=201,
+    )
+    def record_research_review(
+        run_id: str,
+        payload: ResearchReviewSubmit,
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.record_research_review(
+            run_id=run_id,
+            decision=payload.decision,
+            rationale=payload.rationale,
+            expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/reviews",
+        response_model=list[ResearchReviewView],
+    )
+    def get_research_reviews(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_research_reviews(
+            run_id,
+            tenant_id=authenticated.tenant_id,
         )
 
     @app.post(

@@ -20,9 +20,11 @@ from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
     OpportunityStatus,
+    ResearchReviewDecision,
     ResearchRunStatus,
     VersionConflictError,
-    ensure_research_transition,
+    ensure_manual_research_transition,
+    review_target_status,
 )
 from trade_agent.infrastructure.database import (
     AuditEventRecord,
@@ -36,6 +38,7 @@ from trade_agent.infrastructure.database import (
     PriceObservationRecord,
     ProductMatchRecord,
     ResearchNoteRecord,
+    ResearchReviewRecord,
     ResearchRunRecord,
     ResearchValidationRecord,
     SourceRecord,
@@ -166,7 +169,7 @@ class TradeRepository:
                     f"expected version {expected_version}, current version {record.version}"
                 )
             current = ResearchRunStatus(record.status)
-            ensure_research_transition(current, target)
+            ensure_manual_research_transition(current, target)
             record.status = target.value
             record.version += 1
             record.updated_at = datetime.now(UTC)
@@ -181,6 +184,94 @@ class TradeRepository:
                 {"from": current.value, "to": target.value, "version": record.version},
             )
         return record
+
+    def record_research_review(
+        self,
+        *,
+        run_id: str,
+        decision: ResearchReviewDecision,
+        rationale: str,
+        expected_version: int,
+        correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> ResearchReviewRecord:
+        normalized_rationale = rationale.strip()
+        if not 3 <= len(normalized_rationale) <= 2_000:
+            raise ValueError("review rationale must contain 3 to 2000 characters")
+        with self._session_factory.begin() as session:
+            run = session.scalar(
+                select(ResearchRunRecord)
+                .where(
+                    ResearchRunRecord.id == run_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
+            if run is None:
+                raise KeyError("research run not found")
+            if run.version != expected_version:
+                raise VersionConflictError(
+                    f"expected version {expected_version}, current version {run.version}"
+                )
+            current = ResearchRunStatus(run.status)
+            target = review_target_status(current, decision)
+            review = ResearchReviewRecord(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                research_run_id=run_id,
+                reviewer_actor_id=actor_id,
+                decision=decision.value,
+                rationale=normalized_rationale,
+                previous_status=current.value,
+                resulting_status=target.value,
+                previous_version=run.version,
+                resulting_version=run.version + 1,
+                created_at=datetime.now(UTC),
+            )
+            run.status = target.value
+            run.version += 1
+            run.updated_at = datetime.now(UTC)
+            session.add(review)
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "ResearchRun",
+                run.id,
+                "REVIEW_RECORDED",
+                {
+                    "decision": decision.value,
+                    "rationale": normalized_rationale,
+                    "from": current.value,
+                    "to": target.value,
+                    "version": run.version,
+                },
+            )
+        return review
+
+    def get_research_reviews(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[ResearchReviewRecord]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            records = list(
+                session.scalars(
+                    select(ResearchReviewRecord)
+                    .where(
+                        ResearchReviewRecord.research_run_id == run_id,
+                        ResearchReviewRecord.tenant_id == tenant_id,
+                    )
+                    .order_by(ResearchReviewRecord.created_at, ResearchReviewRecord.id)
+                )
+            )
+            for record in records:
+                session.expunge(record)
+            return records
 
     def persist_research_result(
         self,

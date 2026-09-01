@@ -23,6 +23,9 @@ credential rotation automation, distributed rate limiting, and production backup
 rehearsal. Hashed API-key authentication, fail-closed production configuration,
 tenant-scoped repositories, and actor-aware audit events are implemented as the
 service-to-service baseline. Atomic bundle-submission idempotency is implemented.
+The append-only approve/reject review ledger, rationale requirement, optimistic
+locking, and protected system-derived statuses are implemented; named-user identity,
+role policy, reassignment, and review queues remain future work.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI.
 Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
@@ -48,7 +51,7 @@ for new research, progress, result, assumptions, and opportunity history.
 
 ## Phase 5 — MVP hardening
 
-OIDC/role authorization, human review workflow, verified supplier profiles, incoterm
+OIDC/role authorization, review queues/escalation, verified supplier profiles, incoterm
 and quantity analysis, security/load/failure testing, operational runbooks,
 dependency notices, production migration and rollback rehearsal.
 

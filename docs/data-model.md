@@ -52,3 +52,9 @@ events, and idempotency records, plus `actor_id` on audit events. Repository agg
 access always resolves through the tenant-owned opportunity/run. Existing rows are
 backfilled into a quarantined `legacy` tenant for explicit reconciliation rather than
 being discarded or silently assigned to a live customer.
+
+Migration `20260901_0008` adds the append-only `research_reviews` ledger. Each record
+stores tenant, research run, reviewer actor fingerprint, `APPROVE`/`REJECT` decision,
+required rationale, previous/resulting status, consecutive versions, and creation
+time. The decision and research-run status/version change are committed with the
+corresponding audit event in one transaction.

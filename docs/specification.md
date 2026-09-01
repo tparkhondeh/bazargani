@@ -32,6 +32,8 @@ unknown or requires human verification?
 - Provider failure produces partial results and explicit data gaps.
 - A low-confidence or incomplete result is marked `NEEDS_VERIFICATION` or
   `NEEDS_HUMAN_REVIEW`.
+- Completing or rejecting a review-required result records the authenticated actor,
+  rationale, decision, tenant, and exact run version without rewriting evidence.
 
 ## Deferred from MVP
 

@@ -2,8 +2,11 @@ import unittest
 
 from trade_agent.domain.workflow import (
     InvalidTransitionError,
+    ResearchReviewDecision,
     ResearchRunStatus,
+    ensure_manual_research_transition,
     ensure_research_transition,
+    review_target_status,
 )
 
 
@@ -20,6 +23,41 @@ class WorkflowTests(unittest.TestCase):
             ResearchRunStatus.NEEDS_VERIFICATION,
             ResearchRunStatus.NEEDS_HUMAN_REVIEW,
         )
+
+    def test_manual_transition_cannot_claim_a_system_or_review_outcome(self) -> None:
+        with self.assertRaisesRegex(InvalidTransitionError, "manual transition"):
+            ensure_manual_research_transition(
+                ResearchRunStatus.RUNNING,
+                ResearchRunStatus.COMPLETED,
+            )
+        with self.assertRaisesRegex(InvalidTransitionError, "manual transition"):
+            ensure_manual_research_transition(
+                ResearchRunStatus.NEEDS_VERIFICATION,
+                ResearchRunStatus.RUNNING,
+            )
+
+    def test_review_decisions_have_explicit_terminal_targets(self) -> None:
+        self.assertEqual(
+            review_target_status(
+                ResearchRunStatus.NEEDS_VERIFICATION,
+                ResearchReviewDecision.APPROVE,
+            ),
+            ResearchRunStatus.COMPLETED,
+        )
+        self.assertEqual(
+            review_target_status(
+                ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+                ResearchReviewDecision.REJECT,
+            ),
+            ResearchRunStatus.CANCELLED,
+        )
+
+    def test_non_reviewable_run_rejects_a_review_decision(self) -> None:
+        with self.assertRaisesRegex(InvalidTransitionError, "not reviewable"):
+            review_target_status(
+                ResearchRunStatus.RUNNING,
+                ResearchReviewDecision.APPROVE,
+            )
 
 
 if __name__ == "__main__":

@@ -43,6 +43,12 @@ control, not the final user authorization model: OIDC/SSO, roles, key rotation,
 revocation, distributed rate limits, and secret-manager delivery remain required
 before public production exposure.
 
+Review decisions require a non-empty rationale and optimistic version, lock the
+tenant-owned run, and atomically record the actor, decision, before/after state, and
+audit event. The generic status endpoint cannot mark a run completed or fabricate a
+validation/review status. The current actor is a non-secret API-key fingerprint; it
+must not be represented as verified human identity until OIDC and roles are enabled.
+
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.
 

@@ -14,6 +14,8 @@
 - **AuditEvent**: append-only record of actor, action, object, and correlation IDs.
 - **ResearchValidation / ValidationIssue**: policy-versioned data-quality outcome,
   explainable confidence score, and subject-linked warnings/errors.
+- **ResearchReview**: append-only approve/reject decision with rationale, actor
+  fingerprint, tenant, and exact before/after run status and version.
 
 The current confidence policy starts at 100, subtracts 10 per warning and 30 per
 error, and clamps at zero. Any error produces `NEEDS_HUMAN_REVIEW`; warning-only
@@ -66,3 +68,9 @@ explicit currency; derived values identify inputs; evidence timestamps are timez
 aware; exact duplicate observations do not enter calculations; research history is
 append-only; scenario names are unique per case; and product-match class accompanies
 every comparison.
+
+Manual status transitions cannot claim validation outcomes or completion. A run in
+`NEEDS_VERIFICATION`, `NEEDS_HUMAN_REVIEW`, or `PARTIAL` becomes `COMPLETED` only via
+an `APPROVE` review and becomes `CANCELLED` via `REJECT`. Rejection is terminal for
+that immutable run; further research starts in a new run instead of overwriting the
+existing evidence and report.

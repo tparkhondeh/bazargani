@@ -1,6 +1,7 @@
 import hashlib
 import json
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -19,6 +20,7 @@ from trade_agent.infrastructure.database import (
     OpportunityRecord,
     PriceObservationRecord,
     ProductMatchRecord,
+    ResearchReviewRecord,
     ResearchRunRecord,
     ResearchValidationRecord,
     SupplierOfferRankingRecord,
@@ -188,6 +190,115 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(parsed["destination"], "شیراز")
         self.assertEqual(parsed["critical_questions"], [])
         self.assertEqual(len(parsed["assumptions"]), 1)
+
+    def test_review_outcome_requires_an_atomic_tenant_scoped_decision(self) -> None:
+        bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": bundle["product_name"],
+                "quantity": bundle["quantity"],
+                "target_market": bundle["destination"],
+            },
+        ).json()
+        run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        running = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        completed = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "review-flow-result"},
+            json={"expected_version": running["version"], "bundle": bundle},
+        ).json()
+        self.assertEqual(completed["status"], "NEEDS_VERIFICATION")
+
+        bypass = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/transitions",
+            json={
+                "target_status": "COMPLETED",
+                "expected_version": completed["version"],
+            },
+        )
+        wrong_version = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            json={
+                "decision": "APPROVE",
+                "rationale": "منابع و فرضیات توسط بازبین بررسی شد.",
+                "expected_version": 99,
+            },
+        )
+        cross_tenant = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            headers={"X-API-Key": self.other_api_key},
+            json={
+                "decision": "APPROVE",
+                "rationale": "cross-tenant attempt",
+                "expected_version": completed["version"],
+            },
+        )
+
+        self.assertEqual(bypass.status_code, 409)
+        self.assertEqual(bypass.json()["code"], "INVALID_TRANSITION")
+        self.assertEqual(wrong_version.status_code, 409)
+        self.assertEqual(wrong_version.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(cross_tenant.status_code, 404)
+
+        approval = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            json={
+                "decision": "APPROVE",
+                "rationale": "منابع و فرضیات توسط بازبین بررسی شد.",
+                "expected_version": completed["version"],
+            },
+        )
+        self.assertEqual(approval.status_code, 201)
+        decision = approval.json()
+        self.assertEqual(decision["previous_status"], "NEEDS_VERIFICATION")
+        self.assertEqual(decision["resulting_status"], "COMPLETED")
+        self.assertEqual(decision["resulting_version"], completed["version"] + 1)
+        self.assertTrue(decision["reviewer_actor_id"].startswith("api-key:"))
+
+        reviews = self.client.get(f"/api/v1/research-runs/{run['id']}/reviews")
+        hidden_reviews = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            headers={"X-API-Key": self.other_api_key},
+        )
+        self.assertEqual(reviews.status_code, 200)
+        retrieved_decisions = reviews.json()
+        self.assertEqual(len(retrieved_decisions), 1)
+        retrieved = retrieved_decisions[0]
+        for field in (
+            "id",
+            "research_run_id",
+            "reviewer_actor_id",
+            "decision",
+            "rationale",
+            "previous_status",
+            "resulting_status",
+            "previous_version",
+            "resulting_version",
+        ):
+            self.assertEqual(retrieved[field], decision[field])
+        datetime.fromisoformat(retrieved["created_at"].replace("Z", "+00:00"))
+        self.assertEqual(hidden_reviews.status_code, 404)
+
+        with self.engine.connect() as connection:
+            persisted_run = connection.execute(
+                select(ResearchRunRecord.status, ResearchRunRecord.version).where(
+                    ResearchRunRecord.id == run["id"]
+                )
+            ).one()
+            persisted_review_tenant = connection.scalar(
+                select(ResearchReviewRecord.tenant_id).where(
+                    ResearchReviewRecord.research_run_id == run["id"]
+                )
+            )
+        self.assertEqual(persisted_run.status, "COMPLETED")
+        self.assertEqual(persisted_run.version, completed["version"] + 1)
+        self.assertEqual(persisted_review_tenant, "tenant-a")
 
     def test_optimistic_version_conflict_has_stable_error_contract(self) -> None:
         opportunity = self.client.post(

@@ -15,6 +15,7 @@ from trade_agent.infrastructure.database import (
     IdempotencyRecord,
     LandedCostScenarioRecord,
     OpportunityRecord,
+    ResearchReviewRecord,
 )
 
 POSTGRES_URL = os.getenv("TRADE_AGENT_TEST_POSTGRES_URL")
@@ -86,6 +87,17 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(replay.status_code, 200)
         self.assertTrue(replay.json()["idempotency_replayed"])
 
+        review = self.client.post(
+            f"/api/v1/research-runs/{run['id']}/reviews",
+            json={
+                "decision": "APPROVE",
+                "rationale": "PostgreSQL integration review approval",
+                "expected_version": completed["version"],
+            },
+        )
+        self.assertEqual(review.status_code, 201)
+        self.assertEqual(review.json()["resulting_status"], "COMPLETED")
+
         with self.engine.connect() as connection:
             tenant_id = connection.scalar(
                 select(OpportunityRecord.tenant_id).where(
@@ -109,11 +121,17 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .select_from(IdempotencyRecord)
                 .where(IdempotencyRecord.tenant_id == "postgres-ci")
             )
+            review_count = connection.scalar(
+                select(func.count())
+                .select_from(ResearchReviewRecord)
+                .where(ResearchReviewRecord.tenant_id == "postgres-ci")
+            )
 
         self.assertEqual(tenant_id, "postgres-ci")
         self.assertIsInstance(total, Decimal)
         self.assertIsInstance(audit_payload, dict)
         self.assertEqual(idempotency_count, 1)
+        self.assertEqual(review_count, 1)
 
 
 if __name__ == "__main__":
