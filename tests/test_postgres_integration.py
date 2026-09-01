@@ -576,6 +576,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .select_from(AuditEventRecord)
                 .where(AuditEventRecord.tenant_id == "postgres-ci")
             )
+            research_review_audit_payload = connection.scalar(
+                select(AuditEventRecord.payload).where(
+                    AuditEventRecord.aggregate_id == run["id"],
+                    AuditEventRecord.action == "REVIEW_RECORDED",
+                )
+            )
             idempotency_count = connection.scalar(
                 select(func.count())
                 .select_from(IdempotencyRecord)
@@ -614,6 +620,16 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(len(audit_ids), audit_count)
         self.assertEqual(idempotency_count, 2)
         self.assertEqual(review_count, 1)
+        self.assertEqual(
+            research_review_audit_payload,
+            {
+                "decision": "APPROVE",
+                "from": "NEEDS_VERIFICATION",
+                "to": "COMPLETED",
+                "version": review.json()["resulting_version"],
+            },
+        )
+        self.assertNotIn("rationale", research_review_audit_payload)
         self.assertEqual(identity_claim_count, 1)
         self.assertEqual(identity_claim_review_count, 1)
         self.assertIsNotNone(identity_claim_database_id)

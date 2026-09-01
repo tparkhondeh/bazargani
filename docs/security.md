@@ -110,8 +110,9 @@ cannot weaken tenant ownership and unrecognized status text is rejected.
 
 Audit history is read only through a bounded tenant-scoped query. The response omits
 `tenant_id` and never contains raw API keys; actor attribution remains the non-secret
-key fingerprint. Audit payload design must continue to exclude credentials and raw
-evidence bodies, while review rationale remains visible to authorized tenant clients.
+key fingerprint. Audit payload design excludes credentials, raw evidence bodies, and
+new research-review rationale. Rationale remains visible only through the authorized
+tenant-scoped review ledger. Historical audit rows are not rewritten.
 
 The ECB adapter remains fixed to one HTTPS host, rejects redirects and non-public DNS
 results, ignores environment proxies, bounds response bytes, and retries transport or

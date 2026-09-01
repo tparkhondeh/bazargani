@@ -136,6 +136,11 @@ to reuse the deterministic data-gap policy without N+1 queries or free-text retr
 The projection exposes counts and hashes, not report/evidence/free-text bodies, and leaves
 approve/reject writes on the existing expected-version transaction.
 
+Research review writes retain rationale in the authorized append-only review ledger but
+emit a minimal audit payload containing only decision, before/after status, and resulting
+version. This is a forward-only event contract: existing audit rows are never rewritten,
+and downstream consumers must not require rationale duplication in new audit events.
+
 The opportunity decision view also builds the executive summary from those same joined
 validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
 opportunity policy identical and prevents a client from combining a summary with a

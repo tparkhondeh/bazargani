@@ -71,7 +71,8 @@ unknown or requires human verification?
   tenant-scoped structured data-gap summary; an empty recorded set is never presented
   as proof of commercial completeness.
 - Completing or rejecting a review-required result records the authenticated actor,
-  rationale, decision, tenant, and exact run version without rewriting evidence.
+  rationale, decision, tenant, and exact run version without rewriting evidence; the
+  audit event omits rationale while the authorized review ledger retains it.
 - Opportunity lifecycle changes follow an explicit version-checked policy, preserve
   actor/correlation attribution in an append-only audit event, and cannot silently
   reopen a won or lost aggregate.

@@ -192,8 +192,9 @@ PostgreSQL. Parent scenario rows are flushed before their component ledger entri
 Review workflow tests prove that manual transitions cannot fabricate system outcomes,
 wrong versions conflict, other tenants receive `404`, and approve/reject map only from
 reviewable states to terminal outcomes. API and PostgreSQL integration tests verify
-that the review row, actor/rationale, run status/version, and audit event persist
-atomically.
+that the review row with actor/rationale, run status/version, and minimal audit event
+persist atomically. The authorized review history retains rationale while both the audit
+row and paginated audit API omit it.
 
 Opportunity workflow tests cover permitted progress/resume paths, forbidden skips,
 self-transition, and terminal reopening. API integration proves version conflicts,

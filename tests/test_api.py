@@ -1305,9 +1305,36 @@ class ApiTests(unittest.TestCase):
                     ResearchReviewRecord.research_run_id == run["id"]
                 )
             )
+            research_review_audit_payload = connection.scalar(
+                select(AuditEventRecord.payload).where(
+                    AuditEventRecord.aggregate_id == run["id"],
+                    AuditEventRecord.action == "REVIEW_RECORDED",
+                )
+            )
         self.assertEqual(persisted_run.status, "COMPLETED")
         self.assertEqual(persisted_run.version, completed["version"] + 1)
         self.assertEqual(persisted_review_tenant, "tenant-a")
+        self.assertEqual(
+            research_review_audit_payload,
+            {
+                "decision": "APPROVE",
+                "from": "NEEDS_VERIFICATION",
+                "to": "COMPLETED",
+                "version": completed["version"] + 1,
+            },
+        )
+        self.assertNotIn(
+            "منابع و فرضیات توسط بازبین بررسی شد.",
+            json.dumps(research_review_audit_payload, ensure_ascii=False),
+        )
+        audit_history = self.client.get("/api/v1/audit-events", params={"limit": 100})
+        review_audit_view = next(
+            item
+            for item in audit_history.json()["items"]
+            if item["aggregate_id"] == run["id"] and item["action"] == "REVIEW_RECORDED"
+        )
+        self.assertEqual(review_audit_view["payload"], research_review_audit_payload)
+        self.assertNotIn("rationale", review_audit_view["payload"])
 
     def test_optimistic_version_conflict_has_stable_error_contract(self) -> None:
         opportunity = self.client.post(

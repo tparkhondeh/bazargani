@@ -180,7 +180,9 @@ the generic transition endpoint. An authenticated actor must record an `APPROVE`
 `REJECT` review with a rationale and expected version. The decision, status/version
 change, actor fingerprint, and audit event commit atomically; cross-tenant review
 access returns `404`. API-key attribution is a service baseline, not proof of a named
-human identity—OIDC/roles remain required for production user accountability.
+human identity—OIDC/roles remain required for production user accountability. The full
+rationale stays in the authenticated review ledger; new audit events record only the
+decision, transition, and resulting version to avoid duplicating commercial free text.
 
 Opportunity, research-run, and audit-event history endpoints use newest-first opaque
 cursor pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returned

@@ -60,8 +60,9 @@ service-to-service baseline. Atomic bundle-submission idempotency is implemented
 The append-only approve/reject review ledger, rationale requirement, optimistic
 locking, and protected system-derived statuses are implemented. A bounded tenant-scoped
 run-review queue now exposes report hash, validation lineage, gap counts, and the exact
-version required for review. Named-user identity, role policy, assignment/escalation,
-and reassignment remain future work.
+version required for review. New research-review audit events omit rationale while the
+authorized review ledger retains it. Named-user identity, role policy,
+assignment/escalation, and reassignment remain future work.
 The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
 with atomic audit history and terminal won/lost states. The initial transition graph
 still requires commercial stakeholder validation before production activation.

@@ -839,7 +839,6 @@ class TradeRepository:
                 "REVIEW_RECORDED",
                 {
                     "decision": decision.value,
-                    "rationale": normalized_rationale,
                     "from": current.value,
                     "to": target.value,
                     "version": run.version,
