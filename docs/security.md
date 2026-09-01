@@ -112,6 +112,13 @@ operator assertion backed by a separately retained authorization decision, not l
 evidence by itself. Network egress allowlisting and review remain independent controls,
 and an undocumented upstream rate limit remains explicit null.
 
+Provider runtime health is authenticated and passive: reading it cannot construct the
+adapter or trigger network traffic. It exposes bounded process-local counters and UTC
+timestamps, never exception text, URLs, response bodies, credentials, or commercial
+values. Invalid client input is rejected before an upstream attempt is counted. Health
+state resets on restart and records only the last observed request-driven attempt, so it
+must not be treated as a cross-worker control, current reachability proof, or SLA.
+
 `pip-audit` checks the exact Python lock in every CI run and fails on known published
 advisories. The lock and `THIRD_PARTY_NOTICES.md` are reviewed together whenever a
 dependency changes. A clean advisory result is point-in-time evidence, not a guarantee

@@ -98,6 +98,9 @@ unknown or requires human verification?
 - Production startup rejects an enabled automated provider without an explicit,
   documented terms-approval assertion; runtime approval flags do not replace the
   underlying authorization record or network-egress review.
+- Provider health reads are authenticated and passive, distinguish unobserved/disabled
+  state from real attempt outcomes, expose no exception content, and never claim a
+  process-local historical observation proves current or fleet-wide availability.
 
 ## Deferred from MVP
 

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from trade_agent.application.reference_rates import ProviderRuntimeHealthStatus
 from trade_agent.domain.models import Confidence
 from trade_agent.domain.workflow import (
     OpportunityStatus,
@@ -253,6 +254,24 @@ class ProviderView(BaseModel):
     fixed_hosts: tuple[str, ...]
     cache_ttl_seconds: int
     declared_rate_limit: str | None
+    limitations: tuple[str, ...]
+
+
+class ProviderRuntimeHealthView(BaseModel):
+    provider_id: str
+    enabled: bool
+    status: ProviderRuntimeHealthStatus
+    observation_scope: Literal["PROCESS_LOCAL"]
+    observed_since: AwareDatetime
+    last_attempt_at: AwareDatetime | None
+    last_success_at: AwareDatetime | None
+    last_failure_at: AwareDatetime | None
+    upstream_attempt_count: int = Field(ge=0)
+    success_count: int = Field(ge=0)
+    failure_count: int = Field(ge=0)
+    consecutive_failure_count: int = Field(ge=0)
+    cache_hit_count: int = Field(ge=0)
+    endpoint_probe_performed: Literal[False]
     limitations: tuple[str, ...]
 
 

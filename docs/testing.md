@@ -251,3 +251,11 @@ tests prove production cannot enable ECB while its terms assertion is false, whi
 approved assertion or a disabled provider takes the intended distinct startup paths.
 API tests also prove the registry's boolean assertion and derived review status remain
 consistent.
+
+Provider-health tests start from an explicit unobserved state, reject invalid input
+before counting an attempt, distinguish cache hits from upstream work, retain a failed
+last outcome across unrelated cache hits, and verify recovery resets only the
+consecutive-failure count. Factory failures are observed without exposing their text.
+A concurrency regression sends sixteen same-currency misses through eight workers and
+requires one upstream attempt plus fifteen cache hits. API tests prove authentication,
+passive reads, disabled state, stable counters, and failure status.

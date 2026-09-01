@@ -92,6 +92,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /health` and `GET /ready`
 - `POST /api/v1/requests/parse`
 - `GET /api/v1/providers`
+- `GET /api/v1/providers/ecb-fx-reference/health`
 - `GET /api/v1/reference-rates/ecb/{quote_currency}`
 - `GET /api/v1/audit-events`
 - `POST /api/v1/opportunities`
@@ -201,6 +202,13 @@ to start with ECB enabled unless `TRADE_AGENT_ECB_TERMS_APPROVED=true`. Set that
 only after retaining the real authorization decision and completing the separate egress
 review; it is not legal evidence by itself. No undocumented upstream rate-limit number
 is asserted.
+
+The authenticated ECB provider-health endpoint performs no network probe. It reports
+only process-local observations from valid client-triggered cache misses: the last
+attempt outcome, timezone-aware observation times, success/failure/consecutive-failure
+counts, and cache hits. `NOT_OBSERVED` and `DISABLED` remain explicit states. Metrics
+reset on process restart, cache hits do not revalidate ECB, and a successful last
+attempt is not presented as a current-availability or SLA guarantee.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

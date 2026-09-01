@@ -136,7 +136,10 @@ switch. Production now fails closed when ECB is enabled without an explicit
 terms-approval assertion; formal authorization evidence and network review are still
 prerequisites. A 2026-09-01 review deferred eBay Browse and Best Buy Products adapters
 until their production/commercial access and content-use constraints are approved; UN
-Comtrade remains contextual trade data rather than quote evidence.
+Comtrade remains contextual trade data rather than quote evidence. Passive authenticated
+ECB health now reports process-local outcomes and counters from real request-driven
+attempts without probes or exception detail. Cross-worker telemetry, alert aggregation,
+and approved manufacturing/wholesale and Iranian benchmark providers remain.
 
 ## Phase 4 — Assisted intelligence and RTL UI
 

@@ -44,6 +44,7 @@ from trade_agent.api.schemas import (
     ParseRequestInput,
     PriceDistributionView,
     ProductMatchView,
+    ProviderRuntimeHealthView,
     ProviderView,
     QuantityAnalysisView,
     ReferenceRateView,
@@ -66,6 +67,7 @@ from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.application.pagination import MAX_CURSOR_LENGTH, decode_cursor
 from trade_agent.application.reference_rates import (
     CachedReferenceRateService,
+    ProviderRuntimeHealthStatus,
     ReferenceRateProvider,
 )
 from trade_agent.config import Settings, get_settings
@@ -102,8 +104,8 @@ def create_app(
     database_engine = engine or create_engine(resolved.database_url, pool_pre_ping=True)
     sessions = make_session_factory(database_engine)
     repository = TradeRepository(sessions)
-    rate_service: ReferenceRateProvider = reference_rates or CachedReferenceRateService(
-        EcbFxProvider,
+    rate_service = CachedReferenceRateService(
+        (lambda: reference_rates) if reference_rates is not None else EcbFxProvider,
         ttl_seconds=resolved.ecb_cache_ttl_seconds,
     )
     request_limiter = api_rate_limiter or TenantRateLimiter(
@@ -307,6 +309,40 @@ def create_app(
             ecb_terms_approved=resolved.ecb_terms_approved,
             ecb_cache_ttl_seconds=resolved.ecb_cache_ttl_seconds,
         )
+
+    @app.get(
+        "/api/v1/providers/ecb-fx-reference/health",
+        response_model=ProviderRuntimeHealthView,
+    )
+    def get_ecb_provider_health(
+        _principal: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        snapshot = rate_service.health_snapshot()
+        status = snapshot.status
+        if not resolved.ecb_enabled:
+            status = ProviderRuntimeHealthStatus.DISABLED
+        return {
+            "provider_id": "ecb-fx-reference",
+            "enabled": resolved.ecb_enabled,
+            "status": status,
+            "observation_scope": "PROCESS_LOCAL",
+            "observed_since": snapshot.observed_since,
+            "last_attempt_at": snapshot.last_attempt_at,
+            "last_success_at": snapshot.last_success_at,
+            "last_failure_at": snapshot.last_failure_at,
+            "upstream_attempt_count": snapshot.upstream_attempt_count,
+            "success_count": snapshot.success_count,
+            "failure_count": snapshot.failure_count,
+            "consecutive_failure_count": snapshot.consecutive_failure_count,
+            "cache_hit_count": snapshot.cache_hit_count,
+            "endpoint_probe_performed": False,
+            "limitations": (
+                "state is process-local and resets on restart",
+                "only valid client-triggered cache misses attempt the upstream provider",
+                "cache hits do not revalidate upstream availability",
+                "the last observed attempt is not an availability or SLA guarantee",
+            ),
+        }
 
     @app.post("/api/v1/opportunities", response_model=OpportunityView, status_code=201)
     def create_opportunity(

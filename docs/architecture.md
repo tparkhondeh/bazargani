@@ -248,6 +248,14 @@ avoid an upstream request stampede. Adapter network, response-size, and format e
 become a stable upstream-unavailable error; failed fetches and stale values are not
 cached or relabelled as current facts.
 
+The same serialized service records process-local runtime health from actual valid
+cache-miss attempts. It distinguishes never observed, last attempt succeeded, and last
+attempt failed; a disabled-provider state is composed at the API boundary. Cache hits
+have their own counter and cannot overwrite a failed upstream outcome. The health read
+is passive, creates no adapter, and makes no network request. Timestamps are
+timezone-aware UTC, counters reset on process restart, and exception text is never part
+of the health contract.
+
 Provider governance metadata lives in a typed provider registry outside the HTTP
 layer. It exposes only controlled operational facts and explicit unknowns. The ECB kill
 switch is checked before lazy provider construction, so disabling it cannot trigger a

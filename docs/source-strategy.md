@@ -44,3 +44,9 @@ used. Both remain deferred until the intended commercial use, retention/display 
 and authorization are approved. UN Comtrade remains useful trade-statistics context,
 not supplier quote evidence. No scraper or inferred replacement is introduced for any
 of these sources.
+
+`GET /api/v1/providers/ecb-fx-reference/health` is a passive operational projection,
+not another acquisition path. It reports only actual valid request-driven attempts made
+by the current process and never probes the upstream service. Cache hits, failures, and
+the latest outcome remain separate; process restart and multi-worker limitations are
+explicit.

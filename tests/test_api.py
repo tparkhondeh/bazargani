@@ -730,7 +730,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(invalid.json()["code"], "INVALID_INPUT")
 
         self.reference_rates.fail = True
-        unavailable = self.client.get("/api/v1/reference-rates/ecb/USD")
+        unavailable = self.client.get("/api/v1/reference-rates/ecb/GBP")
         self.assertEqual(unavailable.status_code, 502)
         self.assertEqual(unavailable.json()["code"], "UPSTREAM_UNAVAILABLE")
         self.assertIn("correlation_id", unavailable.json())
@@ -780,9 +780,15 @@ class ApiTests(unittest.TestCase):
         ) as disabled_client:
             disabled_client.headers.update({"X-API-Key": self.api_key})
             disabled_catalog = disabled_client.get("/api/v1/providers")
+            disabled_health = disabled_client.get(
+                "/api/v1/providers/ecb-fx-reference/health"
+            )
             disabled_rate = disabled_client.get("/api/v1/reference-rates/ecb/USD")
 
         self.assertFalse(disabled_catalog.json()[0]["enabled"])
+        self.assertEqual(disabled_health.json()["status"], "DISABLED")
+        self.assertFalse(disabled_health.json()["endpoint_probe_performed"])
+        self.assertEqual(disabled_health.json()["upstream_attempt_count"], 0)
         self.assertEqual(disabled_rate.status_code, 502)
         self.assertEqual(disabled_rate.json()["code"], "UPSTREAM_UNAVAILABLE")
         self.assertEqual(disabled_rates.calls, 0)
@@ -815,6 +821,48 @@ class ApiTests(unittest.TestCase):
 
         self.assertTrue(approved_catalog[0]["terms_approved"])
         self.assertEqual(approved_catalog[0]["terms_review_status"], "APPROVED")
+
+    def test_provider_health_reports_observed_calls_without_network_probes(self) -> None:
+        path = "/api/v1/providers/ecb-fx-reference/health"
+        unauthenticated = self.client.get(path, headers={"X-API-Key": ""})
+        initial = self.client.get(path)
+
+        self.assertEqual(unauthenticated.status_code, 401)
+        self.assertEqual(initial.status_code, 200)
+        self.assertEqual(initial.json()["status"], "NOT_OBSERVED")
+        self.assertEqual(initial.json()["observation_scope"], "PROCESS_LOCAL")
+        self.assertFalse(initial.json()["endpoint_probe_performed"])
+        self.assertEqual(initial.json()["upstream_attempt_count"], 0)
+        self.assertEqual(self.reference_rates.calls, 0)
+
+        self.assertEqual(
+            self.client.get("/api/v1/reference-rates/ecb/USD").status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get("/api/v1/reference-rates/ecb/usd").status_code,
+            200,
+        )
+        observed = self.client.get(path).json()
+
+        self.assertEqual(observed["status"], "LAST_ATTEMPT_SUCCEEDED")
+        self.assertEqual(observed["upstream_attempt_count"], 1)
+        self.assertEqual(observed["success_count"], 1)
+        self.assertEqual(observed["failure_count"], 0)
+        self.assertEqual(observed["cache_hit_count"], 1)
+        self.assertEqual(self.reference_rates.calls, 1)
+
+        self.reference_rates.fail = True
+        self.assertEqual(
+            self.client.get("/api/v1/reference-rates/ecb/GBP").status_code,
+            502,
+        )
+        failed = self.client.get(path).json()
+        self.assertEqual(failed["status"], "LAST_ATTEMPT_FAILED")
+        self.assertEqual(failed["upstream_attempt_count"], 2)
+        self.assertEqual(failed["success_count"], 1)
+        self.assertEqual(failed["failure_count"], 1)
+        self.assertEqual(failed["consecutive_failure_count"], 1)
 
     def test_review_outcome_requires_an_atomic_tenant_scoped_decision(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

@@ -95,6 +95,15 @@ are recorded; only then set the approval assertion to `true`. Preserve that deci
 outside runtime configuration and complete the separate egress/monitoring review. The
 flag alone is not proof of legal approval.
 
+Inspect authenticated `GET /api/v1/providers/ecb-fx-reference/health` without expecting
+it to probe ECB. `NOT_OBSERVED` means this process has made no valid upstream attempt;
+`LAST_ATTEMPT_SUCCEEDED` and `LAST_ATTEMPT_FAILED` describe only the most recent real
+cache miss, and `DISABLED` reflects the kill switch. Compare attempt, success, failure,
+consecutive-failure, and cache-hit counts, but remember every worker has independent
+state and a restart resets it. Alerting across workers requires external aggregated
+metrics; never infer present availability from a cached response or a historical
+success.
+
 SQLite auto-schema mode is allowed only for local development and tests. Production
 requires PostgreSQL, Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`), and enabled
 authentication. Migration `0007` assigns pre-existing rows to the quarantined
