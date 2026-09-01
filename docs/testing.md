@@ -29,6 +29,11 @@ Calculation-ledger API tests verify semantic scenario/component ordering, exact 
 absence of raw evidence, and cross-tenant `404` behavior. The PostgreSQL integration
 path repeats component reconciliation against migrated production types.
 
+Cost-coverage tests lock semantic scenario ordering, recognized/unrecorded/custom/zero
+code separation, evidence-class counts, empty status, and fail-closed duplicate/unknown-
+class handling. API/report and PostgreSQL tests compare coverage to the persisted ledger,
+enforce tenant isolation, and confirm no raw evidence or inferred amounts are returned.
+
 Scenario-FX tests assign synthetic rates of 90/100/110 to optimistic/base/conservative
 inputs, lock their exact per-unit outputs and sensitivity, then read the rates back with
 the correct scenario/source lineage. Regression tests retain the legacy shared-rate

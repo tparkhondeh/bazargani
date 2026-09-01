@@ -454,6 +454,7 @@ class ApiTests(unittest.TestCase):
                 "validation",
                 "data-gaps",
                 "landed-cost-scenarios",
+                "cost-coverage",
                 "fx-rates",
                 "assumptions",
                 "evidence",
@@ -1087,6 +1088,32 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(ledger["scenario_sensitivity"]["range_percent_of_base"], "25.51")
         self.assertNotIn("raw_value", json.dumps(ledger))
+
+        cost_coverage_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/cost-coverage"
+        )
+        self.assertEqual(cost_coverage_response.status_code, 200)
+        cost_coverage = cost_coverage_response.json()
+        self.assertEqual(cost_coverage["status"], "RECORDED_COST_COMPONENT_COVERAGE")
+        self.assertEqual(
+            [scenario["name"] for scenario in cost_coverage["scenarios"]],
+            ["OPTIMISTIC", "BASE", "CONSERVATIVE"],
+        )
+        base_coverage = cost_coverage["scenarios"][1]
+        self.assertEqual(
+            base_coverage["recorded_component_codes"],
+            ["freight", "product_cost", "unexpected_cost"],
+        )
+        self.assertEqual(base_coverage["recognized_reference_codes"], [
+            "product_cost",
+            "freight",
+            "unexpected_cost",
+        ])
+        self.assertEqual(base_coverage["unclassified_component_codes"], [])
+        self.assertEqual(base_coverage["assumption_count"], 2)
+        self.assertEqual(base_coverage["derived_calculation_count"], 1)
+        self.assertIn("insurance", base_coverage["unrecorded_reference_codes"])
+        self.assertNotIn("raw_value", json.dumps(cost_coverage))
 
         fx_response = self.client.get(f"/api/v1/research-runs/{run['id']}/fx-rates")
         self.assertEqual(fx_response.status_code, 200)

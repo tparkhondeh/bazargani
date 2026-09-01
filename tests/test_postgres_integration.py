@@ -160,6 +160,22 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             cost_ledger.json()["scenario_sensitivity"]["status"],
             "COMPARABLE",
         )
+        cost_coverage = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/cost-coverage"
+        )
+        self.assertEqual(cost_coverage.status_code, 200)
+        self.assertEqual(
+            cost_coverage.json()["status"],
+            "RECORDED_COST_COMPONENT_COVERAGE",
+        )
+        self.assertEqual(
+            cost_coverage.json()["scenarios"][1]["recorded_component_count"],
+            len(base_scenario["components"]),
+        )
+        self.assertIn(
+            "tariff_duty",
+            cost_coverage.json()["scenarios"][1]["unrecorded_reference_codes"],
+        )
         persisted_rates = self.client.get(
             f"/api/v1/research-runs/{run['id']}/fx-rates"
         )

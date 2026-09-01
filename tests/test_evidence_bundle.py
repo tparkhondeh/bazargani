@@ -29,6 +29,8 @@ class EvidenceBundleTests(unittest.TestCase):
         self.assertIn("راستی‌آزمایی `UNVERIFIED`", report)
         self.assertIn(r"supplier\_reliability", report)
         self.assertIn("حساسیت سناریوها", report)
+        self.assertIn("پوشش اجزای هزینه", report)
+        self.assertIn("دسته‌های مرجع ثبت‌نشده", report)
         self.assertIn("25.51%", report)
         self.assertIn("نرخ‌های ارز سناریوها", report)
         self.assertEqual(report.count("1 `USD` = 100 `IRR`"), 3)

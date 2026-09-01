@@ -119,6 +119,12 @@ components. It preserves the scenario basis, total/per-unit values, component cu
 evidence class, and formula. It does not embed raw source bodies, and it does not permit
 clients to mutate or recalculate an immutable research run.
 
+Trade-cost coverage compares each scenario's exact component codes with a versioned-in-
+code reference vocabulary and counts evidence classes. Recognized, unrecorded reference,
+custom/unclassified, and zero-amount codes remain distinct. “Unrecorded” does not mean
+required, applicable, zero, or omitted in error; it means only that no component with
+that exact reference code exists in the scenario. No amount is inferred.
+
 Every persisted FX rate belongs to one landed-cost scenario. A shared bundle rate is
 expanded into explicit optimistic/base/conservative lineage; an optional scenario
 `fx_rates` collection overrides the shared collection. Pair, rate type, and effective

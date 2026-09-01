@@ -33,6 +33,9 @@ unknown or requires human verification?
 - FX is point-in-time and tied to a source, rate type, and exact consuming scenario;
   scenarios may explicitly use different evidence-classified FX inputs.
 - Calculations expose every component and use decimal arithmetic.
+- Scenario cost coverage distinguishes recorded reference components, unrecorded
+  reference categories, custom codes, zero amounts, and evidence-class counts without
+  treating absence as applicability or manufacturing a missing amount.
 - Structured run results expose scenario totals, component amounts, currency,
   evidence class, and formula without requiring Markdown parsing or copying raw evidence.
 - Three scenarios are supported without silently changing evidence.

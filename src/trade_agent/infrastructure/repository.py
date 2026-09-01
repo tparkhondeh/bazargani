@@ -11,6 +11,11 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from trade_agent.application.cost_coverage import (
+    CostCoveragePoint,
+    ScenarioCostCoverageInput,
+    analyze_trade_cost_coverage,
+)
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
 from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
@@ -1277,6 +1282,56 @@ class TradeRepository:
                 ],
                 "scenario_sensitivity": asdict(sensitivity),
             }
+
+    def get_trade_cost_coverage(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> dict[str, Any]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            scenarios = tuple(
+                session.scalars(
+                    select(LandedCostScenarioRecord).where(
+                        LandedCostScenarioRecord.research_run_id == run_id
+                    )
+                )
+            )
+            scenario_ids = [scenario.id for scenario in scenarios]
+            components = (
+                tuple(
+                    session.scalars(
+                        select(LandedCostComponentRecord).where(
+                            LandedCostComponentRecord.scenario_id.in_(scenario_ids)
+                        )
+                    )
+                )
+                if scenario_ids
+                else ()
+            )
+            components_by_scenario: dict[str, list[CostCoveragePoint]] = {
+                scenario.id: [] for scenario in scenarios
+            }
+            for component in components:
+                components_by_scenario[component.scenario_id].append(
+                    CostCoveragePoint(
+                        code=component.code,
+                        evidence_class=component.evidence_class,
+                        is_zero=component.amount == 0,
+                    )
+                )
+            return asdict(
+                analyze_trade_cost_coverage(
+                    tuple(
+                        ScenarioCostCoverageInput(
+                            name=scenario.name,
+                            components=tuple(components_by_scenario[scenario.id]),
+                        )
+                        for scenario in scenarios
+                    )
+                )
+            )
 
     def get_research_fx_rates(
         self,

@@ -70,7 +70,9 @@ future result/history UI use. It also embeds the conservative executive summary 
 UI does not reimplement recommendation, gap, candidate, or benchmark-withholding policy.
 A tenant-scoped structured landed-cost ledger now exposes scenario totals, every
 calculation component/formula/evidence class, and shared sensitivity without Markdown
-parsing; richer evidence drill-down and UI visualization remain later work.
+parsing. A scenario cost-coverage projection now highlights recorded, unrecorded
+reference, custom, zero, and evidence-class coverage without inventing applicability or
+amounts; richer evidence drill-down and UI visualization remain later work.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

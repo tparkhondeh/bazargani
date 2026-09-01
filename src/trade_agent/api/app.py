@@ -55,6 +55,7 @@ from trade_agent.api.schemas import (
     ResearchValidationView,
     ScenarioFXRateView,
     SupplierCoverageSummaryView,
+    TradeCostCoverageView,
     ValidationErrorDetail,
 )
 from trade_agent.api.validation_errors import safe_validation_details
@@ -577,6 +578,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_landed_cost_scenarios(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/cost-coverage",
+        response_model=TradeCostCoverageView,
+    )
+    def get_trade_cost_coverage(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_trade_cost_coverage(
             run_id,
             tenant_id=authenticated.tenant_id,
         )

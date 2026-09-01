@@ -132,6 +132,11 @@ keeps product cost first, named costs deterministic, and contingency last. The J
 view exposes formulas and evidence classes for auditability, omits raw evidence bodies,
 and derives sensitivity through the shared application function.
 
+Cost coverage is a pure projection over the same component ledger and is shared by the
+API and report. A finite reference vocabulary makes coverage auditable while preserving
+unknown custom codes. The projection counts evidence classes and zero amounts but does
+not calculate a completeness percentage, infer applicability, or create missing costs.
+
 FX inputs are parsed as a shared collection with optional per-scenario overrides.
 Persistence creates scenario rows first, then stores each rate with a required scenario
 foreign key and its deduplicated evidence reference. The authenticated FX read model

@@ -521,6 +521,28 @@ class LandedCostLedgerView(BaseModel):
     scenario_sensitivity: ScenarioSensitivityView
 
 
+class ScenarioCostCoverageView(BaseModel):
+    name: str
+    recorded_component_codes: tuple[str, ...]
+    recognized_reference_codes: tuple[str, ...]
+    unrecorded_reference_codes: tuple[str, ...]
+    unclassified_component_codes: tuple[str, ...]
+    zero_amount_codes: tuple[str, ...]
+    recorded_component_count: int = Field(ge=0)
+    fact_count: int = Field(ge=0)
+    estimate_count: int = Field(ge=0)
+    assumption_count: int = Field(ge=0)
+    derived_calculation_count: int = Field(ge=0)
+    ai_inference_count: int = Field(ge=0)
+
+
+class TradeCostCoverageView(BaseModel):
+    status: str
+    reference_component_codes: tuple[str, ...]
+    scenarios: tuple[ScenarioCostCoverageView, ...]
+    limitations: tuple[str, ...]
+
+
 class ResearchAssumptionsView(BaseModel):
     research_run_id: str
     assumptions: list[str]

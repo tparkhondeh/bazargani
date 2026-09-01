@@ -4,6 +4,11 @@ import html
 import re
 from urllib.parse import quote
 
+from trade_agent.application.cost_coverage import (
+    CostCoveragePoint,
+    ScenarioCostCoverageInput,
+    analyze_trade_cost_coverage,
+)
 from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
 from trade_agent.application.executive_summary import (
     ExecutiveSupplierCandidate,
@@ -234,6 +239,51 @@ def render_markdown(result: ResearchResult) -> str:
             )
         lines.append("")
 
+    cost_coverage = analyze_trade_cost_coverage(
+        tuple(
+            ScenarioCostCoverageInput(
+                name=scenario.name.value,
+                components=tuple(
+                    CostCoveragePoint(
+                        code=component.code,
+                        evidence_class=component.evidence_class.value,
+                        is_zero=component.amount.amount == 0,
+                    )
+                    for component in scenario.components
+                ),
+            )
+            for scenario in result.scenarios
+        )
+    )
+    lines.extend(["## پوشش اجزای هزینه", ""])
+    lines.append(f"- وضعیت: {_code(cost_coverage.status)}")
+    for scenario_coverage in cost_coverage.scenarios:
+        lines.append(
+            f"- {_code(scenario_coverage.name)}: "
+            f"{scenario_coverage.recorded_component_count} جزء ثبت‌شده؛ "
+            f"FACT={scenario_coverage.fact_count}، "
+            f"ESTIMATE={scenario_coverage.estimate_count}، "
+            f"ASSUMPTION={scenario_coverage.assumption_count}، "
+            f"DERIVED={scenario_coverage.derived_calculation_count}، "
+            f"AI_INFERENCE={scenario_coverage.ai_inference_count}"
+        )
+        lines.append(
+            "  - دسته‌های مرجع ثبت‌نشده: "
+            + "، ".join(
+                _code(item) for item in scenario_coverage.unrecorded_reference_codes
+            )
+        )
+        if scenario_coverage.unclassified_component_codes:
+            lines.append(
+                "  - کدهای سفارشی طبقه‌بندی‌نشده: "
+                + "، ".join(
+                    _code(item)
+                    for item in scenario_coverage.unclassified_component_codes
+                )
+            )
+    lines.extend(f"- محدودیت: {_text(item)}" for item in cost_coverage.limitations)
+    lines.append("")
+
     lines.extend(["## شواهد قیمت", ""])
     for observation in case.observations:
         lines.append(
@@ -312,18 +362,23 @@ def render_markdown(result: ResearchResult) -> str:
     )
     lines.extend(["", "## پوشش شواهد تأمین‌کننده", ""])
     lines.append(f"- وضعیت: {_code(supplier_coverage.status)}")
-    for coverage in supplier_coverage.suppliers:
+    for supplier_coverage_item in supplier_coverage.suppliers:
         lines.append(
-            f"- {_text(coverage.supplier_name)}: {coverage.offer_count} پیشنهاد، "
-            f"{coverage.distinct_source_count} نشانی منبع متمایز، "
-            f"MOQ برای {coverage.moq_observation_count}/{coverage.offer_count}، "
-            f"Incoterm برای {coverage.incoterm_observation_count}/{coverage.offer_count}، "
-            f"قابل رتبه‌بندی {coverage.rankable_offer_count}/{coverage.offer_count}؛ "
-            f"راستی‌آزمایی {_code(coverage.due_diligence_status)}"
+            f"- {_text(supplier_coverage_item.supplier_name)}: "
+            f"{supplier_coverage_item.offer_count} پیشنهاد، "
+            f"{supplier_coverage_item.distinct_source_count} نشانی منبع متمایز، "
+            f"MOQ برای {supplier_coverage_item.moq_observation_count}/"
+            f"{supplier_coverage_item.offer_count}، Incoterm برای "
+            f"{supplier_coverage_item.incoterm_observation_count}/"
+            f"{supplier_coverage_item.offer_count}، قابل رتبه‌بندی "
+            f"{supplier_coverage_item.rankable_offer_count}/"
+            f"{supplier_coverage_item.offer_count}؛ راستی‌آزمایی "
+            f"{_code(supplier_coverage_item.due_diligence_status)}"
         )
-        if coverage.unknown_factors:
+        if supplier_coverage_item.unknown_factors:
             lines.append(
-                f"  - عوامل نامشخص: {_text(', '.join(coverage.unknown_factors))}"
+                f"  - عوامل نامشخص: "
+                f"{_text(', '.join(supplier_coverage_item.unknown_factors))}"
             )
     if supplier_coverage.unidentified_observation_ids:
         lines.append(
