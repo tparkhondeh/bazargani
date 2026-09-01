@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+pysqlite:///./data/trade_agent.db"
     auto_create_schema: bool = True
     max_request_body_bytes: int = Field(default=2_000_000, ge=1024, le=10_000_000)
+    ecb_cache_ttl_seconds: int = Field(default=3_600, ge=60, le=86_400)
     auth_enabled: bool = False
     api_key_credentials: dict[str, str] = Field(default_factory=dict)
 

@@ -46,6 +46,11 @@ Integrate one manufacturing/wholesale source and one Iranian benchmark source vi
 contract-tested adapters. Add safe URL fetcher, rate limits, cache, partial results,
 assisted product matching, deduplication, and provider health.
 
+Status: the official ECB adapter is exposed through the authenticated API with
+provenance, bounded safe HTTP, TTL caching, and stable failure behavior. It remains an
+informational EUR reference only. Approved manufacturing/wholesale and Iranian
+benchmark sources, shared provider telemetry, and distributed rate control remain.
+
 ## Phase 4 — Assisted intelligence and RTL UI
 
 LLM-assisted request parsing/matching with evals and cost telemetry; Persian RTL UI

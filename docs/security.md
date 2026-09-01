@@ -53,6 +53,12 @@ History cursors are bounded opaque ordering tokens, not bearer credentials. Deco
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.
 
+The ECB adapter remains fixed to one HTTPS host, rejects redirects and non-public DNS
+results, ignores environment proxies, bounds response bytes, and retries transport or
+server failures. The API requires authentication to limit anonymous abuse. Only
+successful parsed observations enter the TTL cache; a provider failure returns `502`
+without serving a stale value as if it were current.
+
 Production is blocked until TLS, reverse proxy policy, secret storage, backup restore,
 logging retention, authorization roles, and server reconciliation are verified.
 

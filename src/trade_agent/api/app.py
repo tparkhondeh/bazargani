@@ -27,6 +27,7 @@ from trade_agent.api.schemas import (
     ParsedTradeRequestView,
     ParseRequestInput,
     ProductMatchView,
+    ReferenceRateView,
     ResearchCompletionView,
     ResearchReviewSubmit,
     ResearchReviewView,
@@ -38,6 +39,10 @@ from trade_agent.api.schemas import (
 )
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.application.pagination import MAX_CURSOR_LENGTH, decode_cursor
+from trade_agent.application.reference_rates import (
+    CachedReferenceRateService,
+    ReferenceRateProvider,
+)
 from trade_agent.config import Settings, get_settings
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
@@ -47,16 +52,26 @@ from trade_agent.domain.workflow import (
 from trade_agent.infrastructure.database import Base, make_session_factory
 from trade_agent.infrastructure.repository import TradeRepository
 from trade_agent.parsing.request import parse_trade_request
+from trade_agent.providers.ecb_fx import EcbFxProvider
+from trade_agent.providers.errors import ProviderUnavailableError
 
 logger = logging.getLogger("trade_agent.http")
 
 
-def create_app(settings: Settings | None = None, engine: Engine | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    engine: Engine | None = None,
+    reference_rates: ReferenceRateProvider | None = None,
+) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(resolved.log_level)
     database_engine = engine or create_engine(resolved.database_url, pool_pre_ping=True)
     sessions = make_session_factory(database_engine)
     repository = TradeRepository(sessions)
+    rate_service: ReferenceRateProvider = reference_rates or CachedReferenceRateService(
+        EcbFxProvider,
+        ttl_seconds=resolved.ecb_cache_ttl_seconds,
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> Any:
@@ -137,6 +152,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     async def invalid_input(request: Request, exc: ValueError) -> JSONResponse:
         return error(request, 422, "INVALID_INPUT", str(exc))
 
+    @app.exception_handler(ProviderUnavailableError)
+    async def provider_unavailable(
+        request: Request, exc: ProviderUnavailableError
+    ) -> JSONResponse:
+        return error(request, 502, "UPSTREAM_UNAVAILABLE", str(exc))
+
     @app.exception_handler(RequestValidationError)
     async def request_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         return error(request, 422, "REQUEST_VALIDATION_FAILED", str(exc))
@@ -178,6 +199,16 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             "critical_questions": parsed.critical_questions,
             "can_start_research": parsed.can_start_research,
         }
+
+    @app.get(
+        "/api/v1/reference-rates/ecb/{quote_currency}",
+        response_model=ReferenceRateView,
+    )
+    def get_ecb_reference_rate(
+        quote_currency: str,
+        _principal: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return rate_service.latest_reference_rate(quote_currency)
 
     @app.post("/api/v1/opportunities", response_model=OpportunityView, status_code=201)
     def create_opportunity(

@@ -29,7 +29,7 @@ $env:TRADE_AGENT_AUTH_ENABLED = "true"
 $env:TRADE_AGENT_API_KEY_CREDENTIALS = "{`"$digest`":`"tenant-name`"}"
 ```
 
-The displayed `$apiKey` value is the only usable credential; transmit it once through
+The value held in `$apiKey` is the only usable credential; transmit it once through
 the selected secret channel. Credential values must be 32–128 characters. Tenant IDs
 accept letters, digits, `_`, and `-`, up to 64 characters. A second credential can
 map to the same tenant during rotation; deploy the new digest, move clients, then
@@ -38,6 +38,11 @@ remove the old digest.
 `TRADE_AGENT_MAX_REQUEST_BODY_BYTES` defaults to `2000000` and is constrained to
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
 the application limit remains a required defense for direct/internal traffic.
+
+`TRADE_AGENT_ECB_CACHE_TTL_SECONDS` defaults to `3600` and accepts 60–86,400 seconds.
+The cache is per process; production egress/rate controls must still apply across all
+workers. Monitor `502 UPSTREAM_UNAVAILABLE` without logging response bodies or
+misrepresenting cached ECB reference rates as Iranian transaction rates.
 
 SQLite auto-schema mode is allowed only for local development and tests. Production
 requires PostgreSQL, Alembic (`TRADE_AGENT_AUTO_CREATE_SCHEMA=false`), and enabled

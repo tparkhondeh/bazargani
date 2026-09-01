@@ -4,6 +4,7 @@ from decimal import Decimal
 import httpx
 
 from trade_agent.providers.ecb_fx import ECB_HOST, EcbFxProvider
+from trade_agent.providers.errors import ProviderUnavailableError
 from trade_agent.providers.http import SafeHttpClient
 
 CSV_FIXTURE = b"""KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE
@@ -37,6 +38,18 @@ class EcbFxTests(unittest.TestCase):
     def test_rejects_eur_as_quote(self) -> None:
         with self.assertRaisesRegex(ValueError, "non-EUR"):
             EcbFxProvider().latest_reference_rate("EUR")
+
+    def test_malformed_upstream_data_is_provider_unavailable(self) -> None:
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, content=b"bad"))
+        safe_http = SafeHttpClient(
+            allowed_hosts={ECB_HOST},
+            resolver=lambda _: {"93.184.216.34"},
+            client=httpx.Client(transport=transport),
+            max_attempts=1,
+        )
+
+        with self.assertRaisesRegex(ProviderUnavailableError, "no usable observation"):
+            EcbFxProvider(safe_http).latest_reference_rate("USD")
 
 
 if __name__ == "__main__":

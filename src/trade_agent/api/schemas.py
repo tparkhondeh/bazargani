@@ -87,6 +87,25 @@ class EvidenceBundleSubmit(BaseModel):
     bundle: dict[str, Any]
 
 
+class EvidenceView(BaseModel):
+    classification: str
+    source_name: str
+    source_url: str
+    retrieved_at: datetime
+    raw_value: str
+    confidence: Confidence
+    transformation: str | None
+
+
+class ReferenceRateView(BaseModel):
+    base_currency: str
+    quote_currency: str
+    rate: Decimal
+    rate_type: str
+    effective_at: datetime | None
+    evidence: EvidenceView
+
+
 class ResearchCompletionView(BaseModel):
     research_run_id: str
     status: str

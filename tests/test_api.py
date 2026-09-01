@@ -1,7 +1,8 @@
 import hashlib
 import json
 import unittest
-from datetime import datetime
+from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -10,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from trade_agent.api.app import create_app
 from trade_agent.config import Settings
+from trade_agent.domain.models import Confidence, Evidence, EvidenceClass, FXRate
 from trade_agent.infrastructure.database import (
     AuditEventRecord,
     DecisionReportRecord,
@@ -26,6 +28,37 @@ from trade_agent.infrastructure.database import (
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
+from trade_agent.providers.errors import ProviderUnavailableError
+
+
+class StubReferenceRateProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.fail = False
+
+    def latest_reference_rate(self, quote_currency: str) -> FXRate:
+        self.calls += 1
+        currency = quote_currency.strip().upper()
+        if currency == "EUR" or len(currency) != 3:
+            raise ValueError("quote currency must be a non-EUR three-letter code")
+        if self.fail:
+            raise ProviderUnavailableError("ECB reference-rate service is unavailable")
+        return FXRate(
+            base_currency="EUR",
+            quote_currency=currency,
+            rate=Decimal("1.1802"),
+            evidence=Evidence(
+                classification=EvidenceClass.FACT,
+                source_name="European Central Bank Data Portal",
+                source_url="https://data-api.ecb.europa.eu/service/data/EXR/test",
+                retrieved_at=datetime(2026, 9, 1, 8, tzinfo=UTC),
+                raw_value='{"OBS_VALUE":"1.1802","TIME_PERIOD":"2026-08-31"}',
+                confidence=Confidence.HIGH,
+                transformation="ECB contract fixture",
+            ),
+            rate_type="ECB_DAILY_REFERENCE_INFORMATIONAL",
+            effective_at=datetime(2026, 8, 31, tzinfo=UTC),
+        )
 
 
 class ApiTests(unittest.TestCase):
@@ -49,7 +82,14 @@ class ApiTests(unittest.TestCase):
                 hashlib.sha256(self.other_api_key.encode()).hexdigest(): "tenant-b",
             },
         )
-        self.client_context = TestClient(create_app(settings=settings, engine=self.engine))
+        self.reference_rates = StubReferenceRateProvider()
+        self.client_context = TestClient(
+            create_app(
+                settings=settings,
+                engine=self.engine,
+                reference_rates=self.reference_rates,
+            )
+        )
         self.client = self.client_context.__enter__()
         self.client.headers.update({"X-API-Key": self.api_key})
 
@@ -271,6 +311,39 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(parsed["destination"], "شیراز")
         self.assertEqual(parsed["critical_questions"], [])
         self.assertEqual(len(parsed["assumptions"]), 1)
+
+    def test_ecb_reference_rate_preserves_provenance_and_stable_errors(self) -> None:
+        unauthenticated = self.client.get(
+            "/api/v1/reference-rates/ecb/USD",
+            headers={"X-API-Key": ""},
+        )
+        self.assertEqual(unauthenticated.status_code, 401)
+        self.assertEqual(self.reference_rates.calls, 0)
+
+        response = self.client.get("/api/v1/reference-rates/ecb/usd")
+
+        self.assertEqual(response.status_code, 200)
+        rate = response.json()
+        self.assertEqual(rate["base_currency"], "EUR")
+        self.assertEqual(rate["quote_currency"], "USD")
+        self.assertEqual(rate["rate"], "1.1802")
+        self.assertEqual(rate["rate_type"], "ECB_DAILY_REFERENCE_INFORMATIONAL")
+        self.assertEqual(rate["evidence"]["classification"], "FACT")
+        self.assertEqual(
+            rate["evidence"]["source_name"],
+            "European Central Bank Data Portal",
+        )
+        self.assertIn("TIME_PERIOD", rate["evidence"]["raw_value"])
+
+        invalid = self.client.get("/api/v1/reference-rates/ecb/EUR")
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(invalid.json()["code"], "INVALID_INPUT")
+
+        self.reference_rates.fail = True
+        unavailable = self.client.get("/api/v1/reference-rates/ecb/USD")
+        self.assertEqual(unavailable.status_code, 502)
+        self.assertEqual(unavailable.json()["code"], "UPSTREAM_UNAVAILABLE")
+        self.assertIn("correlation_id", unavailable.json())
 
     def test_review_outcome_requires_an_atomic_tenant_scoped_decision(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

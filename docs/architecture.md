@@ -70,6 +70,12 @@ History traversal uses deterministic `(created_at, id)` descending keyset pagina
 not unbounded reads or offset drift. The URL-safe cursor is validated into UTC time
 and a UUID, while tenant ownership remains an independent repository predicate.
 
+The ECB reference-rate application service constructs its HTTP adapter lazily and
+caches successful currency results for a bounded TTL. Cache misses are serialized to
+avoid an upstream request stampede. Adapter network, response-size, and format errors
+become a stable upstream-unavailable error; failed fetches and stale values are not
+cached or relabelled as current facts.
+
 ## Configuration
 
 Development, test, and production use environment-specific configuration validated

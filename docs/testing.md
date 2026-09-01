@@ -73,3 +73,10 @@ Pagination tests cover UTC/UUID cursor round trips, malformed and oversized curs
 maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite
 date encoding cannot conceal a production ordering bug.
+
+ECB provider tests use captured synthetic contract rows and cover latest-observation
+selection, provenance, invalid currency, and malformed upstream data. Cache tests
+verify lazy construction, case-insensitive hits, expiry/refetch, and no stale fallback.
+API tests verify the evidence-rich response plus stable `422` and `502` contracts; a
+separate read-only smoke check confirmed the documented official endpoint on
+2026-09-01 without turning the live value into a test fixture.

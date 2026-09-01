@@ -63,6 +63,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 
 - `GET /health` and `GET /ready`
 - `POST /api/v1/requests/parse`
+- `GET /api/v1/reference-rates/ecb/{quote_currency}`
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
@@ -95,6 +96,12 @@ pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returne
 when another page exists. Cursors encode ordering state, not authorization: every
 query independently applies the authenticated tenant predicate and malformed or
 oversized cursors fail with `422`.
+
+The authenticated ECB reference-rate endpoint exposes the latest supported EUR quote
+with its official source URL, retrieval/effective times, raw observation, confidence,
+and explicit informational rate type. A bounded in-process cache (default one hour)
+reduces upstream load. Upstream/network/format failure returns a stable `502` and is
+never replaced by silently stale or invented data.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

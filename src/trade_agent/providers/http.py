@@ -83,7 +83,12 @@ class SafeHttpClient:
             timeout=httpx.Timeout(10.0, connect=5.0),
             follow_redirects=False,
             trust_env=False,
-            headers={"User-Agent": "bazargani-trade-agent/0.3 (+source-backed-research)"},
+            headers={
+                "User-Agent": (
+                    "bazargani-trade-agent "
+                    "(+https://github.com/tparkhondeh/bazargani)"
+                )
+            },
         )
 
     def get(self, url: str) -> FetchResult:
