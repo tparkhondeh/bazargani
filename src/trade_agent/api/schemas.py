@@ -35,6 +35,11 @@ class OpportunityView(BaseModel):
     updated_at: datetime
 
 
+class OpportunityPageView(BaseModel):
+    items: list[OpportunityView]
+    next_cursor: str | None
+
+
 class ResearchRunView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,6 +49,11 @@ class ResearchRunView(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
+
+
+class ResearchRunPageView(BaseModel):
+    items: list[ResearchRunView]
+    next_cursor: str | None
 
 
 class ResearchRunTransition(BaseModel):

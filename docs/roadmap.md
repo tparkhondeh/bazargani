@@ -28,6 +28,8 @@ locking, and protected system-derived statuses are implemented; named-user ident
 role policy, reassignment, and review queues remain future work.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI.
+Bounded tenant-scoped keyset pagination for opportunity and research-run history is
+implemented as the data-access foundation for the RTL UI.
 Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
 rate limiting remains part of authentication/production hardening.
 Deterministic data-quality validation, exact

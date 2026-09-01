@@ -7,11 +7,12 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from trade_agent.application.matching import normalize_product_text
+from trade_agent.application.pagination import PageCursor, encode_cursor
 from trade_agent.application.ports import ResearchCompletion
 from trade_agent.application.research import ResearchResult
 from trade_agent.application.validation import ValidationDisposition
@@ -103,6 +104,48 @@ class TradeRepository:
             session.expunge(record)
             return record
 
+    def list_opportunities(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        after: PageCursor | None,
+    ) -> tuple[list[OpportunityRecord], str | None]:
+        if not 1 <= limit <= 100:
+            raise ValueError("page limit must be between 1 and 100")
+        with self._session_factory() as session:
+            statement = select(OpportunityRecord).where(
+                OpportunityRecord.tenant_id == tenant_id
+            )
+            if after is not None:
+                statement = statement.where(
+                    or_(
+                        OpportunityRecord.created_at < after.created_at,
+                        and_(
+                            OpportunityRecord.created_at == after.created_at,
+                            OpportunityRecord.id < after.record_id,
+                        ),
+                    )
+                )
+            records = list(
+                session.scalars(
+                    statement.order_by(
+                        OpportunityRecord.created_at.desc(),
+                        OpportunityRecord.id.desc(),
+                    ).limit(limit + 1)
+                )
+            )
+            has_more = len(records) > limit
+            page = records[:limit]
+            next_cursor = (
+                encode_cursor(page[-1].created_at, page[-1].id)
+                if has_more and page
+                else None
+            )
+            for record in page:
+                session.expunge(record)
+            return page, next_cursor
+
     def create_research_run(
         self,
         *,
@@ -141,6 +184,58 @@ class TradeRepository:
                 {},
             )
         return record
+
+    def list_research_runs(
+        self,
+        *,
+        opportunity_id: str,
+        tenant_id: str,
+        limit: int,
+        after: PageCursor | None,
+    ) -> tuple[list[ResearchRunRecord], str | None]:
+        if not 1 <= limit <= 100:
+            raise ValueError("page limit must be between 1 and 100")
+        with self._session_factory() as session:
+            opportunity = session.scalar(
+                select(OpportunityRecord.id).where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+            )
+            if opportunity is None:
+                raise KeyError("opportunity not found")
+            statement = select(ResearchRunRecord).where(
+                ResearchRunRecord.opportunity_id == opportunity_id,
+                ResearchRunRecord.tenant_id == tenant_id,
+            )
+            if after is not None:
+                statement = statement.where(
+                    or_(
+                        ResearchRunRecord.created_at < after.created_at,
+                        and_(
+                            ResearchRunRecord.created_at == after.created_at,
+                            ResearchRunRecord.id < after.record_id,
+                        ),
+                    )
+                )
+            records = list(
+                session.scalars(
+                    statement.order_by(
+                        ResearchRunRecord.created_at.desc(),
+                        ResearchRunRecord.id.desc(),
+                    ).limit(limit + 1)
+                )
+            )
+            has_more = len(records) > limit
+            page = records[:limit]
+            next_cursor = (
+                encode_cursor(page[-1].created_at, page[-1].id)
+                if has_more and page
+                else None
+            )
+            for record in page:
+                session.expunge(record)
+            return page, next_cursor
 
     def transition_research_run(
         self,

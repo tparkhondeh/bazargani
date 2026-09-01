@@ -98,6 +98,32 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(review.status_code, 201)
         self.assertEqual(review.json()["resulting_status"], "COMPLETED")
 
+        additional_ids = {
+            self.client.post(
+                "/api/v1/opportunities",
+                json={
+                    "product_name": f"PostgreSQL page item {index}",
+                    "quantity": index,
+                    "target_market": "Tehran",
+                },
+            ).json()["id"]
+            for index in (1, 2)
+        }
+        opportunity_ids = {opportunity["id"], *additional_ids}
+        first_page = self.client.get(
+            "/api/v1/opportunities",
+            params={"limit": 2},
+        ).json()
+        second_page = self.client.get(
+            "/api/v1/opportunities",
+            params={"limit": 2, "after": first_page["next_cursor"]},
+        ).json()
+        paged_ids = {
+            item["id"] for item in (*first_page["items"], *second_page["items"])
+        }
+        self.assertEqual(paged_ids, opportunity_ids)
+        self.assertIsNone(second_page["next_cursor"])
+
         with self.engine.connect() as connection:
             tenant_id = connection.scalar(
                 select(OpportunityRecord.tenant_id).where(

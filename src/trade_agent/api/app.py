@@ -3,7 +3,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, Request, Security
+from fastapi import Depends, FastAPI, Header, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
@@ -22,6 +22,7 @@ from trade_agent.api.schemas import (
     ErrorBody,
     EvidenceBundleSubmit,
     OpportunityCreate,
+    OpportunityPageView,
     OpportunityView,
     ParsedTradeRequestView,
     ParseRequestInput,
@@ -29,12 +30,14 @@ from trade_agent.api.schemas import (
     ResearchCompletionView,
     ResearchReviewSubmit,
     ResearchReviewView,
+    ResearchRunPageView,
     ResearchRunTransition,
     ResearchRunView,
     ResearchValidationView,
     SupplierOfferRankingView,
 )
 from trade_agent.application.completion import complete_research_run_from_bundle
+from trade_agent.application.pagination import MAX_CURSOR_LENGTH, decode_cursor
 from trade_agent.config import Settings, get_settings
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
@@ -64,7 +67,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     app = FastAPI(
         title="Bazargani Trade Agent API",
-        version="0.9.0",
+        version="0.10.0",
         lifespan=lifespan,
     )
     app.state.settings = resolved
@@ -191,6 +194,19 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             actor_id=authenticated.actor_id,
         )
 
+    @app.get("/api/v1/opportunities", response_model=OpportunityPageView)
+    def list_opportunities(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
+    ) -> Any:
+        items, next_cursor = repository.list_opportunities(
+            tenant_id=authenticated.tenant_id,
+            limit=limit,
+            after=decode_cursor(after),
+        )
+        return {"items": items, "next_cursor": next_cursor}
+
     @app.get("/api/v1/opportunities/{opportunity_id}", response_model=OpportunityView)
     def get_opportunity(
         opportunity_id: str,
@@ -217,6 +233,24 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
             tenant_id=authenticated.tenant_id,
             actor_id=authenticated.actor_id,
         )
+
+    @app.get(
+        "/api/v1/opportunities/{opportunity_id}/research-runs",
+        response_model=ResearchRunPageView,
+    )
+    def list_runs(
+        opportunity_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
+    ) -> Any:
+        items, next_cursor = repository.list_research_runs(
+            opportunity_id=opportunity_id,
+            tenant_id=authenticated.tenant_id,
+            limit=limit,
+            after=decode_cursor(after),
+        )
+        return {"items": items, "next_cursor": next_cursor}
 
     @app.post(
         "/api/v1/research-runs/{run_id}/transitions",

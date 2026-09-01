@@ -64,8 +64,10 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /health` and `GET /ready`
 - `POST /api/v1/requests/parse`
 - `POST /api/v1/opportunities`
+- `GET /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
 - `POST /api/v1/opportunities/{id}/research-runs`
+- `GET /api/v1/opportunities/{id}/research-runs`
 - `POST /api/v1/research-runs/{id}/transitions`
 - `POST /api/v1/research-runs/{id}/reviews`
 - `GET /api/v1/research-runs/{id}/reviews`
@@ -87,6 +89,12 @@ the generic transition endpoint. An authenticated actor must record an `APPROVE`
 change, actor fingerprint, and audit event commit atomically; cross-tenant review
 access returns `404`. API-key attribution is a service baseline, not proof of a named
 human identity—OIDC/roles remain required for production user accountability.
+
+Opportunity and research-run history endpoints use newest-first opaque cursor
+pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returned only
+when another page exists. Cursors encode ordering state, not authorization: every
+query independently applies the authenticated tenant predicate and malformed or
+oversized cursors fail with `422`.
 
 The evidence-bundle endpoint requires a version-matched `RUNNING` research run. It
 calculates and persists evidence, price observations, point-in-time FX, all three

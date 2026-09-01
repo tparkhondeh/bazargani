@@ -68,3 +68,8 @@ wrong versions conflict, other tenants receive `404`, and approve/reject map onl
 reviewable states to terminal outcomes. API and PostgreSQL integration tests verify
 that the review row, actor/rationale, run status/version, and audit event persist
 atomically.
+
+Pagination tests cover UTC/UUID cursor round trips, malformed and oversized cursors,
+maximum page size, stable multi-page traversal without duplicates, and tenant
+isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite
+date encoding cannot conceal a production ordering bug.

@@ -177,6 +177,87 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 404)
             self.assertEqual(response.json()["code"], "NOT_FOUND")
 
+    def test_tenant_history_uses_bounded_cursor_pagination(self) -> None:
+        created = [
+            self.client.post(
+                "/api/v1/opportunities",
+                json={
+                    "product_name": f"Product {index}",
+                    "quantity": index,
+                    "target_market": "Tehran",
+                },
+            ).json()
+            for index in range(1, 4)
+        ]
+        other = self.client.post(
+            "/api/v1/opportunities",
+            headers={"X-API-Key": self.other_api_key},
+            json={"product_name": "Other", "quantity": 1, "target_market": "Shiraz"},
+        ).json()
+
+        first_page = self.client.get("/api/v1/opportunities", params={"limit": 2})
+        self.assertEqual(first_page.status_code, 200)
+        first = first_page.json()
+        self.assertEqual(len(first["items"]), 2)
+        self.assertIsNotNone(first["next_cursor"])
+        second_page = self.client.get(
+            "/api/v1/opportunities",
+            params={"limit": 2, "after": first["next_cursor"]},
+        )
+        self.assertEqual(second_page.status_code, 200)
+        second = second_page.json()
+        self.assertEqual(len(second["items"]), 1)
+        self.assertIsNone(second["next_cursor"])
+        listed_ids = [item["id"] for item in (*first["items"], *second["items"])]
+        self.assertEqual(set(listed_ids), {item["id"] for item in created})
+        self.assertEqual(len(listed_ids), len(set(listed_ids)))
+        self.assertNotIn(other["id"], listed_ids)
+
+        other_page = self.client.get(
+            "/api/v1/opportunities",
+            headers={"X-API-Key": self.other_api_key},
+        ).json()
+        self.assertEqual([item["id"] for item in other_page["items"]], [other["id"]])
+
+        runs = [
+            self.client.post(
+                f"/api/v1/opportunities/{created[0]['id']}/research-runs"
+            ).json()
+            for _ in range(3)
+        ]
+        run_first = self.client.get(
+            f"/api/v1/opportunities/{created[0]['id']}/research-runs",
+            params={"limit": 2},
+        ).json()
+        run_second = self.client.get(
+            f"/api/v1/opportunities/{created[0]['id']}/research-runs",
+            params={"limit": 2, "after": run_first["next_cursor"]},
+        ).json()
+        listed_run_ids = [
+            item["id"] for item in (*run_first["items"], *run_second["items"])
+        ]
+        self.assertEqual(set(listed_run_ids), {item["id"] for item in runs})
+        self.assertEqual(len(listed_run_ids), len(set(listed_run_ids)))
+        self.assertIsNone(run_second["next_cursor"])
+
+        hidden_runs = self.client.get(
+            f"/api/v1/opportunities/{created[0]['id']}/research-runs",
+            headers={"X-API-Key": self.other_api_key},
+        )
+        malformed = self.client.get(
+            "/api/v1/opportunities",
+            params={"after": "not-a-cursor"},
+        )
+        excessive_limit = self.client.get(
+            "/api/v1/opportunities",
+            params={"limit": 101},
+        )
+        self.assertEqual(hidden_runs.status_code, 404)
+        self.assertEqual(malformed.status_code, 422)
+        self.assertEqual(malformed.json()["code"], "INVALID_INPUT")
+        self.assertEqual(excessive_limit.status_code, 422)
+        self.assertEqual(excessive_limit.json()["code"], "REQUEST_VALIDATION_FAILED")
+
     def test_parse_request_returns_only_critical_questions(self) -> None:
         response = self.client.post(
             "/api/v1/requests/parse",
