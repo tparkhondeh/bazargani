@@ -14,7 +14,14 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        for name in ("correlation_id", "method", "path", "status_code", "latency_ms"):
+        for name in (
+            "correlation_id",
+            "method",
+            "path",
+            "status_code",
+            "latency_ms",
+            "error_type",
+        ):
             if hasattr(record, name):
                 payload[name] = getattr(record, name)
         return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

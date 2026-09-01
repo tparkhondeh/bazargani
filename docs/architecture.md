@@ -74,6 +74,11 @@ body-limit rejections. Authenticated routes also vary on the API-key header as d
 in depth if an intermediary ignores `no-store`. Transport security remains an edge
 responsibility because the app does not trust arbitrary forwarded-protocol headers.
 
+That same outer boundary catches otherwise unhandled exceptions after lower layers
+have rolled back/closed their contexts. It emits a generic correlated `500` and logs
+only exception type and request metadata, ensuring unexpected errors cannot bypass the
+normal correlation or security-header pipeline.
+
 The API authenticates a secret key at the boundary, resolves it to an immutable
 tenant/actor principal, and passes that principal explicitly through application
 ports. Aggregate reads and writes include tenant predicates; an identifier owned by

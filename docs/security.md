@@ -110,3 +110,9 @@ referrers, camera, microphone, and geolocation. Tenant API responses also includ
 `Vary: X-API-Key`. HSTS is deliberately not emitted by the loopback-capable app: the
 trusted TLS edge must set it after domain/TLS verification, without trusting arbitrary
 forwarded headers from clients.
+
+Unhandled exceptions are caught at the outer request boundary so they cannot skip
+correlation or response hardening. The client receives only `INTERNAL_ERROR` and a
+correlation ID. Structured logging records the exception class, method, and path but
+deliberately omits exception text/trace and request data, which may contain credentials,
+DSNs, SQL parameters, provider URLs, or commercial values.

@@ -60,6 +60,11 @@ failure, and pre-parser body-limit rejection. They verify no-store/no-cache,
 anti-sniff/frame/referrer/device-policy controls, API-key `Vary`, public-route
 exclusion, and case-insensitive preservation of an existing `Vary` value.
 
+Unexpected-error tests inject a provider exception containing a synthetic commercial
+secret. With production-style exception propagation disabled, they verify the stable
+correlated `500`, no-store/anti-sniff headers, and absence of the secret and exception
+class from the response. Known provider failures remain on their explicit `502` path.
+
 Authentication integration tests run with authentication enabled and cover missing,
 invalid, and valid keys; public health; tenant/actor audit attribution; and identical
 `404` responses for cross-tenant aggregate reads and mutations. Configuration tests

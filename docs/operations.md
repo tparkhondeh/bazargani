@@ -69,6 +69,11 @@ after HTTPS is correctly enforced for the approved domain; do not derive HSTS fr
 untrusted `X-Forwarded-Proto` value. Preserve the app's headers on `401`, `413`, `422`,
 `429`, and `503` responses.
 
+`500 INTERNAL_ERROR` is intentionally generic. Use its `correlation_id` to find the
+`request_failed` structured event, which contains method, path, and exception class but
+not exception text or request content. Alert on repeated error type/path combinations;
+do not expose stack traces or database/provider exception strings to clients.
+
 `TRADE_AGENT_API_RATE_LIMIT_REQUESTS` defaults to `120` and is bounded to 1–100,000;
 `TRADE_AGENT_API_RATE_LIMIT_WINDOW_SECONDS` defaults to `60` and is bounded to
 1–3,600. This budget is per tenant **and per application process**. Configure a

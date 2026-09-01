@@ -153,3 +153,8 @@ Every HTTP response uses `Cache-Control: no-store`, `Pragma: no-cache`,
 `X-Content-Type-Options: nosniff`, deny framing/referrers, and disables browser device
 permissions. `/api/v1` responses also vary on `X-API-Key`. HSTS belongs at the trusted
 TLS edge and is not inferred from client-controlled forwarding headers.
+
+Unexpected application/provider/database exceptions return a stable
+`500 INTERNAL_ERROR` with the correlation ID and the same response-security headers.
+Exception messages and classes are not exposed to clients; structured logs record only
+the exception class plus method, path, and correlation—not the exception text.

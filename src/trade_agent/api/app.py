@@ -118,7 +118,19 @@ def create_app(
         started = time.perf_counter()
         request_correlation_id = correlation_id(request.headers.get("X-Correlation-ID"))
         request.state.correlation_id = request_correlation_id
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            logger.error(
+                "request_failed",
+                extra={
+                    "correlation_id": request_correlation_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            response = error(request, 500, "INTERNAL_ERROR", "unexpected server error")
         response.headers["X-Correlation-ID"] = request_correlation_id
         apply_response_security_headers(response, path=request.url.path)
         logger.info(
