@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from trade_agent.domain.errors import PublicInputError
 
@@ -11,12 +12,12 @@ RECORDED_CORE_TERM_FIELDS = (
     "incoterm",
     "incoterm_named_place",
     "incoterm_version",
-)
-UNCAPTURED_COMMERCIAL_TERM_FIELDS = (
     "payment_terms",
     "payment_method",
     "quote_valid_until",
-    "lead_time",
+    "lead_time_days",
+)
+UNCAPTURED_COMMERCIAL_TERM_FIELDS = (
     "supplier_capacity",
     "certifications",
     "warranty",
@@ -34,6 +35,10 @@ class OfferTermsPoint:
     incoterm: str | None
     incoterm_named_place: str | None
     incoterm_version: str | None
+    payment_terms: str | None
+    payment_method: str | None
+    quote_valid_until: datetime | None
+    lead_time_days: int | None
     rankable: bool
     ranking_unknown_factors: tuple[str, ...]
 
@@ -81,6 +86,10 @@ def summarize_offer_terms_coverage(
             "incoterm_version": bool(
                 point.incoterm_version and point.incoterm_version.strip()
             ),
+            "payment_terms": bool(point.payment_terms and point.payment_terms.strip()),
+            "payment_method": bool(point.payment_method and point.payment_method.strip()),
+            "quote_valid_until": point.quote_valid_until is not None,
+            "lead_time_days": point.lead_time_days is not None,
         }
         declared = tuple(
             field for field in RECORDED_CORE_TERM_FIELDS if declarations[field]
@@ -119,7 +128,8 @@ def summarize_offer_terms_coverage(
             "field presence does not verify supplier identity or negotiated terms",
             "uncaptured fields are schema gaps and are not assumed absent or inapplicable",
             "no completeness percentage is calculated and rankability is a separate policy",
-            "payment, timing, capacity, certification, warranty, and inspection terms "
-            "need evidence",
+            "payment and timing field presence is not proof that terms remain current "
+            "or acceptable",
+            "capacity, certification, warranty, and inspection terms need evidence",
         ),
     )

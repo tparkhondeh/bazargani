@@ -114,10 +114,12 @@ Incoterms 2020 reference vocabulary, preserves unknown/missing codes, and explic
 withholds comparison. Structured named-place and declared-version capture is now
 persisted and included in completeness validation; comparable route-specific cost,
 control, and risk scenarios remain Phase 5 work.
-A per-offer terms-coverage projection now distinguishes the six structured fields from
-payment, timing, capacity, certification, warranty, and inspection terms that remain
-outside the schema. It returns exact field names and counts without a misleading
-percentage; adding evidence-backed models for those uncaptured terms remains Phase 5.
+A per-offer terms-coverage projection now distinguishes ten structured fields, including
+payment terms/method, quote validity, and lead-time days, from capacity, certification,
+warranty, and inspection terms that remain outside the schema. It returns exact field
+names and counts without a misleading percentage. Quote expiry is evaluated against the
+immutable run time, while negotiation/acceptability and remaining term models stay in
+Phase 5.
 
 ## Phase 3 — First approved real providers
 

@@ -152,6 +152,34 @@ class SupplierOfferRankingTests(unittest.TestCase):
         self.assertIn("incoterm_named_place", incomplete.unknown_factors)
         self.assertIn("incoterm_version", incomplete.unknown_factors)
 
+    def test_payment_and_timing_terms_are_visible_without_changing_score_weights(self) -> None:
+        complete = rank_supplier_offers(
+            self.case,
+            match_research_case(self.case),
+        )[0]
+        missing_observation = replace(
+            self.observation,
+            payment_terms=None,
+            payment_method=None,
+            quote_valid_until=None,
+            lead_time_days=None,
+        )
+        missing_case = replace(self.case, observations=(missing_observation,))
+        missing = rank_supplier_offers(
+            missing_case,
+            match_research_case(missing_case),
+        )[0]
+
+        for factor in (
+            "payment_terms",
+            "payment_method",
+            "quote_valid_until",
+            "lead_time_days",
+        ):
+            self.assertNotIn(factor, complete.unknown_factors)
+            self.assertIn(factor, missing.unknown_factors)
+        self.assertEqual(complete.component_scores, missing.component_scores)
+
 
 if __name__ == "__main__":
     unittest.main()

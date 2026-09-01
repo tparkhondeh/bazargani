@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -84,6 +84,10 @@ class PriceObservation:
     incoterm: str | None = None
     incoterm_named_place: str | None = None
     incoterm_version: str | None = None
+    payment_terms: str | None = None
+    payment_method: str | None = None
+    quote_valid_until: datetime | None = None
+    lead_time_days: int | None = None
     product_variant: str | None = None
     product_attributes: dict[str, str] = field(default_factory=dict)
     market_layer: str = "UNKNOWN"
@@ -140,6 +144,41 @@ class PriceObservation:
                 "incoterm_version must be a safe value of at most 20 characters"
             )
         object.__setattr__(self, "incoterm_version", version)
+        payment_terms = self.payment_terms.strip() if self.payment_terms is not None else None
+        if payment_terms == "":
+            payment_terms = None
+        if payment_terms is not None and (
+            len(payment_terms) > 500
+            or any(ord(character) < 32 for character in payment_terms)
+        ):
+            raise ValueError("payment_terms must be a safe value of at most 500 characters")
+        object.__setattr__(self, "payment_terms", payment_terms)
+        payment_method = (
+            self.payment_method.strip() if self.payment_method is not None else None
+        )
+        if payment_method == "":
+            payment_method = None
+        if payment_method is not None and (
+            len(payment_method) > 100
+            or any(ord(character) < 32 for character in payment_method)
+        ):
+            raise ValueError("payment_method must be a safe value of at most 100 characters")
+        object.__setattr__(self, "payment_method", payment_method)
+        if self.quote_valid_until is not None:
+            if (
+                self.quote_valid_until.tzinfo is None
+                or self.quote_valid_until.utcoffset() is None
+            ):
+                raise ValueError("quote_valid_until must be timezone-aware")
+            object.__setattr__(
+                self,
+                "quote_valid_until",
+                self.quote_valid_until.astimezone(UTC),
+            )
+        if self.lead_time_days is not None and (
+            isinstance(self.lead_time_days, bool) or self.lead_time_days <= 0
+        ):
+            raise ValueError("lead_time_days must be a positive integer")
         invalid_attributes = (
             not str(key).strip() or not str(value).strip()
             for key, value in self.product_attributes.items()

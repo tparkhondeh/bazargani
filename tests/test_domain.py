@@ -84,6 +84,46 @@ class DomainTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "incoterm_named_place"):
             replace(observation, incoterm_named_place="Port\nforged")
 
+    def test_price_observation_validates_payment_and_timing_terms(self) -> None:
+        evidence = Evidence(
+            EvidenceClass.FACT,
+            "source",
+            "https://example.com/item",
+            datetime(2026, 8, 31, tzinfo=UTC),
+            "10 USD",
+            Confidence.HIGH,
+        )
+        observation = PriceObservation(
+            observation_id="price-commercial-terms",
+            product_name="item",
+            unit_price=Money(Decimal("10"), "USD"),
+            quantity=1,
+            unit="device",
+            evidence=evidence,
+            payment_terms=" 30% advance ",
+            payment_method=" Bank transfer ",
+            quote_valid_until=datetime.fromisoformat("2099-12-31T20:00:00-04:00"),
+            lead_time_days=30,
+        )
+
+        self.assertEqual(observation.payment_terms, "30% advance")
+        self.assertEqual(observation.payment_method, "Bank transfer")
+        self.assertEqual(
+            observation.quote_valid_until,
+            datetime(2100, 1, 1, tzinfo=UTC),
+        )
+        self.assertEqual(observation.lead_time_days, 30)
+
+        for field, value in (
+            ("payment_terms", "x" * 501),
+            ("payment_method", "bank\ntransfer"),
+            ("quote_valid_until", datetime(2099, 1, 1)),
+            ("lead_time_days", 0),
+            ("lead_time_days", True),
+        ):
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                replace(observation, **{field: value})
+
 
 if __name__ == "__main__":
     unittest.main()

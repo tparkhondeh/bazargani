@@ -129,6 +129,58 @@ class ValidationTests(unittest.TestCase):
             {issue.code for issue in validation.issues},
         )
 
+    def test_payment_and_timing_terms_participate_in_deduplication(self) -> None:
+        case = demo_case()
+        original = case.observations[0]
+        different_terms = replace(
+            original,
+            observation_id="different-payment-terms",
+            payment_terms="Synthetic fixture only — payment on delivery",
+        )
+
+        cleaned, validation = validate_research_case(
+            replace(case, observations=(original, different_terms)),
+            evaluated_at=EVALUATED_AT,
+        )
+
+        self.assertEqual(len(cleaned.observations), 2)
+        self.assertNotIn(
+            "DUPLICATE_PRICE_OBSERVATION",
+            {issue.code for issue in validation.issues},
+        )
+
+    def test_expired_quote_requires_verification_at_immutable_evaluation_time(self) -> None:
+        case = demo_case()
+        expired = replace(
+            case.observations[0],
+            quote_valid_until=EVALUATED_AT - timedelta(seconds=1),
+        )
+
+        _, validation = validate_research_case(
+            replace(case, observations=(expired,)),
+            evaluated_at=EVALUATED_AT,
+        )
+
+        issue = next(item for item in validation.issues if item.code == "QUOTE_VALIDITY_EXPIRED")
+        self.assertEqual(
+            issue.details,
+            {
+                "quote_valid_until": "2026-08-31T11:59:59+00:00",
+                "evaluated_at": "2026-08-31T12:00:00+00:00",
+            },
+        )
+        self.assertEqual(validation.disposition, ValidationDisposition.NEEDS_VERIFICATION)
+
+        boundary = replace(expired, quote_valid_until=EVALUATED_AT)
+        _, boundary_validation = validate_research_case(
+            replace(case, observations=(boundary,)),
+            evaluated_at=EVALUATED_AT,
+        )
+        self.assertNotIn(
+            "QUOTE_VALIDITY_EXPIRED",
+            {item.code for item in boundary_validation.issues},
+        )
+
     def test_stale_and_outlier_prices_require_verification(self) -> None:
         case = demo_case()
         original = case.observations[0]

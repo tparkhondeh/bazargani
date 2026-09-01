@@ -351,6 +351,10 @@ class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
     incoterm: str | None
     incoterm_named_place: str | None
     incoterm_version: str | None
+    payment_terms: str | None
+    payment_method: str | None
+    quote_valid_until: AwareDatetime | None
+    lead_time_days: int | None
     source_name: str
     source_url: str
     retrieved_at: AwareDatetime
@@ -358,7 +362,7 @@ class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
     evidence_confidence: Confidence
     transformation: str | None
 
-    @field_validator("retrieved_at", mode="before")
+    @field_validator("retrieved_at", "quote_valid_until", mode="before")
     @classmethod
     def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
         if isinstance(value, datetime) and value.tzinfo is None:
@@ -481,6 +485,10 @@ class EvidenceBackedPriceObservationView(BaseModel):
     incoterm: str | None
     incoterm_named_place: str | None
     incoterm_version: str | None
+    payment_terms: str | None
+    payment_method: str | None
+    quote_valid_until: AwareDatetime | None
+    lead_time_days: int | None
     market_layer: str
     normalized_amount: Decimal | None
     normalized_currency: str | None
@@ -494,7 +502,7 @@ class EvidenceBackedPriceObservationView(BaseModel):
     evidence_confidence: Confidence
     transformation: str | None
 
-    @field_validator("retrieved_at", mode="before")
+    @field_validator("retrieved_at", "quote_valid_until", mode="before")
     @classmethod
     def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
         if isinstance(value, datetime) and value.tzinfo is None:

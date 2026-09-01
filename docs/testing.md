@@ -115,6 +115,10 @@ only absence, product specification from variant or attributes, duplicate-ID rej
 empty/all-present/gap statuses, deduplicated ranking unknowns, and the fixed uncaptured-
 field vocabulary. API/report and PostgreSQL tests enforce tenant hiding, exact demo
 coverage, explicit out-of-schema terms, and absence of raw evidence.
+Payment/timing tests additionally cover bounded safe text, strict positive integer and
+timezone-aware timestamp parsing, UTC normalization, immutable quote-expiry boundaries,
+deduplication fingerprints, ranking unknown visibility without score reweighting,
+database persistence, and Markdown/HTML injection resistance.
 
 Executive-summary tests cover validation-to-action mapping, missing/single/tied supplier
 candidate states, deterministic ordering, invalid confidence/disposition rejection, and
@@ -209,9 +213,9 @@ BASE landed cost, and withheld benchmark fields. PostgreSQL integration verifies
 report hash, run identity, and executive contract across the joined view.
 
 Supplier-offer read-model tests verify that ranking rows join to the correct original
-amount/currency, quantity, MOQ, Incoterm, source, evidence class, and confidence. Tie
-tests retain distinct source URLs, while response assertions ensure raw evidence values
-are not copied into the ranking or latest-decision payloads.
+amount/currency, quantity, MOQ, Incoterm, payment/timing terms, source, evidence class,
+and confidence. Tie tests retain distinct source URLs, while response assertions ensure
+raw evidence values are not copied into the ranking or latest-decision payloads.
 
 Markdown-injection regression tests place HTML tags, forged headings, nested-link
 syntax, newlines, and embedded backticks into product, supplier, source, destination,

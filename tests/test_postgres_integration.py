@@ -51,7 +51,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0011")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0012")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity_response = self.client.post(
@@ -264,6 +264,15 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             "Demo Factory Gate — NOT REAL",
         )
         self.assertEqual(price_observations.json()[0]["incoterm_version"], "2020")
+        self.assertEqual(
+            price_observations.json()[0]["payment_terms"],
+            "Synthetic fixture only — 30% advance, 70% before shipment",
+        )
+        self.assertEqual(
+            price_observations.json()[0]["quote_valid_until"],
+            "2099-12-31T23:59:59Z",
+        )
+        self.assertEqual(price_observations.json()[0]["lead_time_days"], 30)
         incoterm_coverage = self.client.get(
             f"/api/v1/research-runs/{run['id']}/incoterm-coverage"
         )
@@ -297,8 +306,12 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             offer_terms.json()["offers"][0]["declared_recorded_field_count"],
             len(offer_terms.json()["recorded_core_term_fields"]),
         )
-        self.assertIn(
+        self.assertNotIn(
             "payment_terms",
+            offer_terms.json()["uncaptured_commercial_term_fields"],
+        )
+        self.assertIn(
+            "supplier_capacity",
             offer_terms.json()["uncaptured_commercial_term_fields"],
         )
         self.assertNotIn("raw_value", json.dumps(offer_terms.json()))

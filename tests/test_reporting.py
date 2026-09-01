@@ -23,6 +23,8 @@ class MarkdownReportingTests(unittest.TestCase):
             incoterm_named_place=(
                 "</li><script>incoterm()</script> [forged](https://evil.example)"
             ),
+            payment_terms="</li><script>payment()</script> [forged](https://evil.example)",
+            payment_method="[wire](https://evil.example)",
             evidence=hostile_evidence,
         )
         hostile_scenarios = tuple(
@@ -60,6 +62,7 @@ class MarkdownReportingTests(unittest.TestCase):
         self.assertNotIn("<img", report)
         self.assertNotIn("<iframe", report)
         self.assertNotIn("<script>incoterm", report)
+        self.assertNotIn("<script>payment", report)
         self.assertNotIn("\n# forged", report)
         self.assertIn(
             r"&lt;script&gt;steal\(\)&lt;/script&gt; \# forged title",
@@ -80,6 +83,12 @@ class MarkdownReportingTests(unittest.TestCase):
             r"\[forged\]\(https://evil.example\)",
             report,
         )
+        self.assertIn(
+            r"&lt;/li&gt;&lt;script&gt;payment\(\)&lt;/script&gt; "
+            r"\[forged\]\(https://evil.example\)",
+            report,
+        )
+        self.assertNotIn("[wire](https://evil.example)", report)
 
 
 if __name__ == "__main__":

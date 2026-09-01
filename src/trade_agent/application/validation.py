@@ -23,7 +23,7 @@ from trade_agent.domain.models import (
     SupplierOfferRanking,
 )
 
-VALIDATION_POLICY_VERSION = "2026-09-01.1"
+VALIDATION_POLICY_VERSION = "2026-09-01.2"
 OUTLIER_FACTOR = Decimal("3")
 KNOWN_INCOTERMS = frozenset(INCOTERMS_2020_CODES)
 
@@ -76,6 +76,10 @@ def _observation_fingerprint(observation: PriceObservation) -> tuple[object, ...
         _normal(observation.incoterm),
         _normal(observation.incoterm_named_place),
         _normal(observation.incoterm_version),
+        _normal(observation.payment_terms),
+        _normal(observation.payment_method),
+        observation.quote_valid_until,
+        observation.lead_time_days,
         observation.market_layer.casefold(),
         observation.evidence.source_url,
         observation.evidence.retrieved_at,
@@ -260,6 +264,23 @@ def validate_research_case(
                         details={"missing_fields": list(missing_incoterm_fields)},
                     )
                 )
+        if (
+            observation.quote_valid_until is not None
+            and observation.quote_valid_until < evaluation_time
+        ):
+            issues.append(
+                ValidationIssue(
+                    code="QUOTE_VALIDITY_EXPIRED",
+                    severity=ValidationSeverity.WARNING,
+                    message_fa="مهلت اعتبار اعلام‌شده برای این پیشنهاد گذشته است.",
+                    subject_type="PRICE_OBSERVATION",
+                    subject_id=observation.observation_id,
+                    details={
+                        "quote_valid_until": observation.quote_valid_until.isoformat(),
+                        "evaluated_at": evaluation_time.isoformat(),
+                    },
+                )
+            )
         if (
             observation.minimum_order_quantity is None
             or case.quantity >= observation.minimum_order_quantity

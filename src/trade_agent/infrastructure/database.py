@@ -224,6 +224,10 @@ class PriceObservationRecord(Base):
             "minimum_order_quantity IS NULL OR minimum_order_quantity > 0",
             name="ck_price_observations_moq_positive",
         ),
+        CheckConstraint(
+            "lead_time_days IS NULL OR lead_time_days > 0",
+            name="ck_price_observations_lead_time_days_positive",
+        ),
         Index("ix_price_observations_run_product", "research_run_id", "product_name"),
     )
 
@@ -243,6 +247,12 @@ class PriceObservationRecord(Base):
     incoterm: Mapped[str | None] = mapped_column(String(10), nullable=True)
     incoterm_named_place: Mapped[str | None] = mapped_column(String(300), nullable=True)
     incoterm_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payment_terms: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    quote_valid_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     product_variant: Mapped[str | None] = mapped_column(String(300), nullable=True)
     product_attributes: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     market_layer: Mapped[str] = mapped_column(String(50))

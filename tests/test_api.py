@@ -1221,6 +1221,13 @@ class ApiTests(unittest.TestCase):
             "Demo Factory Gate — NOT REAL",
         )
         self.assertEqual(observation["incoterm_version"], "2020")
+        self.assertEqual(
+            observation["payment_terms"],
+            "Synthetic fixture only — 30% advance, 70% before shipment",
+        )
+        self.assertEqual(observation["payment_method"], "Synthetic bank transfer — NOT REAL")
+        self.assertEqual(observation["quote_valid_until"], "2099-12-31T23:59:59Z")
+        self.assertEqual(observation["lead_time_days"], 30)
         self.assertEqual(observation["product_match_classification"], "EXACT_VARIANT")
         self.assertEqual(observation["product_match_score"], 100)
         self.assertNotIn("raw_value", json.dumps(observations))
@@ -1300,6 +1307,10 @@ class ApiTests(unittest.TestCase):
             "Demo Factory Gate — NOT REAL",
         )
         self.assertEqual(rankings[0]["incoterm_version"], "2020")
+        self.assertEqual(rankings[0]["payment_terms"], observation["payment_terms"])
+        self.assertEqual(rankings[0]["payment_method"], observation["payment_method"])
+        self.assertEqual(rankings[0]["quote_valid_until"], observation["quote_valid_until"])
+        self.assertEqual(rankings[0]["lead_time_days"], 30)
         self.assertEqual(rankings[0]["source_name"], "Demo supplier — synthetic fixture")
         self.assertEqual(rankings[0]["source_url"], "https://example.com/demo-supplier")
         self.assertEqual(rankings[0]["retrieved_at"], "2026-08-31T00:00:00Z")
@@ -1376,13 +1387,11 @@ class ApiTests(unittest.TestCase):
             offer_terms["recorded_core_term_fields"],
         )
         self.assertEqual(offer_terms_item["missing_recorded_fields"], [])
-        self.assertEqual(offer_terms_item["declared_recorded_field_count"], 6)
+        self.assertEqual(offer_terms_item["declared_recorded_field_count"], 10)
         self.assertTrue(offer_terms_item["rankable"])
-        self.assertIn("payment_terms", offer_terms_item["ranking_unknown_factors"])
-        self.assertIn(
-            "quote_valid_until",
-            offer_terms["uncaptured_commercial_term_fields"],
-        )
+        self.assertNotIn("payment_terms", offer_terms_item["ranking_unknown_factors"])
+        self.assertNotIn("quote_valid_until", offer_terms["uncaptured_commercial_term_fields"])
+        self.assertIn("supplier_capacity", offer_terms["uncaptured_commercial_term_fields"])
         self.assertNotIn("raw_value", json.dumps(offer_terms))
 
         with self.engine.connect() as connection:

@@ -94,10 +94,28 @@ def _optional_text(value: Any, label: str) -> str | None:
 def _optional_positive_int(value: Any, label: str) -> int | None:
     if value is None:
         return None
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise PublicInputError(f"{label} must be a positive integer")
     try:
         parsed = int(value)
     except (TypeError, ValueError):
-        raise PublicInputError(f"{label} must be an integer") from None
+        raise PublicInputError(f"{label} must be a positive integer") from None
+    if parsed <= 0:
+        raise PublicInputError(f"{label} must be a positive integer")
+    return parsed
+
+
+def _optional_datetime(value: Any, label: str) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise PublicInputError(f"{label} must be an ISO 8601 string or null")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise PublicInputError(f"{label} must be a valid ISO 8601 timestamp") from None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise PublicInputError(f"{label} must include a timezone offset")
     return parsed
 
 
@@ -177,6 +195,22 @@ def _parse_evidence_bundle(raw: dict[str, Any]) -> ResearchCase:
             incoterm_version=_optional_text(
                 item.get("incoterm_version"),
                 "incoterm_version",
+            ),
+            payment_terms=_optional_text(
+                item.get("payment_terms"),
+                "payment_terms",
+            ),
+            payment_method=_optional_text(
+                item.get("payment_method"),
+                "payment_method",
+            ),
+            quote_valid_until=_optional_datetime(
+                item.get("quote_valid_until"),
+                "quote_valid_until",
+            ),
+            lead_time_days=_optional_positive_int(
+                item.get("lead_time_days"),
+                "lead_time_days",
             ),
             product_variant=_optional_text(
                 item.get("product_variant"),

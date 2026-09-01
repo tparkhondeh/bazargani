@@ -535,6 +535,10 @@ def render_markdown(result: ResearchResult) -> str:
                 incoterm=observation.incoterm,
                 incoterm_named_place=observation.incoterm_named_place,
                 incoterm_version=observation.incoterm_version,
+                payment_terms=observation.payment_terms,
+                payment_method=observation.payment_method,
+                quote_valid_until=observation.quote_valid_until,
+                lead_time_days=observation.lead_time_days,
                 rankable=ranking_by_observation[observation.observation_id].rankable,
                 ranking_unknown_factors=ranking_by_observation[
                     observation.observation_id
@@ -561,6 +565,22 @@ def render_markdown(result: ResearchResult) -> str:
                     _code(item) for item in offer_terms_item.missing_recorded_fields
                 )
             )
+        observation = next(
+            item
+            for item in case.observations
+            if item.observation_id == offer_terms_item.observation_id
+        )
+        if observation.payment_terms:
+            lines.append(f"  - شرایط پرداخت: {_text(observation.payment_terms)}")
+        if observation.payment_method:
+            lines.append(f"  - روش پرداخت: {_text(observation.payment_method)}")
+        if observation.quote_valid_until:
+            lines.append(
+                "  - اعتبار پیشنهاد تا: "
+                f"{_code(observation.quote_valid_until.isoformat())}"
+            )
+        if observation.lead_time_days is not None:
+            lines.append(f"  - زمان تحویل اعلام‌شده: {observation.lead_time_days} روز")
     lines.append(
         "- فیلدهای تجاری خارج از schema فعلی: "
         + "، ".join(

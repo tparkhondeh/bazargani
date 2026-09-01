@@ -36,6 +36,9 @@ unknown or requires human verification?
 - Per-offer terms coverage lists declared and missing fields from the current structured
   contract and separately lists material commercial terms that the schema cannot yet
   represent; it produces no completeness percentage or verification claim.
+- Payment terms, payment method, timezone-aware quote validity, and positive whole-day
+  lead time are optional evidence-bound offer fields. Missing values remain unknown,
+  and a quote expired at the run's immutable validation time requires verification.
 - Original values remain immutable; normalized values record transformation.
 - Structured price observations keep original offer/product/source context beside the
   BASE-scenario normalized comparison and product-match result.

@@ -85,6 +85,8 @@ class EvidenceBundleTests(unittest.TestCase):
             "incoterm",
             "incoterm_named_place",
             "incoterm_version",
+            "payment_terms",
+            "payment_method",
             "product_variant",
         ):
             with self.subTest(field=field):
@@ -93,6 +95,24 @@ class EvidenceBundleTests(unittest.TestCase):
                 )
                 bundle["observations"][0][field] = {"not": "text"}
                 with self.assertRaisesRegex(PublicInputError, rf"{field} must be"):
+                    parse_evidence_bundle(bundle)
+
+    def test_payment_and_timing_terms_require_exact_public_types(self) -> None:
+        invalid_values = (
+            ("quote_valid_until", 123, "ISO 8601 string"),
+            ("quote_valid_until", "2099-01-01T00:00:00", "timezone offset"),
+            ("quote_valid_until", "not-a-date", "valid ISO 8601 timestamp"),
+            ("lead_time_days", 1.5, "positive integer"),
+            ("lead_time_days", True, "positive integer"),
+            ("lead_time_days", 0, "positive integer"),
+        )
+        for field, value, expected in invalid_values:
+            with self.subTest(field=field, value=value):
+                bundle = json.loads(
+                    Path("examples/demo_case.json").read_text(encoding="utf-8")
+                )
+                bundle["observations"][0][field] = value
+                with self.assertRaisesRegex(PublicInputError, expected):
                     parse_evidence_bundle(bundle)
 
     def test_assumptions_and_unknowns_require_bounded_nonempty_strings(self) -> None:

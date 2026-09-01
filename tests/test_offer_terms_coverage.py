@@ -1,5 +1,6 @@
 import unittest
 from dataclasses import replace
+from datetime import UTC, datetime
 
 from trade_agent.application.offer_terms_coverage import (
     OfferTermsPoint,
@@ -18,8 +19,14 @@ def point(observation_id: str, *, complete: bool) -> OfferTermsPoint:
         incoterm="FOB" if complete else None,
         incoterm_named_place="Fixture Port" if complete else None,
         incoterm_version="2020" if complete else None,
+        payment_terms="30% advance" if complete else None,
+        payment_method="Bank transfer" if complete else None,
+        quote_valid_until=(
+            datetime(2099, 12, 31, tzinfo=UTC) if complete else None
+        ),
+        lead_time_days=30 if complete else None,
         rankable=complete,
-        ranking_unknown_factors=("payment_terms", "payment_terms"),
+        ranking_unknown_factors=("supplier_reliability", "supplier_reliability"),
     )
 
 
@@ -40,15 +47,16 @@ class OfferTermsCoverageTests(unittest.TestCase):
             result.recorded_core_term_fields,
         )
         self.assertEqual(complete.missing_recorded_fields, ())
-        self.assertEqual(complete.declared_recorded_field_count, 6)
+        self.assertEqual(complete.declared_recorded_field_count, 10)
         self.assertIsNone(missing.supplier_name)
         self.assertEqual(missing.declared_fields, ())
         self.assertEqual(
             missing.missing_recorded_fields,
             result.recorded_core_term_fields,
         )
-        self.assertEqual(missing.ranking_unknown_factors, ("payment_terms",))
-        self.assertIn("quote_valid_until", result.uncaptured_commercial_term_fields)
+        self.assertEqual(missing.ranking_unknown_factors, ("supplier_reliability",))
+        self.assertNotIn("quote_valid_until", result.uncaptured_commercial_term_fields)
+        self.assertIn("supplier_capacity", result.uncaptured_commercial_term_fields)
 
     def test_empty_and_all_present_statuses_are_distinct(self) -> None:
         self.assertEqual(summarize_offer_terms_coverage(()).status, "NO_OFFERS")

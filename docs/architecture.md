@@ -214,6 +214,10 @@ ranking rows, then invokes a pure application projection also used by reports. T
 calculation uses a finite ordered vocabulary for fields the schema can represent and a
 separate explicit vocabulary for currently uncaptured commercial terms. This prevents
 clients from deriving a misleading percentage or treating rankability as completeness.
+Payment terms/method, quote-valid-until time, and lead-time days remain attributes of the
+exact evidence-backed offer rather than a mutable supplier profile. Validation compares
+quote validity only with the persisted run evaluation time, while ranking exposes absent
+terms as unknown factors without changing the versioned score weights.
 
 The executive-summary application policy consumes persisted validation, BASE scenario,
 rank-1 evidence-backed offers, and the shared data-gap summary. It emits conservative

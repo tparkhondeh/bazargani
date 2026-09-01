@@ -76,6 +76,12 @@ receiving an invented place or edition. New domain inputs normalize safe whitesp
 case for the code while retaining the submitted named place and version as distinct
 immutable terms; downgrade removes only these two additive fields.
 
+Migration `20260901_0012` adds nullable `payment_terms`, `payment_method`, timezone-aware
+`quote_valid_until`, and positive `lead_time_days` columns to price observations. Legacy
+rows remain null and therefore unknown. The fields retain the exact offer/evidence
+relationship; they do not create a mutable supplier profile or a default commercial
+contract, and downgrade removes only the additive fields and lead-time constraint.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

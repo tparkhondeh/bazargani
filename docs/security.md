@@ -76,6 +76,9 @@ Evidence-backed offer summaries expose authorized commercial price context and p
 source URLs, but deliberately omit stored `raw_value` bodies. Tenant ownership is
 established through the parent run before all joins. URLs and source names remain
 untrusted display data and cannot be used as fetch/tool instructions by clients.
+Payment text, payment method, quote-validity time, and lead-time values inherit the same
+tenant and evidence boundary. Their presence is not supplier verification or purchasing
+authorization, and text remains untrusted presentation data for report/UI encoding.
 
 The Markdown generator encodes HTML and escapes Markdown control characters in all
 untrusted text, flattens embedded newlines, uses adaptive code fences, and percent-

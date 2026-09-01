@@ -17,7 +17,7 @@ from trade_agent.domain.models import (
     SupplierOfferRanking,
 )
 
-SUPPLIER_RANKING_POLICY_VERSION = "2026-08-31.1"
+SUPPLIER_RANKING_POLICY_VERSION = "2026-09-01.1"
 
 _CONFIDENCE_POINTS = {
     Confidence.HIGH: 10,
@@ -100,7 +100,7 @@ def rank_supplier_offers(
     for observation in case.observations:
         match = match_by_observation[observation.observation_id]
         eligible, quantity_points = _quantity_score(case, observation)
-        unknown_factors = ["supplier_reliability", "certifications", "payment_terms"]
+        unknown_factors = ["supplier_reliability", "certifications"]
         explanations = [
             f"امتیاز تطبیق محصول {match.score}/100 است.",
             f"امتیاز سازگاری تعداد {quantity_points}/10 است.",
@@ -120,6 +120,18 @@ def rank_supplier_offers(
         if not observation.incoterm_version:
             unknown_factors.append("incoterm_version")
             explanations.append("نسخه Incoterm اعلام نشده است.")
+        if not observation.payment_terms:
+            unknown_factors.append("payment_terms")
+            explanations.append("شرایط پرداخت اعلام نشده است.")
+        if not observation.payment_method:
+            unknown_factors.append("payment_method")
+            explanations.append("روش پرداخت اعلام نشده است.")
+        if observation.quote_valid_until is None:
+            unknown_factors.append("quote_valid_until")
+            explanations.append("مهلت اعتبار پیشنهاد اعلام نشده است.")
+        if observation.lead_time_days is None:
+            unknown_factors.append("lead_time_days")
+            explanations.append("زمان تحویل اعلام نشده است.")
 
         normalized_price: Money | None
         try:

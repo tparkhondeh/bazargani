@@ -34,8 +34,8 @@ Incoterm coverage groups only declared offer codes against the Incoterms 2020
 reference vocabulary and withholds route-specific comparison when scenarios are absent.
 Price observations now retain an optional Incoterm named place and declared version;
 partial declarations become explicit validation and ranking gaps.
-Offer-terms coverage exposes exact per-offer presence for the six currently structured
-commercial fields while separately naming important terms outside the current schema.
+Offer-terms coverage exposes exact per-offer presence for ten structured commercial
+fields while separately naming important terms outside the current schema.
 Evidence freshness applies the validation run's immutable evaluation timestamp and
 policy thresholds to every deduplicated evidence item and its exact usage count.
 
@@ -160,8 +160,9 @@ supplier arbitrarily. It derives scenario sensitivity at read time using `Decima
 mixed quantity/currency bases return `MIXED_BASIS` without comparison numbers.
 
 Supplier ranking responses are evidence-backed offer views: they include the original
-price/currency, quoted quantity, unit, MOQ, Incoterm, source identity/URL, retrieval
-time, evidence class/confidence, and transformation beside the deterministic score.
+price/currency, quoted quantity, unit, MOQ, Incoterm, payment/timing terms, source
+identity/URL, retrieval time, evidence class/confidence, and transformation beside the
+deterministic score.
 Raw evidence bodies are not duplicated into these decision summaries.
 The same projection now embeds the conservative executive summary, so opportunity UIs
 receive review/recommendation codes, candidate state, BASE landed cost, data-gap context,
@@ -233,10 +234,11 @@ usage links to price observations or scenario FX inputs. It is tenant-scoped and
 decision endpoint into a raw-data export.
 
 The price-observations endpoint provides the original commercial observation, quoted
-quantity/unit/MOQ/Incoterm, product variant and attributes, market layer, source
-provenance, deterministic product-match result, and normalized comparison price in one
-tenant-scoped view. The normalized amount uses the BASE scenario FX path and remains a
-derived comparison value; it does not overwrite or relabel the original price.
+quantity/unit/MOQ/Incoterm, payment terms/method, quote-valid-until timestamp, lead-time
+days, product variant and attributes, market layer, source provenance, deterministic
+product-match result, and normalized comparison price in one tenant-scoped view. The
+normalized amount uses the BASE scenario FX path and remains a derived comparison value;
+it does not overwrite or relabel the original price.
 
 Quantity analysis groups observed quotes only within the same supplier, canonical
 product identity, and normalized unit/currency group, orders them by quoted quantity,
@@ -299,11 +301,12 @@ or commercial fitness.
 
 Offer-terms coverage reports, for each retained observation, the exact presence or
 absence of supplier identity, MOQ, product specification, Incoterm code, named place,
-and declared version beside rankability and the ranking ledger's unknown factors.
-Payment terms/method, quote validity, lead time, capacity, certifications, warranty,
+declared version, payment terms/method, quote validity, and lead-time days beside
+rankability and the ranking ledger's unknown factors. Capacity, certifications, warranty,
 and inspection terms are explicitly listed as outside the current schema. The endpoint
 does not calculate a completeness percentage, verify a declared field, or infer whether
-an uncaptured field is absent, required, or applicable.
+an uncaptured field is absent, required, or applicable. Expired quote validity becomes a
+validation warning using the run's immutable evaluation time.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain
