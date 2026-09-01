@@ -58,21 +58,9 @@ jobs:
       - name: Verify installable UI assets
         run: |
           python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
-          python - <<'PY'
-          from pathlib import Path
-          from zipfile import ZipFile
-
-          wheel = next(Path("dist").glob("*.whl"))
-          required = {
-              "trade_agent/api/static/app.css",
-              "trade_agent/api/static/app.js",
-              "trade_agent/api/static/index.html",
-          }
-          with ZipFile(wheel) as archive:
-              missing = required.difference(archive.namelist())
-          if missing:
-              raise SystemExit(f"wheel is missing UI assets: {sorted(missing)}")
-          PY
+          python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/app.css"
+          python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/app.js"
+          python -m zipfile -l dist/*.whl | grep -F "trade_agent/api/static/index.html"
 
       - name: Upgrade PostgreSQL schema
         env:
