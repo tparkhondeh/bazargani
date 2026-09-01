@@ -781,6 +781,34 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["code"], "REQUEST_VALIDATION_FAILED")
 
+    def test_request_validation_does_not_reflect_invalid_input(self) -> None:
+        secret = "COMMERCIAL-SECRET-PRICE-998877"
+        response = self.client.post(
+            "/api/v1/opportunities",
+            json={
+                "product_name": "Pump",
+                "quantity": secret,
+                "target_market": "Tehran",
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+        body = response.json()
+        self.assertEqual(body["code"], "REQUEST_VALIDATION_FAILED")
+        self.assertEqual(body["message"], "request validation failed")
+        self.assertEqual(
+            body["details"],
+            [
+                {
+                    "location": ["body", "quantity"],
+                    "code": "int_parsing",
+                    "message": "invalid value",
+                }
+            ],
+        )
+        self.assertNotIn(secret, response.text)
+        self.assertNotIn("input", response.text)
+
     def test_oversized_request_is_rejected_with_stable_contract(self) -> None:
         correlation_id = "343f80ba-1d47-4a56-aee5-901cbff70cb2"
         response = self.client.post(

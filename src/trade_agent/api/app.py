@@ -39,7 +39,9 @@ from trade_agent.api.schemas import (
     ResearchRunView,
     ResearchValidationView,
     SupplierOfferRankingView,
+    ValidationErrorDetail,
 )
+from trade_agent.api.validation_errors import safe_validation_details
 from trade_agent.application.completion import complete_research_run_from_bundle
 from trade_agent.application.pagination import MAX_CURSOR_LENGTH, decode_cursor
 from trade_agent.application.reference_rates import (
@@ -128,13 +130,20 @@ def create_app(
         )
         return response
 
-    def error(request: Request, status: int, code: str, message: str) -> JSONResponse:
+    def error(
+        request: Request,
+        status: int,
+        code: str,
+        message: str,
+        details: list[ValidationErrorDetail] | None = None,
+    ) -> JSONResponse:
         body = ErrorBody(
             code=code,
             message=message,
             correlation_id=request.state.correlation_id,
+            details=details,
         )
-        return JSONResponse(status_code=status, content=body.model_dump())
+        return JSONResponse(status_code=status, content=body.model_dump(exclude_none=True))
 
     @app.exception_handler(KeyError)
     async def not_found(request: Request, exc: KeyError) -> JSONResponse:
@@ -188,7 +197,13 @@ def create_app(
 
     @app.exception_handler(RequestValidationError)
     async def request_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
-        return error(request, 422, "REQUEST_VALIDATION_FAILED", str(exc))
+        return error(
+            request,
+            422,
+            "REQUEST_VALIDATION_FAILED",
+            "request validation failed",
+            safe_validation_details(exc),
+        )
 
     def correlation(request: Request) -> str:
         return str(request.state.correlation_id)

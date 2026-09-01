@@ -53,6 +53,11 @@ commercial data subject to the approved logging/retention policy.
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
 the application limit remains a required defense for direct/internal traffic.
 
+Treat `422 REQUEST_VALIDATION_FAILED.details` as the client-safe debugging contract.
+It is capped at 50 concrete issues plus an omission marker and intentionally does not
+echo rejected values. Correlate server-side investigation by `correlation_id`; do not
+add raw request bodies to application or proxy logs.
+
 `TRADE_AGENT_API_RATE_LIMIT_REQUESTS` defaults to `120` and is bounded to 1–100,000;
 `TRADE_AGENT_API_RATE_LIMIT_WINDOW_SECONDS` defaults to `60` and is bounded to
 1–3,600. This budget is per tenant **and per application process**. Configure a

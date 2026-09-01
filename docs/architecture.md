@@ -60,6 +60,10 @@ replays accepted chunks unchanged to FastAPI. Independent structural limits prev
 small but combinatorially excessive evidence bundle from exhausting calculation or
 database resources.
 
+Request-schema errors pass through a bounded safe serializer rather than FastAPI's raw
+validation representation. It retains only allowlisted location names, internal error
+types, and generic messages; input values, context, and documentation URLs are omitted.
+
 The API authenticates a secret key at the boundary, resolves it to an immutable
 tenant/actor principal, and passes that principal explicitly through application
 ports. Aggregate reads and writes include tenant predicates; an identifier owned by

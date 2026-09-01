@@ -138,3 +138,8 @@ Mutating HTTP requests are capped at 2,000,000 bytes by default, including chunk
 requests without `Content-Length`; oversized requests receive `413 REQUEST_TOO_LARGE`.
 The evidence parser also caps observations (500), FX rates (100), scenarios (3),
 costs per scenario (100), notes per kind (200), and product attributes (100).
+
+Schema-validation failures return `422 REQUEST_VALIDATION_FAILED` with at most 50
+safe details containing an allowlisted field location, validation type, and generic
+message. Raw input, Pydantic context, and error URLs are never reflected; additional
+errors are represented by an explicit omission marker.

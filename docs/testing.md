@@ -45,6 +45,11 @@ Request-limit tests cover declared oversized JSON, chunked bodies without a cont
 length, unchanged replay under the limit, stable `413`/correlation contracts, excessive
 observation counts, and invalid nested container types.
 
+Validation-response tests inject a synthetic commercial secret into invalid input and
+into exception message/context/URL fields, then prove none is reflected. They verify
+the allowlisted location/type/generic-message contract and enforce the 50-detail bound
+plus explicit omission marker.
+
 Authentication integration tests run with authentication enabled and cover missing,
 invalid, and valid keys; public health; tenant/actor audit attribution; and identical
 `404` responses for cross-tenant aggregate reads and mutations. Configuration tests

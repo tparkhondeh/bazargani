@@ -93,3 +93,9 @@ POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length
 missing. The default application limit is 2 MB and the reverse proxy must enforce an
 equal or smaller limit in production. Evidence collections have separate item-count
 caps. A `413` response preserves the correlation ID but never echoes request content.
+
+Pydantic/FastAPI validation exceptions are never stringified into responses because
+their raw representation may include rejected input and context. The public `422`
+contract emits at most 50 allowlisted locations and internal validation types with
+generic messages, then an omission marker; unknown location names are replaced with
+`field` and raw input, context, and error URLs are discarded.

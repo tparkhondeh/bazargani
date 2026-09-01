@@ -10,10 +10,17 @@ from trade_agent.domain.models import Confidence
 from trade_agent.domain.workflow import ResearchReviewDecision, ResearchRunStatus
 
 
+class ValidationErrorDetail(BaseModel):
+    location: list[str]
+    code: str
+    message: str
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str
     correlation_id: str
+    details: list[ValidationErrorDetail] | None = None
 
 
 class OpportunityCreate(BaseModel):
