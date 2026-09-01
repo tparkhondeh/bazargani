@@ -439,6 +439,7 @@ class ApiTests(unittest.TestCase):
                 "fx-rates",
                 "assumptions",
                 "evidence",
+                "price-observations",
                 "product-matches",
                 "supplier-offer-rankings",
             )
@@ -1047,6 +1048,25 @@ class ApiTests(unittest.TestCase):
         self.assertEqual({item["kind"] for item in fx_evidence["usages"]}, {"FX_RATE"})
         self.assertRegex(fx_evidence["fingerprint_sha256"], r"^[0-9a-f]{64}$")
         self.assertNotIn("raw_value", json.dumps(evidence_catalog))
+
+        observations_response = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/price-observations"
+        )
+        self.assertEqual(observations_response.status_code, 200)
+        observations = observations_response.json()
+        self.assertEqual(len(observations), 1)
+        observation = observations[0]
+        self.assertEqual(observation["external_observation_id"], "demo-price-1")
+        self.assertEqual(observation["original_amount"], "5.00000000")
+        self.assertEqual(observation["original_currency"], "USD")
+        self.assertEqual(observation["normalized_amount"], "500.00000000")
+        self.assertEqual(observation["normalized_currency"], "IRR")
+        self.assertEqual(observation["product_variant"], "DEMO")
+        self.assertEqual(observation["product_attributes"], {"variant": "DEMO"})
+        self.assertEqual(observation["market_layer"], "DEMO")
+        self.assertEqual(observation["product_match_classification"], "EXACT_VARIANT")
+        self.assertEqual(observation["product_match_score"], 100)
+        self.assertNotIn("raw_value", json.dumps(observations))
 
         matches_response = self.client.get(
             f"/api/v1/research-runs/{run['id']}/product-matches"

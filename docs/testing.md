@@ -47,6 +47,11 @@ observation, fingerprints are 64-character lowercase SHA-256 values, raw content
 absent, and other tenants receive `404`. PostgreSQL integration compares catalog size
 with the atomically persisted completion count.
 
+Price-observation API tests lock original and BASE-normalized decimal amounts, currency,
+quantity terms, product variant/attributes, market layer, product-match class/score,
+source metadata, and raw-evidence omission. Cross-tenant reads return `404`, and the
+PostgreSQL path compares the returned observation count with the completion ledger.
+
 The deterministic validation suite fixes its evaluation timestamp and covers clean
 fact-backed input, exact deduplication, stale evidence, price outliers, zero price,
 product conflicts, and quantity/MOQ incompatibility. API integration tests verify

@@ -321,6 +321,39 @@ class EvidenceBackedSupplierOfferView(SupplierOfferRankingView):
         return value
 
 
+class EvidenceBackedPriceObservationView(BaseModel):
+    external_observation_id: str
+    product_name: str
+    product_variant: str | None
+    product_attributes: dict[str, str]
+    supplier_name: str | None
+    original_amount: Decimal
+    original_currency: str
+    quoted_quantity: int
+    unit: str
+    minimum_order_quantity: int | None
+    incoterm: str | None
+    market_layer: str
+    normalized_amount: Decimal | None
+    normalized_currency: str | None
+    comparison_group: str
+    product_match_classification: str
+    product_match_score: int = Field(ge=0, le=100)
+    source_name: str
+    source_url: str
+    retrieved_at: AwareDatetime
+    evidence_classification: str
+    evidence_confidence: Confidence
+    transformation: str | None
+
+    @field_validator("retrieved_at", mode="before")
+    @classmethod
+    def normalize_naive_database_retrieval_time(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
 class LandedCostScenarioView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

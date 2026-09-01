@@ -93,6 +93,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/fx-rates`
 - `GET /api/v1/research-runs/{id}/assumptions`
 - `GET /api/v1/research-runs/{id}/evidence`
+- `GET /api/v1/research-runs/{id}/price-observations`
 - `GET /api/v1/research-runs/{id}/product-matches`
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 
@@ -199,6 +200,12 @@ classification, confidence, transformation, SHA-256 fingerprint, and determinist
 usage links to price observations or scenario FX inputs. It is tenant-scoped and omits
 `raw_value`; the fingerprint supports integrity comparison without turning the general
 decision endpoint into a raw-data export.
+
+The price-observations endpoint provides the original commercial observation, quoted
+quantity/unit/MOQ/Incoterm, product variant and attributes, market layer, source
+provenance, deterministic product-match result, and normalized comparison price in one
+tenant-scoped view. The normalized amount uses the BASE scenario FX path and remains a
+derived comparison value; it does not overwrite or relabel the original price.
 
 New Markdown reports encode all untrusted names, labels, notes, identifiers, and source
 metadata before interpolation. Input newlines cannot create headings, HTML tags remain

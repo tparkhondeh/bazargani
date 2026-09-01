@@ -124,6 +124,12 @@ scenario/pair/type/effective time. Fingerprints are integrity identifiers, not s
 trust scores. Raw evidence remains stored for controlled future review but is not
 returned by this general decision API.
 
+The evidence-backed price-observation view joins the immutable observation to its
+source, product match, and supplier-ranking normalization. Original amount/currency
+remain authoritative source values. `normalized_amount` is the deterministic BASE-
+scenario currency conversion used for comparison and may be null when no FX path
+exists; it is not an independently observed price.
+
 Important invariants: quantities are positive integers; money uses `Decimal` and an
 explicit currency; derived values identify inputs; evidence timestamps are timezone
 aware; exact duplicate observations do not enter calculations; research history is

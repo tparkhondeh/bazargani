@@ -1331,6 +1331,70 @@ class TradeRepository:
                 for evidence, source in evidence_rows
             ]
 
+    def get_price_observations(
+        self,
+        run_id: str,
+        *,
+        tenant_id: str,
+    ) -> list[dict[str, Any]]:
+        with self._session_factory() as session:
+            self._require_research_run(session, run_id, tenant_id)
+            rows = session.execute(
+                select(
+                    PriceObservationRecord,
+                    ProductMatchRecord,
+                    SupplierOfferRankingRecord,
+                    EvidenceRecord,
+                    SourceRecord,
+                )
+                .join(
+                    ProductMatchRecord,
+                    ProductMatchRecord.price_observation_id == PriceObservationRecord.id,
+                )
+                .join(
+                    SupplierOfferRankingRecord,
+                    SupplierOfferRankingRecord.price_observation_id
+                    == PriceObservationRecord.id,
+                )
+                .join(EvidenceRecord, EvidenceRecord.id == PriceObservationRecord.evidence_id)
+                .join(SourceRecord, SourceRecord.id == EvidenceRecord.source_id)
+                .where(
+                    PriceObservationRecord.research_run_id == run_id,
+                    ProductMatchRecord.research_run_id == run_id,
+                    SupplierOfferRankingRecord.research_run_id == run_id,
+                    EvidenceRecord.research_run_id == run_id,
+                )
+                .order_by(PriceObservationRecord.external_observation_id)
+            ).all()
+            return [
+                {
+                    "external_observation_id": observation.external_observation_id,
+                    "product_name": observation.product_name,
+                    "product_variant": observation.product_variant,
+                    "product_attributes": observation.product_attributes,
+                    "supplier_name": observation.supplier_name,
+                    "original_amount": observation.original_amount,
+                    "original_currency": observation.original_currency,
+                    "quoted_quantity": observation.quantity,
+                    "unit": observation.unit,
+                    "minimum_order_quantity": observation.minimum_order_quantity,
+                    "incoterm": observation.incoterm,
+                    "market_layer": observation.market_layer,
+                    "normalized_amount": ranking.normalized_amount,
+                    "normalized_currency": ranking.normalized_currency,
+                    "comparison_group": ranking.comparison_group,
+                    "product_match_classification": match.classification,
+                    "product_match_score": match.score,
+                    "source_name": source.name,
+                    "source_url": evidence.source_url,
+                    "retrieved_at": evidence.retrieved_at,
+                    "evidence_classification": evidence.classification,
+                    "evidence_confidence": evidence.confidence,
+                    "transformation": evidence.transformation,
+                }
+                for observation, match, ranking, evidence, source in rows
+            ]
+
     def get_product_matches(
         self, run_id: str, *, tenant_id: str
     ) -> list[ProductMatchRecord]:

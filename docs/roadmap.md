@@ -24,6 +24,9 @@ work; immutable completed runs are not edited in place.
 A tenant-scoped evidence catalog now connects deduplicated source metadata and content
 fingerprints to price/FX usages without returning raw bodies. Role-gated raw-evidence
 review, retention rules, and legal export policy remain future governance work.
+An evidence-backed price-observation projection now provides original offer context,
+BASE-normalized comparison values, product match, and source metadata for future price
+distribution and Iranian benchmark UI. Actual approved benchmark acquisition remains.
 
 ## Phase 2 — Persistence and service boundary
 

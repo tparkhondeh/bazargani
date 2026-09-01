@@ -146,6 +146,12 @@ rows. It exposes the stored SHA-256 fingerprint but not `raw_value`. This keeps 
 result consumption provenance-aware while leaving any future raw-evidence access behind
 a separate, stronger authorization and retention policy.
 
+The price-observation projection joins observation, product match, ranking, evidence,
+and source rows only when every record belongs to the same tenant-owned run. It returns
+the original commercial fields beside BASE-scenario normalization and match metadata,
+avoiding client-side joins that could combine different runs. Raw evidence remains
+outside this view.
+
 Supplier-offer read models join the immutable ranking row to its exact price
 observation, evidence row, and source. This prevents clients from treating a detached
 score as a decision and keeps normalized and original values visible together. The

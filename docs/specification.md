@@ -28,6 +28,8 @@ unknown or requires human verification?
 - A price requires source URL, retrieval timestamp, currency, unit, quantity or
   tier context, product variant, and confidence label.
 - Original values remain immutable; normalized values record transformation.
+- Structured price observations keep original offer/product/source context beside the
+  BASE-scenario normalized comparison and product-match result.
 - FX is point-in-time and tied to a source, rate type, and exact consuming scenario;
   scenarios may explicitly use different evidence-classified FX inputs.
 - Calculations expose every component and use decimal arithmetic.

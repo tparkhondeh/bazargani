@@ -25,6 +25,7 @@ from trade_agent.api.schemas import (
     AuditEventPageView,
     DecisionReportView,
     ErrorBody,
+    EvidenceBackedPriceObservationView,
     EvidenceBackedSupplierOfferView,
     EvidenceBundleSubmit,
     EvidenceSummaryView,
@@ -597,6 +598,19 @@ def create_app(
         authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
     ) -> Any:
         return repository.get_research_evidence(
+            run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/price-observations",
+        response_model=list[EvidenceBackedPriceObservationView],
+    )
+    def get_price_observations(
+        run_id: str,
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_price_observations(
             run_id,
             tenant_id=authenticated.tenant_id,
         )
