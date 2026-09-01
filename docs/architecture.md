@@ -129,6 +129,13 @@ claims and the latest row of each append-only review ledger. It includes only
 by immutable claim creation time plus ID for bounded keyset pagination. It does not
 create a mutable queue table, duplicate evidence, or modify review state on read.
 
+The research review queue is a second read-only tenant projection over report-bearing
+runs whose current state belongs to the domain's reviewable-status set. It joins only
+required report/validation columns, then batch-loads issue severities and unknown counts
+to reuse the deterministic data-gap policy without N+1 queries or free-text retrieval.
+The projection exposes counts and hashes, not report/evidence/free-text bodies, and leaves
+approve/reject writes on the existing expected-version transaction.
+
 The opportunity decision view also builds the executive summary from those same joined
 validation, scenario, issue, unknown, and rank-1 rows. This keeps run-level and latest-
 opportunity policy identical and prevents a client from combining a summary with a

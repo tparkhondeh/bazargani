@@ -51,6 +51,7 @@ from trade_agent.api.schemas import (
     ResearchAssumptionsView,
     ResearchCompletionView,
     ResearchDataGapsView,
+    ResearchReviewQueuePageView,
     ResearchReviewSubmit,
     ResearchReviewView,
     ResearchRunPageView,
@@ -84,6 +85,7 @@ from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
     OpportunityStatus,
+    ResearchRunStatus,
     SupplierIdentityReviewStatus,
     VersionConflictError,
 )
@@ -431,6 +433,43 @@ def create_app(
                 "queue state describes evidence review, not verified supplier identity",
                 "claims remain offer-scoped and are not merged into supplier profiles",
                 "raw evidence, review rationale, and reviewer identity are omitted",
+            ),
+        }
+
+    @app.get(
+        "/api/v1/research-review-queue",
+        response_model=ResearchReviewQueuePageView,
+    )
+    def list_research_review_queue(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        status: Annotated[
+            Literal["NEEDS_VERIFICATION", "NEEDS_HUMAN_REVIEW", "PARTIAL"] | None,
+            Query(),
+        ] = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
+    ) -> Any:
+        requested_status = ResearchRunStatus(status) if status is not None else None
+        items, next_cursor = repository.list_research_review_queue(
+            tenant_id=authenticated.tenant_id,
+            status=requested_status,
+            limit=limit,
+            after=decode_cursor(after),
+        )
+        included_statuses = (
+            (requested_status.value,)
+            if requested_status is not None
+            else ("NEEDS_VERIFICATION", "NEEDS_HUMAN_REVIEW", "PARTIAL")
+        )
+        return {
+            "items": items,
+            "included_statuses": included_statuses,
+            "next_cursor": next_cursor,
+            "limitations": (
+                "queue state reflects persisted validation and declared unknowns only",
+                "absence of a recorded gap does not prove commercial completeness",
+                "report content, raw evidence, rationale, reviewer identity, and notes are omitted",
+                "approval or rejection still requires an expected-version review write",
             ),
         }
 

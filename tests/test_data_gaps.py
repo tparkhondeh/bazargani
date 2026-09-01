@@ -1,6 +1,10 @@
 import unittest
 
-from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.data_gaps import (
+    DataGapIssue,
+    summarize_data_gap_counts,
+    summarize_data_gaps,
+)
 from trade_agent.domain.errors import PublicInputError
 
 
@@ -48,6 +52,20 @@ class DataGapSummaryTests(unittest.TestCase):
 
         with self.assertRaisesRegex(PublicInputError, "ERROR or WARNING"):
             summarize_data_gaps((issue("UNKNOWN", "INFO"),), ())
+
+    def test_count_only_summary_reuses_the_same_status_policy(self) -> None:
+        verification = summarize_data_gap_counts((), 2)
+        human_review = summarize_data_gap_counts(("WARNING", "ERROR"), 0)
+
+        self.assertEqual(verification.status, "GAPS_REQUIRE_VERIFICATION")
+        self.assertEqual(verification.issue_count, 0)
+        self.assertEqual(verification.declared_unknown_count, 2)
+        self.assertEqual(human_review.status, "GAPS_REQUIRE_HUMAN_REVIEW")
+        self.assertEqual(human_review.error_count, 1)
+        with self.assertRaisesRegex(PublicInputError, "cannot be negative"):
+            summarize_data_gap_counts((), -1)
+        with self.assertRaisesRegex(PublicInputError, "ERROR or WARNING"):
+            summarize_data_gap_counts(("INFO",), 0)
 
 
 if __name__ == "__main__":

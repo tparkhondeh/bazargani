@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
+from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.pool import StaticPool
 
 from trade_agent.api.app import create_app
@@ -1110,6 +1111,113 @@ class ApiTests(unittest.TestCase):
         ).json()
         self.assertEqual(completed["status"], "NEEDS_VERIFICATION")
 
+        second_run = self.client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/research-runs"
+        ).json()
+        second_running = self.client.post(
+            f"/api/v1/research-runs/{second_run['id']}/transitions",
+            json={"target_status": "RUNNING", "expected_version": 1},
+        ).json()
+        second_completed = self.client.post(
+            f"/api/v1/research-runs/{second_run['id']}/evidence-bundle",
+            headers={"Idempotency-Key": "review-queue-second-result"},
+            json={"expected_version": second_running["version"], "bundle": bundle},
+        ).json()
+        self.assertEqual(second_completed["status"], "NEEDS_VERIFICATION")
+
+        captured_research_queue_sql: list[str] = []
+
+        def capture_research_queue_sql(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: object,
+        ) -> None:
+            captured_research_queue_sql.append(statement.lower())
+
+        sqlalchemy_event.listen(
+            self.engine,
+            "before_cursor_execute",
+            capture_research_queue_sql,
+        )
+        try:
+            first_queue_page = self.client.get(
+                "/api/v1/research-review-queue",
+                params={"limit": 1},
+            ).json()
+        finally:
+            sqlalchemy_event.remove(
+                self.engine,
+                "before_cursor_execute",
+                capture_research_queue_sql,
+            )
+        second_queue_page = self.client.get(
+            "/api/v1/research-review-queue",
+            params={"limit": 1, "after": first_queue_page["next_cursor"]},
+        ).json()
+        queue_items = [*first_queue_page["items"], *second_queue_page["items"]]
+        self.assertEqual(
+            {item["research_run_id"] for item in queue_items},
+            {run["id"], second_run["id"]},
+        )
+        self.assertIsNotNone(first_queue_page["next_cursor"])
+        self.assertIsNone(second_queue_page["next_cursor"])
+        self.assertEqual(
+            first_queue_page["included_statuses"],
+            ["NEEDS_VERIFICATION", "NEEDS_HUMAN_REVIEW", "PARTIAL"],
+        )
+        queued_run = next(
+            item for item in queue_items if item["research_run_id"] == run["id"]
+        )
+        self.assertEqual(queued_run["opportunity_id"], opportunity["id"])
+        self.assertEqual(queued_run["research_status"], "NEEDS_VERIFICATION")
+        self.assertEqual(queued_run["expected_version"], completed["version"])
+        self.assertEqual(queued_run["report_sha256"], completed["report_sha256"])
+        self.assertEqual(queued_run["validation_disposition"], "NEEDS_VERIFICATION")
+        self.assertGreater(queued_run["data_gap_warning_count"], 0)
+        self.assertEqual(queued_run["data_gap_error_count"], 0)
+        queue_json = json.dumps(queue_items, ensure_ascii=False)
+        self.assertNotIn(bundle["observations"][0]["evidence"]["raw_value"], queue_json)
+        self.assertNotIn(bundle["unknowns"][0], queue_json)
+        self.assertNotIn("rationale", queue_json)
+        self.assertNotIn("reviewer_actor_id", queue_json)
+        research_queue_sql = "\n".join(captured_research_queue_sql)
+        self.assertNotIn("decision_reports.content as", research_queue_sql)
+        self.assertNotIn("opportunities.notes as", research_queue_sql)
+        self.assertNotIn("research_notes.text as", research_queue_sql)
+        self.assertNotIn("validation_issues.message_fa as", research_queue_sql)
+        self.assertNotIn("validation_issues.details as", research_queue_sql)
+
+        verification_queue = self.client.get(
+            "/api/v1/research-review-queue",
+            params={"status": "NEEDS_VERIFICATION"},
+        )
+        human_review_queue = self.client.get(
+            "/api/v1/research-review-queue",
+            params={"status": "NEEDS_HUMAN_REVIEW"},
+        )
+        other_tenant_queue = self.client.get(
+            "/api/v1/research-review-queue",
+            headers={"X-API-Key": self.other_api_key},
+        )
+        invalid_queue_status = self.client.get(
+            "/api/v1/research-review-queue",
+            params={"status": "COMPLETED"},
+        )
+        malformed_queue_cursor = self.client.get(
+            "/api/v1/research-review-queue",
+            params={"after": "not-a-cursor"},
+        )
+        self.assertEqual(len(verification_queue.json()["items"]), 2)
+        self.assertEqual(verification_queue.json()["included_statuses"], ["NEEDS_VERIFICATION"])
+        self.assertEqual(human_review_queue.json()["items"], [])
+        self.assertEqual(other_tenant_queue.json()["items"], [])
+        self.assertEqual(invalid_queue_status.status_code, 422)
+        self.assertEqual(malformed_queue_cursor.status_code, 422)
+        self.assertEqual(malformed_queue_cursor.json()["code"], "INVALID_INPUT")
+
         bypass = self.client.post(
             f"/api/v1/research-runs/{run['id']}/transitions",
             json={
@@ -1155,6 +1263,12 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(decision["resulting_status"], "COMPLETED")
         self.assertEqual(decision["resulting_version"], completed["version"] + 1)
         self.assertTrue(decision["reviewer_actor_id"].startswith("api-key:"))
+        queue_after_approval = self.client.get("/api/v1/research-review-queue").json()
+        self.assertEqual(
+            [item["research_run_id"] for item in queue_after_approval["items"]],
+            [second_run["id"]],
+        )
+        self.assertNotIn("منابع و فرضیات توسط بازبین بررسی شد.", json.dumps(queue_after_approval))
 
         reviews = self.client.get(f"/api/v1/research-runs/{run['id']}/reviews")
         hidden_reviews = self.client.get(
@@ -1800,7 +1914,31 @@ class ApiTests(unittest.TestCase):
             f"/api/v1/research-runs/{run['id']}/supplier-identity-claims",
             headers={"X-API-Key": self.other_api_key},
         )
-        initial_queue = self.client.get("/api/v1/supplier-identity-review-queue")
+        captured_identity_queue_sql: list[str] = []
+
+        def capture_identity_queue_sql(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: object,
+        ) -> None:
+            captured_identity_queue_sql.append(statement.lower())
+
+        sqlalchemy_event.listen(
+            self.engine,
+            "before_cursor_execute",
+            capture_identity_queue_sql,
+        )
+        try:
+            initial_queue = self.client.get("/api/v1/supplier-identity-review-queue")
+        finally:
+            sqlalchemy_event.remove(
+                self.engine,
+                "before_cursor_execute",
+                capture_identity_queue_sql,
+            )
         other_tenant_queue = self.client.get(
             "/api/v1/supplier-identity-review-queue",
             headers={"X-API-Key": self.other_api_key},
@@ -1838,6 +1976,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(initial_queue_item["opportunity_id"], opportunity["id"])
         self.assertEqual(initial_queue_item["research_run_id"], run["id"])
         self.assertNotIn(raw_evidence, json.dumps(initial_queue.json()))
+        identity_queue_sql = "\n".join(captured_identity_queue_sql)
+        self.assertNotIn("evidence.raw_value as", identity_queue_sql)
+        self.assertNotIn("opportunities.notes as", identity_queue_sql)
+        self.assertNotIn("supplier_identity_claim_reviews.rationale as", identity_queue_sql)
         self.assertEqual(other_tenant_queue.status_code, 200)
         self.assertEqual(other_tenant_queue.json()["items"], [])
 

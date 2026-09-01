@@ -109,6 +109,11 @@ claims, source/offer context, and a grouped maximum review version, then filters
 effective state to `UNREVIEWED` or `INCONCLUSIVE`. Pagination uses the immutable claim
 `(created_at, id)` pair; concurrent reviews can change membership between HTTP pages.
 
+The research review queue also adds no table. It filters tenant-owned runs by the domain
+reviewable-status set, requires their unique validation and report rows, and batch-loads
+issues/unknown notes for deterministic summary counts. It pages by the run's immutable
+`(created_at, id)` pair and returns the current version for optimistic review locking.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

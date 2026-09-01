@@ -58,8 +58,10 @@ rehearsal. Hashed API-key authentication, fail-closed production configuration,
 tenant-scoped repositories, and actor-aware audit events are implemented as the
 service-to-service baseline. Atomic bundle-submission idempotency is implemented.
 The append-only approve/reject review ledger, rationale requirement, optimistic
-locking, and protected system-derived statuses are implemented; named-user identity,
-role policy, reassignment, and run-approval review queues remain future work.
+locking, and protected system-derived statuses are implemented. A bounded tenant-scoped
+run-review queue now exposes report hash, validation lineage, gap counts, and the exact
+version required for review. Named-user identity, role policy, assignment/escalation,
+and reassignment remain future work.
 The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
 with atomic audit history and terminal won/lost states. The initial transition graph
 still requires commercial stakeholder validation before production activation.
@@ -160,7 +162,7 @@ for new research, progress, result, assumptions, and opportunity history.
 
 ## Phase 5 — MVP hardening
 
-OIDC/role authorization, review queues/escalation, verified supplier profiles,
+OIDC/role authorization, queue assignment/escalation, verified supplier profiles,
 route-specific Incoterm scenario comparison and full EOQ analysis,
 security/load/failure testing, operational runbooks, dependency notices, production
 migration and rollback rehearsal.

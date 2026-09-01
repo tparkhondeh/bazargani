@@ -149,6 +149,43 @@ class ResearchReviewView(BaseModel):
     created_at: datetime
 
 
+class ResearchReviewQueueItemView(BaseModel):
+    research_run_id: str
+    opportunity_id: str
+    product_name: str
+    opportunity_quantity: int = Field(gt=0)
+    target_market: str
+    opportunity_status: OpportunityStatus
+    next_action: str | None
+    deadline: AwareDatetime | None
+    supersedes_research_run_id: str | None
+    research_status: ResearchRunStatus
+    expected_version: int = Field(gt=0)
+    run_created_at: AwareDatetime
+    run_updated_at: AwareDatetime
+    validation_policy_version: str
+    validation_disposition: str
+    confidence_score: int = Field(ge=0, le=100)
+    confidence_label: Confidence
+    validation_evaluated_at: AwareDatetime
+    report_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    report_generated_at: AwareDatetime
+    data_gap_status: str
+    data_gap_issue_count: int = Field(ge=0)
+    data_gap_error_count: int = Field(ge=0)
+    data_gap_warning_count: int = Field(ge=0)
+    declared_unknown_count: int = Field(ge=0)
+
+
+class ResearchReviewQueuePageView(BaseModel):
+    items: list[ResearchReviewQueueItemView]
+    included_statuses: tuple[
+        Literal["NEEDS_VERIFICATION", "NEEDS_HUMAN_REVIEW", "PARTIAL"], ...
+    ]
+    next_cursor: str | None
+    limitations: tuple[str, ...]
+
+
 class EvidenceBundleSubmit(BaseModel):
     expected_version: int = Field(gt=0)
     bundle: dict[str, Any]

@@ -104,6 +104,9 @@ unknown or requires human verification?
 - The review worklist contains only tenant-owned, offer-scoped identity claims whose
   latest append-only state is `UNREVIEWED` or `INCONCLUSIVE`; resolved claims disappear
   without erasing history, and queue membership never asserts verified identity.
+- Report-bearing research runs in a system-derived reviewable status appear in a bounded
+  tenant worklist with current version, report hash, validation lineage, confidence, and
+  deterministic gap counts; sensitive bodies and review rationale remain outside it.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,
   headings, or additional links; client rendering remains separately sanitized.
 - Every automated provider exposes controlled scope/limitations/terms status and a

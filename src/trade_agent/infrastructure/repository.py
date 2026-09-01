@@ -8,14 +8,18 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from trade_agent.application.cost_coverage import (
     CostCoveragePoint,
     ScenarioCostCoverageInput,
     analyze_trade_cost_coverage,
 )
-from trade_agent.application.data_gaps import DataGapIssue, summarize_data_gaps
+from trade_agent.application.data_gaps import (
+    DataGapIssue,
+    summarize_data_gap_counts,
+    summarize_data_gaps,
+)
 from trade_agent.application.evidence_freshness import (
     EvidenceFreshnessPoint,
     analyze_evidence_freshness,
@@ -62,6 +66,7 @@ from trade_agent.application.validation import ValidationDisposition
 from trade_agent.domain.errors import PublicInputError
 from trade_agent.domain.models import Evidence
 from trade_agent.domain.workflow import (
+    REVIEWABLE_RESEARCH_STATUSES,
     IdempotencyConflictError,
     InvalidTransitionError,
     OpportunityStatus,
@@ -581,6 +586,157 @@ class TradeRepository:
             for record in page:
                 session.expunge(record)
             return page, next_cursor
+
+    def list_research_review_queue(
+        self,
+        *,
+        tenant_id: str,
+        status: ResearchRunStatus | None,
+        limit: int,
+        after: PageCursor | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        actionable_statuses = (
+            ResearchRunStatus.NEEDS_VERIFICATION,
+            ResearchRunStatus.NEEDS_HUMAN_REVIEW,
+            ResearchRunStatus.PARTIAL,
+        )
+        if status is not None and status not in REVIEWABLE_RESEARCH_STATUSES:
+            raise PublicInputError("research review queue status must be reviewable")
+        if not 1 <= limit <= 100:
+            raise PublicInputError("page limit must be between 1 and 100")
+        included_statuses = (
+            (status.value,)
+            if status is not None
+            else tuple(item.value for item in actionable_statuses)
+        )
+
+        with self._session_factory() as session:
+            statement = (
+                select(
+                    ResearchRunRecord,
+                    OpportunityRecord,
+                    ResearchValidationRecord,
+                    DecisionReportRecord,
+                )
+                .options(
+                    load_only(
+                        ResearchRunRecord.id,
+                        ResearchRunRecord.opportunity_id,
+                        ResearchRunRecord.supersedes_research_run_id,
+                        ResearchRunRecord.status,
+                        ResearchRunRecord.version,
+                        ResearchRunRecord.created_at,
+                        ResearchRunRecord.updated_at,
+                    ),
+                    load_only(
+                        OpportunityRecord.id,
+                        OpportunityRecord.product_name,
+                        OpportunityRecord.quantity,
+                        OpportunityRecord.target_market,
+                        OpportunityRecord.status,
+                        OpportunityRecord.next_action,
+                        OpportunityRecord.deadline,
+                    ),
+                    load_only(
+                        ResearchValidationRecord.policy_version,
+                        ResearchValidationRecord.disposition,
+                        ResearchValidationRecord.confidence_score,
+                        ResearchValidationRecord.confidence_label,
+                        ResearchValidationRecord.evaluated_at,
+                    ),
+                    load_only(
+                        DecisionReportRecord.content_sha256,
+                        DecisionReportRecord.generated_at,
+                    ),
+                )
+                .join(
+                    OpportunityRecord,
+                    OpportunityRecord.id == ResearchRunRecord.opportunity_id,
+                )
+                .join(
+                    ResearchValidationRecord,
+                    ResearchValidationRecord.research_run_id == ResearchRunRecord.id,
+                )
+                .join(
+                    DecisionReportRecord,
+                    DecisionReportRecord.research_run_id == ResearchRunRecord.id,
+                )
+                .where(
+                    ResearchRunRecord.tenant_id == tenant_id,
+                    ResearchRunRecord.status.in_(included_statuses),
+                )
+            )
+            if after is not None:
+                statement = statement.where(
+                    or_(
+                        ResearchRunRecord.created_at < after.created_at,
+                        and_(
+                            ResearchRunRecord.created_at == after.created_at,
+                            ResearchRunRecord.id < after.record_id,
+                        ),
+                    )
+                )
+            rows = session.execute(
+                statement.order_by(
+                    ResearchRunRecord.created_at.desc(),
+                    ResearchRunRecord.id.desc(),
+                ).limit(limit + 1)
+            ).all()
+            has_more = len(rows) > limit
+            page = rows[:limit]
+            next_cursor = (
+                encode_cursor(page[-1][0].created_at, page[-1][0].id)
+                if has_more and page
+                else None
+            )
+
+            run_ids = [row[0].id for row in page]
+            issue_severities_by_run: dict[str, list[str]] = {
+                run_id: [] for run_id in run_ids
+            }
+            unknown_count_by_run: dict[str, int] = {
+                run_id: 0 for run_id in run_ids
+            }
+            if run_ids:
+                issue_rows = session.execute(
+                    select(
+                        ValidationIssueRecord.research_run_id,
+                        ValidationIssueRecord.severity,
+                    ).where(
+                        ValidationIssueRecord.research_run_id.in_(run_ids)
+                    )
+                )
+                for run_id, severity in issue_rows:
+                    issue_severities_by_run[run_id].append(severity)
+                unknown_run_ids = session.scalars(
+                    select(ResearchNoteRecord.research_run_id).where(
+                        ResearchNoteRecord.research_run_id.in_(run_ids),
+                        ResearchNoteRecord.kind == "UNKNOWN",
+                    )
+                )
+                for run_id in unknown_run_ids:
+                    unknown_count_by_run[run_id] += 1
+
+            items: list[dict[str, Any]] = []
+            for run, opportunity, validation, report in page:
+                gap_summary = summarize_data_gap_counts(
+                    tuple(issue_severities_by_run[run.id]),
+                    unknown_count_by_run[run.id],
+                )
+                items.append(
+                    self._research_review_queue_item(
+                        run,
+                        opportunity,
+                        validation,
+                        report,
+                        data_gap_status=gap_summary.status,
+                        data_gap_issue_count=gap_summary.issue_count,
+                        data_gap_error_count=gap_summary.error_count,
+                        data_gap_warning_count=gap_summary.warning_count,
+                        declared_unknown_count=gap_summary.declared_unknown_count,
+                    )
+                )
+            return items, next_cursor
 
     def transition_research_run(
         self,
@@ -2255,6 +2411,52 @@ class TradeRepository:
                     OpportunityRecord,
                     SupplierIdentityClaimReviewRecord,
                 )
+                .options(
+                    load_only(
+                        SupplierIdentityClaimRecord.id,
+                        SupplierIdentityClaimRecord.research_run_id,
+                        SupplierIdentityClaimRecord.price_observation_id,
+                        SupplierIdentityClaimRecord.evidence_id,
+                        SupplierIdentityClaimRecord.external_claim_id,
+                        SupplierIdentityClaimRecord.claimed_legal_name,
+                        SupplierIdentityClaimRecord.jurisdiction,
+                        SupplierIdentityClaimRecord.registration_number,
+                        SupplierIdentityClaimRecord.created_at,
+                    ),
+                    load_only(
+                        PriceObservationRecord.id,
+                        PriceObservationRecord.research_run_id,
+                        PriceObservationRecord.external_observation_id,
+                        PriceObservationRecord.supplier_name,
+                    ),
+                    load_only(
+                        EvidenceRecord.id,
+                        EvidenceRecord.research_run_id,
+                        EvidenceRecord.source_id,
+                        EvidenceRecord.classification,
+                        EvidenceRecord.source_url,
+                        EvidenceRecord.retrieved_at,
+                        EvidenceRecord.confidence,
+                        EvidenceRecord.transformation,
+                    ),
+                    load_only(SourceRecord.id, SourceRecord.name),
+                    load_only(
+                        ResearchRunRecord.id,
+                        ResearchRunRecord.tenant_id,
+                        ResearchRunRecord.opportunity_id,
+                    ),
+                    load_only(
+                        OpportunityRecord.id,
+                        OpportunityRecord.product_name,
+                        OpportunityRecord.quantity,
+                        OpportunityRecord.target_market,
+                    ),
+                    load_only(
+                        SupplierIdentityClaimReviewRecord.resulting_status,
+                        SupplierIdentityClaimReviewRecord.resulting_version,
+                        SupplierIdentityClaimReviewRecord.created_at,
+                    ),
+                )
                 .join(
                     ResearchRunRecord,
                     ResearchRunRecord.id
@@ -2554,6 +2756,51 @@ class TradeRepository:
                     declared_unknown_count=gap_summary.declared_unknown_count,
                 )
             )
+
+    @staticmethod
+    def _research_review_queue_item(
+        run: ResearchRunRecord,
+        opportunity: OpportunityRecord,
+        validation: ResearchValidationRecord,
+        report: DecisionReportRecord,
+        *,
+        data_gap_status: str,
+        data_gap_issue_count: int,
+        data_gap_error_count: int,
+        data_gap_warning_count: int,
+        declared_unknown_count: int,
+    ) -> dict[str, Any]:
+        return {
+            "research_run_id": run.id,
+            "opportunity_id": opportunity.id,
+            "product_name": opportunity.product_name,
+            "opportunity_quantity": opportunity.quantity,
+            "target_market": opportunity.target_market,
+            "opportunity_status": opportunity.status,
+            "next_action": opportunity.next_action,
+            "deadline": (
+                _database_utc(opportunity.deadline)
+                if opportunity.deadline is not None
+                else None
+            ),
+            "supersedes_research_run_id": run.supersedes_research_run_id,
+            "research_status": run.status,
+            "expected_version": run.version,
+            "run_created_at": _database_utc(run.created_at),
+            "run_updated_at": _database_utc(run.updated_at),
+            "validation_policy_version": validation.policy_version,
+            "validation_disposition": validation.disposition,
+            "confidence_score": validation.confidence_score,
+            "confidence_label": validation.confidence_label,
+            "validation_evaluated_at": _database_utc(validation.evaluated_at),
+            "report_sha256": report.content_sha256,
+            "report_generated_at": _database_utc(report.generated_at),
+            "data_gap_status": data_gap_status,
+            "data_gap_issue_count": data_gap_issue_count,
+            "data_gap_error_count": data_gap_error_count,
+            "data_gap_warning_count": data_gap_warning_count,
+            "declared_unknown_count": declared_unknown_count,
+        }
 
     @staticmethod
     def _supplier_identity_review_view(

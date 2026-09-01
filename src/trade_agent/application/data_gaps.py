@@ -30,16 +30,52 @@ class DataGapSummary:
     limitations: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class DataGapCounts:
+    status: str
+    issue_count: int
+    error_count: int
+    warning_count: int
+    declared_unknown_count: int
+
+
+def summarize_data_gap_counts(
+    issue_severities: tuple[str, ...],
+    declared_unknown_count: int,
+) -> DataGapCounts:
+    invalid_severities = sorted(
+        {severity for severity in issue_severities if severity not in _SEVERITY_ORDER}
+    )
+    if invalid_severities:
+        raise PublicInputError("data-gap issue severity must be ERROR or WARNING")
+    if declared_unknown_count < 0:
+        raise PublicInputError("declared unknown count cannot be negative")
+
+    error_count = sum(severity == "ERROR" for severity in issue_severities)
+    warning_count = sum(severity == "WARNING" for severity in issue_severities)
+    if error_count:
+        status = "GAPS_REQUIRE_HUMAN_REVIEW"
+    elif warning_count or declared_unknown_count:
+        status = "GAPS_REQUIRE_VERIFICATION"
+    else:
+        status = "NO_RECORDED_GAPS"
+    return DataGapCounts(
+        status=status,
+        issue_count=len(issue_severities),
+        error_count=error_count,
+        warning_count=warning_count,
+        declared_unknown_count=declared_unknown_count,
+    )
+
+
 def summarize_data_gaps(
     issues: tuple[DataGapIssue, ...],
     declared_unknowns: tuple[str, ...],
 ) -> DataGapSummary:
-    invalid_severities = sorted(
-        {issue.severity for issue in issues if issue.severity not in _SEVERITY_ORDER}
+    counts = summarize_data_gap_counts(
+        tuple(issue.severity for issue in issues),
+        len(declared_unknowns),
     )
-    if invalid_severities:
-        raise PublicInputError("data-gap issue severity must be ERROR or WARNING")
-
     ordered_issues = tuple(
         sorted(
             issues,
@@ -53,22 +89,13 @@ def summarize_data_gaps(
         )
     )
     ordered_unknowns = tuple(sorted(declared_unknowns))
-    error_count = sum(issue.severity == "ERROR" for issue in ordered_issues)
-    warning_count = sum(issue.severity == "WARNING" for issue in ordered_issues)
-
-    if error_count:
-        status = "GAPS_REQUIRE_HUMAN_REVIEW"
-    elif warning_count or ordered_unknowns:
-        status = "GAPS_REQUIRE_VERIFICATION"
-    else:
-        status = "NO_RECORDED_GAPS"
 
     return DataGapSummary(
-        status=status,
-        issue_count=len(ordered_issues),
-        error_count=error_count,
-        warning_count=warning_count,
-        declared_unknown_count=len(ordered_unknowns),
+        status=counts.status,
+        issue_count=counts.issue_count,
+        error_count=counts.error_count,
+        warning_count=counts.warning_count,
+        declared_unknown_count=counts.declared_unknown_count,
         issues=ordered_issues,
         declared_unknowns=ordered_unknowns,
         limitations=(

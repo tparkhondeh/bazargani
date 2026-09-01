@@ -137,6 +137,20 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(replay.status_code, 200)
         self.assertTrue(replay.json()["idempotency_replayed"])
 
+        research_review_queue = self.client.get("/api/v1/research-review-queue")
+        self.assertEqual(research_review_queue.status_code, 200)
+        self.assertEqual(len(research_review_queue.json()["items"]), 1)
+        queued_research = research_review_queue.json()["items"][0]
+        self.assertEqual(queued_research["research_run_id"], run["id"])
+        self.assertEqual(queued_research["research_status"], "NEEDS_VERIFICATION")
+        self.assertEqual(queued_research["expected_version"], completed["version"])
+        self.assertEqual(queued_research["report_sha256"], completed["report_sha256"])
+        self.assertGreater(queued_research["data_gap_warning_count"], 0)
+        self.assertNotIn(
+            "POSTGRES-SENSITIVE-SYNTHETIC-IDENTITY-BODY",
+            json.dumps(research_review_queue.json()),
+        )
+
         review = self.client.post(
             f"/api/v1/research-runs/{run['id']}/reviews",
             json={
@@ -147,6 +161,10 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(review.status_code, 201)
         self.assertEqual(review.json()["resulting_status"], "COMPLETED")
+        self.assertEqual(
+            self.client.get("/api/v1/research-review-queue").json()["items"],
+            [],
+        )
 
         successor_path = f"/api/v1/research-runs/{run['id']}/successors"
         successor_payload = {

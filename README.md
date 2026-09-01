@@ -95,6 +95,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/providers/ecb-fx-reference/health`
 - `GET /api/v1/reference-rates/ecb/{quote_currency}`
 - `GET /api/v1/audit-events`
+- `GET /api/v1/research-review-queue`
 - `GET /api/v1/supplier-identity-review-queue`
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities`
@@ -254,6 +255,14 @@ review, supports exact status filtering and keyset pagination, and includes oppo
 context plus source provenance for triage. Resolved claims leave the queue. Raw evidence,
 review rationale, and reviewer identity are deliberately excluded, and queue membership
 never means that a supplier identity is verified.
+
+The research review queue is a bounded tenant-scoped projection of report-bearing runs
+whose current system-derived status is `NEEDS_VERIFICATION`, `NEEDS_HUMAN_REVIEW`, or
+`PARTIAL`. It returns the exact expected version, report hash, validation policy/result,
+confidence, opportunity context, and deterministic data-gap counts needed for triage.
+Approval or rejection still uses the locked review endpoint. Report content, raw
+evidence, declared-unknown text, review rationale, reviewer identity, and opportunity
+notes are excluded from the queue.
 
 The run evidence catalog returns each deduplicated evidence record's source metadata,
 classification, confidence, transformation, SHA-256 fingerprint, and deterministic

@@ -286,3 +286,10 @@ only unreviewed or inconclusive claims, remove evidence-supported claims, filter
 actionable statuses, and traverse keyset pages without duplicates. They also prove
 tenant isolation and omission of raw evidence, rationale, and reviewer identity.
 PostgreSQL integration confirms the same unreviewed-to-resolved projection behavior.
+
+Research review-queue tests admit only report-bearing runs in the three domain reviewable
+states, expose the current expected version and immutable report/validation lineage,
+filter exact status, and paginate without duplicates. Approval removes a run from the
+projection. Tenant isolation and omission of report content, raw evidence, unknown text,
+rationale, reviewer identity, and opportunity notes are regression-checked; PostgreSQL
+integration confirms entry and atomic exit after approval.

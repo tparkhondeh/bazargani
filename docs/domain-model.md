@@ -165,6 +165,11 @@ offer-scoped claim with its latest append-only review and includes only `UNREVIE
 `INCONCLUSIVE` items. Resolving an item changes projection membership without deleting
 the claim or its review history and without creating a verified supplier aggregate.
 
+Research review work is likewise a projection over the current run aggregate. Only
+report-bearing `NEEDS_VERIFICATION`, `NEEDS_HUMAN_REVIEW`, and `PARTIAL` runs appear.
+The projected `expected_version` binds the later approve/reject command; membership is
+removed by that atomic transition rather than a mutable queue flag.
+
 The data-gap summary is a read projection over the immutable validation issue ledger
 and declared unknown notes. Errors take precedence over warnings; otherwise any warning
 or declared unknown requires verification. Counts remain separate because one

@@ -164,7 +164,16 @@ The supplier identity review queue applies the tenant predicate through the owni
 research run before returning any claim. It exposes the same bounded claim and source
 metadata already available to an authorized tenant, but omits raw evidence, review
 rationale, reviewer actor identity, and audit metadata. Collection reads return an empty
-page rather than revealing whether another tenant has matching review work.
+page rather than revealing whether another tenant has matching review work. Column-level
+loading also prevents raw evidence, rationale, and opportunity notes from being fetched
+for the projection.
+
+The research review queue applies the tenant predicate at the owning run and requires an
+immutable report plus validation row. It omits report content, raw evidence, individual
+unknown text, review rationale, reviewer identity, opportunity notes, and audit metadata.
+Its least-data queries retrieve only issue severities and unknown counts. It supplies the
+current run version so the separate review write can fail closed on a stale operator
+view. An empty collection reveals nothing about another tenant.
 
 POST/PUT/PATCH bodies are bounded before JSON parsing, even when `Content-Length` is
 missing. The default application limit is 2 MB and the reverse proxy must enforce an
