@@ -148,6 +148,61 @@ class TradeRepository:
             )
         return record
 
+    def update_opportunity_context(
+        self,
+        *,
+        opportunity_id: str,
+        expected_version: int,
+        changes: dict[str, str | datetime | None],
+        correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> OpportunityRecord:
+        allowed_fields = frozenset({"next_action", "deadline", "notes"})
+        if not changes or not changes.keys() <= allowed_fields:
+            raise PublicInputError("at least one opportunity context field is required")
+
+        normalized: dict[str, str | datetime | None] = {}
+        for field, value in changes.items():
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    raise PublicInputError(f"{field} cannot be blank")
+            if field == "deadline" and isinstance(value, datetime):
+                value = value.astimezone(UTC)
+            normalized[field] = value
+
+        with self._session_factory.begin() as session:
+            record = session.scalar(
+                select(OpportunityRecord)
+                .where(
+                    OpportunityRecord.id == opportunity_id,
+                    OpportunityRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
+            if record is None:
+                raise KeyError("opportunity not found")
+            if record.version != expected_version:
+                raise VersionConflictError(
+                    f"expected version {expected_version}, current version {record.version}"
+                )
+            for field, value in normalized.items():
+                setattr(record, field, value)
+            record.version += 1
+            record.updated_at = datetime.now(UTC)
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "Opportunity",
+                record.id,
+                "CONTEXT_UPDATED",
+                {"fields": sorted(normalized), "version": record.version},
+            )
+        return record
+
     def list_opportunities(
         self,
         *,

@@ -29,6 +29,9 @@ role policy, reassignment, and review queues remain future work.
 The opportunity lifecycle now has explicit version-checked, tenant-scoped transitions
 with atomic audit history and terminal won/lost states. The initial transition graph
 still requires commercial stakeholder validation before production activation.
+Versioned opportunity workflow context (`next_action`, timezone-aware `deadline`, and
+`notes`) is implemented with partial clearing and value-redacted audit metadata;
+assignment, reminders, and historical note revisions remain deferred.
 PostgreSQL 17 migration parity, authenticated vertical-slice integration, and full
 migration rollback/re-upgrade are enforced in CI. Public readiness now checks both
 database connectivity and the exact release migration head, while liveness remains

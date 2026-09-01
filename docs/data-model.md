@@ -59,6 +59,11 @@ required rationale, previous/resulting status, consecutive versions, and creatio
 time. The decision and research-run status/version change are committed with the
 corresponding audit event in one transaction.
 
+Migration `20260901_0009` adds nullable `next_action`, timezone-aware `deadline`, and
+`notes` columns to opportunities. They are mutable workflow context protected by the
+aggregate's existing optimistic version; audit payloads retain changed field names and
+the resulting version without duplicating commercial values.
+
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
 retaining actor fingerprint, correlation ID, aggregate, action, structured payload,

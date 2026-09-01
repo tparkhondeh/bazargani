@@ -110,6 +110,11 @@ self-transition, and terminal reopening. API integration proves version conflict
 tenant-hiding `404`, correlated actor attribution, and the exact before/after/version
 audit payload; PostgreSQL integration exercises the real locked transition path.
 
+Opportunity-context API tests cover partial updates, whitespace normalization,
+explicit null clearing, timezone normalization, naive-datetime rejection, stale
+versions, cross-tenant hiding, and absence of commercial note content from audit
+payloads. PostgreSQL integration verifies the migrated columns and timestamp response.
+
 Pagination tests cover UTC/UUID cursor round trips, malformed and oversized cursors,
 maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite

@@ -1,6 +1,7 @@
 import logging
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Security
@@ -25,6 +26,7 @@ from trade_agent.api.schemas import (
     DecisionReportView,
     ErrorBody,
     EvidenceBundleSubmit,
+    OpportunityContextUpdate,
     OpportunityCreate,
     OpportunityPageView,
     OpportunityTransition,
@@ -341,6 +343,29 @@ def create_app(
             opportunity_id=opportunity_id,
             target=payload.target_status,
             expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
+        )
+
+    @app.patch(
+        "/api/v1/opportunities/{opportunity_id}/context",
+        response_model=OpportunityView,
+    )
+    def update_opportunity_context(
+        opportunity_id: str,
+        payload: OpportunityContextUpdate,
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        changes: dict[str, str | datetime | None] = {}
+        for field in ("next_action", "deadline", "notes"):
+            if field in payload.model_fields_set:
+                changes[field] = getattr(payload, field)
+        return repository.update_opportunity_context(
+            opportunity_id=opportunity_id,
+            expected_version=payload.expected_version,
+            changes=changes,
             correlation_id=correlation_id,
             tenant_id=authenticated.tenant_id,
             actor_id=authenticated.actor_id,

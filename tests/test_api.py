@@ -204,6 +204,83 @@ class ApiTests(unittest.TestCase):
             {"from": "RESEARCHING", "to": "SOURCING", "version": 2},
         )
 
+    def test_opportunity_context_is_partial_versioned_and_redacted_from_audit(self) -> None:
+        commercial_note = "private supplier target is 91.25 USD"
+        opportunity = self.client.post(
+            "/api/v1/opportunities",
+            json={"product_name": "Pump", "quantity": 10, "target_market": "Tehran"},
+        ).json()
+
+        updated = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={
+                "expected_version": 1,
+                "next_action": "  Request verified quotation  ",
+                "deadline": "2026-09-15T12:30:00+03:30",
+                "notes": commercial_note,
+            },
+        )
+        cleared = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={"expected_version": 2, "notes": None},
+        )
+        stale = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={"expected_version": 1, "next_action": "Stale overwrite"},
+        )
+        empty = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={"expected_version": 3},
+        )
+        naive_deadline = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={"expected_version": 3, "deadline": "2026-09-16T10:00:00"},
+        )
+        hidden = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            headers={"X-API-Key": self.other_api_key},
+            json={"expected_version": 3, "next_action": "Cross-tenant overwrite"},
+        )
+        persisted = self.client.get(f"/api/v1/opportunities/{opportunity['id']}")
+
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["next_action"], "Request verified quotation")
+        self.assertEqual(updated.json()["deadline"], "2026-09-15T09:00:00Z")
+        self.assertEqual(updated.json()["notes"], commercial_note)
+        self.assertEqual(updated.json()["version"], 2)
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(cleared.json()["next_action"], "Request verified quotation")
+        self.assertIsNone(cleared.json()["notes"])
+        self.assertEqual(cleared.json()["version"], 3)
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(empty.status_code, 422)
+        self.assertEqual(empty.json()["code"], "INVALID_INPUT")
+        self.assertEqual(naive_deadline.status_code, 422)
+        self.assertEqual(naive_deadline.json()["code"], "REQUEST_VALIDATION_FAILED")
+        self.assertEqual(hidden.status_code, 404)
+        self.assertEqual(persisted.status_code, 200)
+        self.assertEqual(persisted.json()["deadline"], "2026-09-15T09:00:00Z")
+
+        with self.engine.connect() as connection:
+            payloads = sorted(
+                connection.scalars(
+                    select(AuditEventRecord.payload).where(
+                        AuditEventRecord.aggregate_id == opportunity["id"],
+                        AuditEventRecord.action == "CONTEXT_UPDATED",
+                    )
+                ),
+                key=lambda payload: payload["version"],
+            )
+        self.assertEqual(
+            payloads,
+            [
+                {"fields": ["deadline", "next_action", "notes"], "version": 2},
+                {"fields": ["notes"], "version": 3},
+            ],
+        )
+        self.assertNotIn(commercial_note, json.dumps(payloads))
+
     def test_health_is_public_but_api_requires_a_valid_key(self) -> None:
         health = self.client.get("/health", headers={"X-API-Key": ""})
         readiness = self.client.get("/ready", headers={"X-API-Key": ""})

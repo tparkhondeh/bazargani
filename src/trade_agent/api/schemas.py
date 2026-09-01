@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 from trade_agent.domain.models import Confidence
 from trade_agent.domain.workflow import (
@@ -41,9 +41,19 @@ class OpportunityView(BaseModel):
     quantity: int
     target_market: str
     status: str
+    next_action: str | None
+    deadline: AwareDatetime | None
+    notes: str | None
     version: int
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("deadline", mode="before")
+    @classmethod
+    def normalize_naive_database_deadline(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
 
 
 class OpportunityPageView(BaseModel):
@@ -54,6 +64,13 @@ class OpportunityPageView(BaseModel):
 class OpportunityTransition(BaseModel):
     target_status: OpportunityStatus
     expected_version: int = Field(gt=0)
+
+
+class OpportunityContextUpdate(BaseModel):
+    expected_version: int = Field(gt=0)
+    next_action: str | None = Field(default=None, min_length=1, max_length=500)
+    deadline: AwareDatetime | None = None
+    notes: str | None = Field(default=None, min_length=1, max_length=10_000)
 
 
 class ResearchRunView(BaseModel):

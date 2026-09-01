@@ -37,6 +37,9 @@ unknown or requires human verification?
 - Opportunity lifecycle changes follow an explicit version-checked policy, preserve
   actor/correlation attribution in an append-only audit event, and cannot silently
   reopen a won or lost aggregate.
+- Opportunity next action, deadline, and notes are tenant-scoped, partially editable,
+  version-checked, and explicitly clearable without copying their commercial content
+  into audit payloads.
 
 ## Deferred from MVP
 

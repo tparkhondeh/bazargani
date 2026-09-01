@@ -51,7 +51,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0008")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0009")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         opportunity_response = self.client.post(
@@ -65,13 +65,26 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(opportunity_response.status_code, 201)
         opportunity = opportunity_response.json()
 
+        context_update = self.client.patch(
+            f"/api/v1/opportunities/{opportunity['id']}/context",
+            json={
+                "expected_version": 1,
+                "next_action": "Request factory quotation",
+                "deadline": "2026-09-15T09:00:00Z",
+                "notes": "PostgreSQL workflow context",
+            },
+        )
+        self.assertEqual(context_update.status_code, 200)
+        self.assertEqual(context_update.json()["version"], 2)
+        self.assertEqual(context_update.json()["deadline"], "2026-09-15T09:00:00Z")
+
         opportunity_transition = self.client.post(
             f"/api/v1/opportunities/{opportunity['id']}/transitions",
-            json={"target_status": "SOURCING", "expected_version": 1},
+            json={"target_status": "SOURCING", "expected_version": 2},
         )
         self.assertEqual(opportunity_transition.status_code, 200)
         self.assertEqual(opportunity_transition.json()["status"], "SOURCING")
-        self.assertEqual(opportunity_transition.json()["version"], 2)
+        self.assertEqual(opportunity_transition.json()["version"], 3)
 
         run_response = self.client.post(
             f"/api/v1/opportunities/{opportunity['id']}/research-runs"

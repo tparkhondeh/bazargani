@@ -101,6 +101,12 @@ update and audit row share one transaction, preventing a successful state change
 without history. Terminal outcomes require a new aggregate rather than an implicit
 reopen; the initial commercial transition graph remains a stakeholder-validation item.
 
+Mutable opportunity context uses the same aggregate version as lifecycle status, so a
+client cannot update a note or deadline using a stale view of the stage. PATCH applies
+only explicitly supplied fields and supports explicit null clearing. Audit records the
+changed field names and resulting version but deliberately avoids duplicating sensitive
+commercial text; this is a change ledger, not a full historical snapshot store.
+
 History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
 not unbounded reads or offset drift. Opportunities/runs use creation time and audit
 events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,

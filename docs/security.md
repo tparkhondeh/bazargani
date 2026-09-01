@@ -61,6 +61,12 @@ and atomic audit boundary. Invalid stage changes return `409`, stale writers can
 overwrite newer decisions, and cross-tenant identifiers remain indistinguishable from
 missing records. `WON` and `LOST` cannot be reopened through this API.
 
+Opportunity notes, next actions, and deadlines share the tenant/version/row-lock
+boundary. Audit events contain only changed field names and the resulting version, not
+the field values, reducing duplication of commercially sensitive text. Authorized
+clients can still read the current values, so future named-user roles and retention
+policy remain production requirements.
+
 History cursors are bounded opaque ordering tokens, not bearer credentials. Decoding
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.

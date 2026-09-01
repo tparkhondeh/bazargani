@@ -24,6 +24,11 @@ must resume into a named active stage. `WON` and `LOST` are terminal, and self-
 transitions are rejected. This is the initial workflow policy, not verified commercial
 fact; ADR 0007 records the assumptions requiring stakeholder validation.
 
+An opportunity also carries mutable workflow context: an optional next action,
+timezone-aware deadline, and notes. Context changes increment the same aggregate
+version as status changes. The audit trail records which fields changed, but not their
+potentially sensitive values; the current row remains the source of truth for context.
+
 The current confidence policy starts at 100, subtracts 10 per warning and 30 per
 error, and clamps at zero. Any error produces `NEEDS_HUMAN_REVIEW`; warning-only
 results produce `NEEDS_VERIFICATION`; only an issue-free result is `PASSED`. The
