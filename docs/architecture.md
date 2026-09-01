@@ -71,9 +71,10 @@ transition route permits only operational lifecycle changes; a review-required r
 can reach `COMPLETED` or `CANCELLED` only through an append-only review decision. The
 review row, locked run version update, and audit event share one transaction.
 
-History traversal uses deterministic `(created_at, id)` descending keyset pagination,
-not unbounded reads or offset drift. The URL-safe cursor is validated into UTC time
-and a UUID, while tenant ownership remains an independent repository predicate.
+History traversal uses deterministic `(timestamp, id)` descending keyset pagination,
+not unbounded reads or offset drift. Opportunities/runs use creation time and audit
+events use occurrence time. The URL-safe cursor is validated into UTC time and a UUID,
+while tenant ownership remains an independent repository predicate.
 
 The ECB reference-rate application service constructs its HTTP adapter lazily and
 caches successful currency results for a bounded TTL. Cache misses are serialized to

@@ -124,6 +124,21 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(paged_ids, opportunity_ids)
         self.assertIsNone(second_page["next_cursor"])
 
+        audit_ids: list[str] = []
+        audit_cursor: str | None = None
+        while True:
+            params: dict[str, int | str] = {"limit": 3}
+            if audit_cursor is not None:
+                params["after"] = audit_cursor
+            audit_page_response = self.client.get("/api/v1/audit-events", params=params)
+            self.assertEqual(audit_page_response.status_code, 200)
+            audit_page = audit_page_response.json()
+            audit_ids.extend(event["id"] for event in audit_page["items"])
+            audit_cursor = audit_page["next_cursor"]
+            if audit_cursor is None:
+                break
+        self.assertEqual(len(audit_ids), len(set(audit_ids)))
+
         with self.engine.connect() as connection:
             tenant_id = connection.scalar(
                 select(OpportunityRecord.tenant_id).where(
@@ -142,6 +157,11 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .order_by(AuditEventRecord.occurred_at.desc())
                 .limit(1)
             )
+            audit_count = connection.scalar(
+                select(func.count())
+                .select_from(AuditEventRecord)
+                .where(AuditEventRecord.tenant_id == "postgres-ci")
+            )
             idempotency_count = connection.scalar(
                 select(func.count())
                 .select_from(IdempotencyRecord)
@@ -156,6 +176,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(tenant_id, "postgres-ci")
         self.assertIsInstance(total, Decimal)
         self.assertIsInstance(audit_payload, dict)
+        self.assertEqual(len(audit_ids), audit_count)
         self.assertEqual(idempotency_count, 1)
         self.assertEqual(review_count, 1)
 

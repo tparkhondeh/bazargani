@@ -58,3 +58,8 @@ stores tenant, research run, reviewer actor fingerprint, `APPROVE`/`REJECT` deci
 required rationale, previous/resulting status, consecutive versions, and creation
 time. The decision and research-run status/version change are committed with the
 corresponding audit event in one transaction.
+
+The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
+ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while
+retaining actor fingerprint, correlation ID, aggregate, action, structured payload,
+and occurrence time. The tenant predicate is applied independently on every page.

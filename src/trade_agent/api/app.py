@@ -20,6 +20,7 @@ from trade_agent.api.logging import configure_logging
 from trade_agent.api.middleware import RequestBodyLimitMiddleware, correlation_id
 from trade_agent.api.rate_limit import RateLimitExceeded, TenantRateLimiter
 from trade_agent.api.schemas import (
+    AuditEventPageView,
     DecisionReportView,
     ErrorBody,
     EvidenceBundleSubmit,
@@ -250,6 +251,19 @@ def create_app(
         after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
     ) -> Any:
         items, next_cursor = repository.list_opportunities(
+            tenant_id=authenticated.tenant_id,
+            limit=limit,
+            after=decode_cursor(after),
+        )
+        return {"items": items, "next_cursor": next_cursor}
+
+    @app.get("/api/v1/audit-events", response_model=AuditEventPageView)
+    def list_audit_events(
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        after: Annotated[str | None, Query(max_length=MAX_CURSOR_LENGTH)] = None,
+    ) -> Any:
+        items, next_cursor = repository.list_audit_events(
             tenant_id=authenticated.tenant_id,
             limit=limit,
             after=decode_cursor(after),

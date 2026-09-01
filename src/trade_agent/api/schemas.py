@@ -56,6 +56,24 @@ class ResearchRunPageView(BaseModel):
     next_cursor: str | None
 
 
+class AuditEventView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    actor_id: str
+    correlation_id: str
+    aggregate_type: str
+    aggregate_id: str
+    action: str
+    payload: dict[str, Any]
+    occurred_at: datetime
+
+
+class AuditEventPageView(BaseModel):
+    items: list[AuditEventView]
+    next_cursor: str | None
+
+
 class ResearchRunTransition(BaseModel):
     target_status: ResearchRunStatus
     expected_version: int = Field(gt=0)

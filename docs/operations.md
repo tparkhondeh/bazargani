@@ -44,6 +44,11 @@ accept letters, digits, `_`, and `-`, up to 64 characters. A second credential c
 map to the same tenant during rotation; deploy the new digest, move clients, then
 remove the old digest.
 
+Operational audit consumers should traverse `GET /api/v1/audit-events` with its
+opaque `next_cursor`; never decode a cursor for authorization or request an unbounded
+export. Correlate actions with `correlation_id` and treat review rationale as tenant
+commercial data subject to the approved logging/retention policy.
+
 `TRADE_AGENT_MAX_REQUEST_BODY_BYTES` defaults to `2000000` and is constrained to
 1 KiB–10 MB. Configure the production reverse proxy to an equal or smaller body limit;
 the application limit remains a required defense for direct/internal traffic.

@@ -32,7 +32,9 @@ Exact Python dependency locking, compatibility verification, third-party invento
 and a blocking known-vulnerability audit are enforced in CI; ongoing upgrade review
 and release-time re-audit remain operational responsibilities.
 Bounded tenant-scoped keyset pagination for opportunity and research-run history is
-implemented as the data-access foundation for the RTL UI.
+implemented as the data-access foundation for the RTL UI. The append-only audit trail
+is also exposed through bounded, tenant-scoped keyset pagination with actor and
+correlation metadata.
 Bounded HTTP bodies and evidence-bundle collection limits are implemented; distributed
 rate limiting remains part of authentication/production hardening. A tenant-aware,
 per-process fixed-window baseline is implemented with shared budgets across rotated

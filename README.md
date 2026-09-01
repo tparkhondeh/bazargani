@@ -70,6 +70,7 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /health` and `GET /ready`
 - `POST /api/v1/requests/parse`
 - `GET /api/v1/reference-rates/ecb/{quote_currency}`
+- `GET /api/v1/audit-events`
 - `POST /api/v1/opportunities`
 - `GET /api/v1/opportunities`
 - `GET /api/v1/opportunities/{id}`
@@ -103,11 +104,13 @@ change, actor fingerprint, and audit event commit atomically; cross-tenant revie
 access returns `404`. API-key attribution is a service baseline, not proof of a named
 human identity—OIDC/roles remain required for production user accountability.
 
-Opportunity and research-run history endpoints use newest-first opaque cursor
-pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returned only
-when another page exists. Cursors encode ordering state, not authorization: every
+Opportunity, research-run, and audit-event history endpoints use newest-first opaque
+cursor pagination. `limit` is bounded to 1–100 (default 50); `next_cursor` is returned
+only when another page exists. Cursors encode ordering state, not authorization: every
 query independently applies the authenticated tenant predicate and malformed or
-oversized cursors fail with `422`.
+oversized cursors fail with `422`. Audit responses expose the non-secret actor
+fingerprint, correlation/aggregate metadata, action, timestamp, and structured event
+payload, but omit `tenant_id`.
 
 The authenticated ECB reference-rate endpoint exposes the latest supported EUR quote
 with its official source URL, retrieval/effective times, raw observation, confidence,

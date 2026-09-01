@@ -85,6 +85,12 @@ maximum page size, stable multi-page traversal without duplicates, and tenant
 isolation. PostgreSQL integration repeats multi-page timestamp traversal so SQLite
 date encoding cannot conceal a production ordering bug.
 
+Audit-history integration tests create events for two tenants, traverse multiple
+pages without duplicates, verify actor/action/aggregate fields, reject malformed or
+excessive pagination, and prove that one tenant never receives the other's event or a
+redundant tenant identifier. PostgreSQL integration compares the fully paged result
+with the tenant's stored audit-event count.
+
 ECB provider tests use captured synthetic contract rows and cover latest-observation
 selection, provenance, invalid currency, and malformed upstream data. Cache tests
 verify lazy construction, case-insensitive hits, expiry/refetch, and no stale fallback.

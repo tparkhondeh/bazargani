@@ -146,6 +146,48 @@ class TradeRepository:
                 session.expunge(record)
             return page, next_cursor
 
+    def list_audit_events(
+        self,
+        *,
+        tenant_id: str,
+        limit: int,
+        after: PageCursor | None,
+    ) -> tuple[list[AuditEventRecord], str | None]:
+        if not 1 <= limit <= 100:
+            raise ValueError("page limit must be between 1 and 100")
+        with self._session_factory() as session:
+            statement = select(AuditEventRecord).where(
+                AuditEventRecord.tenant_id == tenant_id
+            )
+            if after is not None:
+                statement = statement.where(
+                    or_(
+                        AuditEventRecord.occurred_at < after.created_at,
+                        and_(
+                            AuditEventRecord.occurred_at == after.created_at,
+                            AuditEventRecord.id < after.record_id,
+                        ),
+                    )
+                )
+            records = list(
+                session.scalars(
+                    statement.order_by(
+                        AuditEventRecord.occurred_at.desc(),
+                        AuditEventRecord.id.desc(),
+                    ).limit(limit + 1)
+                )
+            )
+            has_more = len(records) > limit
+            page = records[:limit]
+            next_cursor = (
+                encode_cursor(page[-1].occurred_at, page[-1].id)
+                if has_more and page
+                else None
+            )
+            for record in page:
+                session.expunge(record)
+            return page, next_cursor
+
     def create_research_run(
         self,
         *,

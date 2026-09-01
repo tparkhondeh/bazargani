@@ -298,6 +298,72 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(excessive_limit.status_code, 422)
         self.assertEqual(excessive_limit.json()["code"], "REQUEST_VALIDATION_FAILED")
 
+    def test_audit_history_is_paginated_and_tenant_scoped(self) -> None:
+        created = [
+            self.client.post(
+                "/api/v1/opportunities",
+                json={
+                    "product_name": f"Audited product {index}",
+                    "quantity": index,
+                    "target_market": "Tehran",
+                },
+            ).json()
+            for index in range(1, 4)
+        ]
+        other = self.client.post(
+            "/api/v1/opportunities",
+            headers={"X-API-Key": self.other_api_key},
+            json={"product_name": "Other tenant", "quantity": 1, "target_market": "Shiraz"},
+        ).json()
+
+        first_response = self.client.get("/api/v1/audit-events", params={"limit": 2})
+        self.assertEqual(first_response.status_code, 200)
+        first = first_response.json()
+        self.assertEqual(len(first["items"]), 2)
+        self.assertIsNotNone(first["next_cursor"])
+        second = self.client.get(
+            "/api/v1/audit-events",
+            params={"limit": 2, "after": first["next_cursor"]},
+        ).json()
+        self.assertEqual(len(second["items"]), 1)
+        self.assertIsNone(second["next_cursor"])
+
+        events = [*first["items"], *second["items"]]
+        self.assertEqual(
+            {event["aggregate_id"] for event in events},
+            {item["id"] for item in created},
+        )
+        self.assertEqual(len({event["id"] for event in events}), 3)
+        key_fingerprint = hashlib.sha256(self.api_key.encode()).hexdigest()[:12]
+        expected_actor = f"api-key:{key_fingerprint}"
+        for event in events:
+            self.assertEqual(event["actor_id"], expected_actor)
+            self.assertEqual(event["aggregate_type"], "Opportunity")
+            self.assertEqual(event["action"], "CREATED")
+            self.assertNotIn("tenant_id", event)
+
+        other_page = self.client.get(
+            "/api/v1/audit-events",
+            headers={"X-API-Key": self.other_api_key},
+        ).json()
+        self.assertEqual(
+            [event["aggregate_id"] for event in other_page["items"]],
+            [other["id"]],
+        )
+
+        malformed = self.client.get(
+            "/api/v1/audit-events",
+            params={"after": "not-a-cursor"},
+        )
+        excessive_limit = self.client.get(
+            "/api/v1/audit-events",
+            params={"limit": 101},
+        )
+        self.assertEqual(malformed.status_code, 422)
+        self.assertEqual(malformed.json()["code"], "INVALID_INPUT")
+        self.assertEqual(excessive_limit.status_code, 422)
+        self.assertEqual(excessive_limit.json()["code"], "REQUEST_VALIDATION_FAILED")
+
     def test_parse_request_returns_only_critical_questions(self) -> None:
         response = self.client.post(
             "/api/v1/requests/parse",

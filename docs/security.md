@@ -60,6 +60,11 @@ History cursors are bounded opaque ordering tokens, not bearer credentials. Deco
 requires an exact schema, timezone-aware timestamp, and UUID. A valid cursor from any
 source can only reposition an already tenant-scoped query and cannot grant access.
 
+Audit history is read only through a bounded tenant-scoped query. The response omits
+`tenant_id` and never contains raw API keys; actor attribution remains the non-secret
+key fingerprint. Audit payload design must continue to exclude credentials and raw
+evidence bodies, while review rationale remains visible to authorized tenant clients.
+
 The ECB adapter remains fixed to one HTTPS host, rejects redirects and non-public DNS
 results, ignores environment proxies, bounds response bytes, and retries transport or
 server failures. The API requires authentication to limit anonymous abuse. Only
