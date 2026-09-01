@@ -125,6 +125,8 @@ Phase 2 adds PostgreSQL/Alembic persistence and a FastAPI service. See
 - `GET /api/v1/research-runs/{id}/supplier-offer-rankings`
 - `GET /api/v1/research-runs/{id}/supplier-coverage`
 - `GET /api/v1/research-runs/{id}/supplier-identity-claims`
+- `POST /api/v1/research-runs/{id}/supplier-identity-claims/{claim_id}/reviews`
+- `GET /api/v1/research-runs/{id}/supplier-identity-claims/{claim_id}/reviews`
 - `GET /api/v1/research-runs/{id}/executive-summary`
 
 `/health` and `/ready` are public for orchestration. Health reports process liveness;
@@ -282,11 +284,14 @@ evidence; distinct URLs also do not prove independent sources.
 Evidence bundles may include bounded `supplier_identity_claims`. Each immutable claim
 links an exact price-observation ID to a claimed legal name, jurisdiction, registration
 number, and full source evidence in the same result transaction. The authenticated
-claim projection omits raw evidence and always reports `UNREVIEWED`; it does not merge
-names into a supplier profile, change ranking, or promote due diligence. Evidence usage
-and freshness counts include claims, while the generated report preserves the claim and
-its source with untrusted text escaped. An append-only human review ledger is a separate
-future slice.
+claim projection omits raw evidence and begins at `UNREVIEWED`; it does not merge names
+into a supplier profile, change ranking, or promote due diligence. An authenticated
+append-only review ledger can record `EVIDENCE_SUPPORTED`, `EVIDENCE_CONTRADICTED`, or
+`INCONCLUSIVE` under an expected-version row lock. These decisions describe support for
+the scoped claim, never a verified supplier identity. Review history is tenant-scoped;
+rationale stays out of audit payloads. Evidence usage and freshness counts include
+claims, while the immutable generated report preserves the ingestion-time `UNREVIEWED`
+snapshot and its escaped source fields.
 
 The executive-summary endpoint exposes deterministic decision/recommendation codes,
 all rank-1 offer candidates (including ties), their original and normalized price plus

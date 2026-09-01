@@ -1,10 +1,12 @@
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from trade_agent.application.supplier_identity import (
     SupplierIdentityClaimPoint,
     summarize_supplier_identity_claims,
 )
+from trade_agent.domain.workflow import SupplierIdentityReviewStatus
 
 
 def point(
@@ -52,6 +54,42 @@ class SupplierIdentityClaimTests(unittest.TestCase):
         self.assertEqual(summary.status, "NO_SUPPLIER_IDENTITY_CLAIMS")
         self.assertEqual(summary.claim_count, 0)
         self.assertEqual(summary.claims, ())
+
+    def test_latest_review_state_is_projected_without_claiming_verified_identity(
+        self,
+    ) -> None:
+        reviewed_at = datetime(2026, 9, 1, 12, tzinfo=UTC)
+        supported = replace(
+            point("claim-a", "offer-a"),
+            review_status=SupplierIdentityReviewStatus.EVIDENCE_SUPPORTED,
+            review_version=1,
+            latest_reviewed_at=reviewed_at,
+        )
+        mixed = summarize_supplier_identity_claims(
+            (supported, point("claim-b", "offer-b"))
+        )
+
+        self.assertEqual(mixed.status, "UNREVIEWED_IDENTITY_CLAIMS")
+        self.assertEqual(mixed.claims[0].review_version, 1)
+        self.assertEqual(mixed.claims[0].latest_reviewed_at, reviewed_at)
+
+        fully_reviewed = summarize_supplier_identity_claims(
+            (
+                supported,
+                replace(
+                    point("claim-b", "offer-b"),
+                    review_status=SupplierIdentityReviewStatus.INCONCLUSIVE,
+                    review_version=2,
+                    latest_reviewed_at=reviewed_at,
+                ),
+            )
+        )
+
+        self.assertEqual(fully_reviewed.status, "REVIEWED_IDENTITY_CLAIMS")
+        self.assertIn(
+            "not verified supplier identity",
+            " ".join(fully_reviewed.limitations),
+        )
 
 
 if __name__ == "__main__":

@@ -29,6 +29,19 @@ class ResearchReviewDecision(StrEnum):
     REJECT = "REJECT"
 
 
+class SupplierIdentityReviewDecision(StrEnum):
+    EVIDENCE_SUPPORTED = "EVIDENCE_SUPPORTED"
+    EVIDENCE_CONTRADICTED = "EVIDENCE_CONTRADICTED"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class SupplierIdentityReviewStatus(StrEnum):
+    UNREVIEWED = "UNREVIEWED"
+    EVIDENCE_SUPPORTED = "EVIDENCE_SUPPORTED"
+    EVIDENCE_CONTRADICTED = "EVIDENCE_CONTRADICTED"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
 OPPORTUNITY_TRANSITIONS: dict[OpportunityStatus, frozenset[OpportunityStatus]] = {
     OpportunityStatus.RESEARCHING: frozenset(
         {OpportunityStatus.SOURCING, OpportunityStatus.ON_HOLD, OpportunityStatus.LOST}

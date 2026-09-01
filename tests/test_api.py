@@ -27,6 +27,7 @@ from trade_agent.infrastructure.database import (
     ResearchRunRecord,
     ResearchValidationRecord,
     SupplierIdentityClaimRecord,
+    SupplierIdentityClaimReviewRecord,
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
@@ -1596,6 +1597,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(claim["quoted_supplier_name"], "Demo Supplier — NOT REAL")
         self.assertEqual(claim["claimed_legal_name"], "Demo Legal Supplier — NOT REAL")
         self.assertEqual(claim["review_status"], "UNREVIEWED")
+        self.assertEqual(claim["review_version"], 0)
+        self.assertIsNone(claim["latest_reviewed_at"])
         self.assertEqual(claim["evidence_classification"], "FACT")
         self.assertEqual(claim["evidence_confidence"], "HIGH")
         self.assertNotIn("raw_value", json.dumps(claims))
@@ -1616,6 +1619,96 @@ class ApiTests(unittest.TestCase):
         )
         self.assertNotIn(raw_evidence, json.dumps(evidence_catalog))
 
+        report_before_review = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/report"
+        ).json()
+        review_path = (
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims/"
+            "demo-identity-claim-1/reviews"
+        )
+        hidden_review_read = self.client.get(
+            review_path,
+            headers={"X-API-Key": self.other_api_key},
+        )
+        hidden_review_write = self.client.post(
+            review_path,
+            headers={"X-API-Key": self.other_api_key},
+            json={
+                "decision": "EVIDENCE_SUPPORTED",
+                "rationale": "Cross-tenant review must be rejected",
+                "expected_version": 0,
+            },
+        )
+        invalid_decision = self.client.post(
+            review_path,
+            json={
+                "decision": "VERIFIED",
+                "rationale": "Verification is not an allowed review decision",
+                "expected_version": 0,
+            },
+        )
+        invalid_claim_path = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims/"
+            "invalid$claim/reviews"
+        )
+        first_review = self.client.post(
+            review_path,
+            headers={"X-Correlation-ID": "8c78777c-f236-41dc-b077-32914f00133c"},
+            json={
+                "decision": "EVIDENCE_SUPPORTED",
+                "rationale": "Synthetic fixture evidence supports the submitted claim",
+                "expected_version": 0,
+            },
+        )
+        stale_review = self.client.post(
+            review_path,
+            json={
+                "decision": "EVIDENCE_CONTRADICTED",
+                "rationale": "A stale writer must not overwrite the append-only ledger",
+                "expected_version": 0,
+            },
+        )
+        second_review = self.client.post(
+            review_path,
+            json={
+                "decision": "INCONCLUSIVE",
+                "rationale": "The evidence requires another independent source",
+                "expected_version": 1,
+            },
+        )
+        review_history = self.client.get(review_path)
+        reviewed_claims = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
+        ).json()
+
+        self.assertEqual(hidden_review_read.status_code, 404)
+        self.assertEqual(hidden_review_write.status_code, 404)
+        self.assertEqual(invalid_decision.status_code, 422)
+        self.assertEqual(invalid_claim_path.status_code, 422)
+        self.assertEqual(first_review.status_code, 201)
+        first_review_body = first_review.json()
+        self.assertEqual(first_review_body["previous_status"], "UNREVIEWED")
+        self.assertEqual(first_review_body["resulting_status"], "EVIDENCE_SUPPORTED")
+        self.assertEqual(first_review_body["previous_version"], 0)
+        self.assertEqual(first_review_body["resulting_version"], 1)
+        self.assertTrue(first_review_body["reviewer_actor_id"].startswith("api-key:"))
+        self.assertEqual(stale_review.status_code, 409)
+        self.assertEqual(stale_review.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(second_review.status_code, 201)
+        self.assertEqual(second_review.json()["previous_status"], "EVIDENCE_SUPPORTED")
+        self.assertEqual(second_review.json()["resulting_status"], "INCONCLUSIVE")
+        self.assertEqual(second_review.json()["resulting_version"], 2)
+        self.assertEqual(review_history.status_code, 200)
+        self.assertEqual(
+            [item["resulting_version"] for item in review_history.json()],
+            [1, 2],
+        )
+        self.assertEqual(reviewed_claims["status"], "REVIEWED_IDENTITY_CLAIMS")
+        reviewed_claim = reviewed_claims["claims"][0]
+        self.assertEqual(reviewed_claim["review_status"], "INCONCLUSIVE")
+        self.assertEqual(reviewed_claim["review_version"], 2)
+        self.assertIsNotNone(reviewed_claim["latest_reviewed_at"])
+
         ranking = self.client.get(
             f"/api/v1/research-runs/{run['id']}/supplier-offer-rankings"
         ).json()[0]
@@ -1626,8 +1719,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(coverage["due_diligence_status"], "UNVERIFIED")
 
         report = self.client.get(f"/api/v1/research-runs/{run['id']}/report").json()
+        self.assertEqual(report["content_sha256"], report_before_review["content_sha256"])
         self.assertIn("Demo Legal Supplier — NOT REAL", report["content"])
         self.assertIn("`UNREVIEWED`", report["content"])
+        self.assertNotIn("another independent source", report["content"])
         self.assertNotIn(raw_evidence, report["content"])
 
         with self.engine.connect() as connection:
@@ -1636,7 +1731,32 @@ class ApiTests(unittest.TestCase):
                 .select_from(SupplierIdentityClaimRecord)
                 .where(SupplierIdentityClaimRecord.research_run_id == run["id"])
             )
+            review_count = connection.scalar(
+                select(func.count())
+                .select_from(SupplierIdentityClaimReviewRecord)
+                .where(SupplierIdentityClaimReviewRecord.research_run_id == run["id"])
+            )
+            review_audits = connection.execute(
+                select(
+                    AuditEventRecord.correlation_id,
+                    AuditEventRecord.payload,
+                )
+                .where(AuditEventRecord.action == "IDENTITY_CLAIM_REVIEW_RECORDED")
+                .order_by(AuditEventRecord.occurred_at)
+            ).all()
         self.assertEqual(persisted_count, 1)
+        self.assertEqual(review_count, 2)
+        self.assertEqual(len(review_audits), 2)
+        self.assertEqual(
+            review_audits[0].correlation_id,
+            "8c78777c-f236-41dc-b077-32914f00133c",
+        )
+        self.assertEqual(
+            [item.payload["resulting_version"] for item in review_audits],
+            [1, 2],
+        )
+        self.assertNotIn("rationale", json.dumps([item.payload for item in review_audits]))
+        self.assertNotIn(raw_evidence, json.dumps([item.payload for item in review_audits]))
 
     def test_scenario_specific_fx_is_persisted_with_exact_lineage(self) -> None:
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))

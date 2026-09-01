@@ -123,9 +123,12 @@ Phase 5.
 
 Immutable offer-scoped supplier identity claims now retain a claimed legal name,
 jurisdiction, registration number, and dedicated evidence inside the result snapshot.
-They remain explicitly unreviewed, do not affect ranking/due diligence, and do not form
-a supplier profile. Append-only claim review, cross-run entity resolution, verified
-profiles, capacity, and certification evidence remain Phase 3/5 work.
+They begin explicitly unreviewed, do not affect ranking/due diligence, and do not form
+a supplier profile. A tenant-scoped append-only review ledger now records versioned
+evidence-supported, evidence-contradicted, or inconclusive decisions without rewriting
+the report or claiming verified identity. Named reviewer identity/roles, review queues,
+cross-run entity resolution, verified profiles, capacity, and certification evidence
+remain Phase 3/5 work.
 
 ## Phase 3 — First approved real providers
 

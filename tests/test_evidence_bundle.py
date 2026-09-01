@@ -118,6 +118,7 @@ class EvidenceBundleTests(unittest.TestCase):
 
     def test_identity_claim_requires_exact_bounded_public_fields(self) -> None:
         invalid_values = (
+            ("claim_id", "claim/ambiguous", "claim_id must start"),
             ("claimed_legal_name", None, "must be a string"),
             ("jurisdiction", "   ", "cannot be empty"),
             ("registration_number", "x" * 101, "at most 100"),

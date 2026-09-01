@@ -67,6 +67,8 @@ from trade_agent.domain.workflow import (
     OpportunityStatus,
     ResearchReviewDecision,
     ResearchRunStatus,
+    SupplierIdentityReviewDecision,
+    SupplierIdentityReviewStatus,
     VersionConflictError,
     ensure_manual_research_transition,
     ensure_opportunity_transition,
@@ -89,6 +91,7 @@ from trade_agent.infrastructure.database import (
     ResearchValidationRecord,
     SourceRecord,
     SupplierIdentityClaimRecord,
+    SupplierIdentityClaimReviewRecord,
     SupplierOfferRankingRecord,
     ValidationIssueRecord,
 )
@@ -1999,6 +2002,20 @@ class TradeRepository:
                     EvidenceRecord.research_run_id == run_id,
                 )
             ).all()
+            review_rows = session.scalars(
+                select(SupplierIdentityClaimReviewRecord)
+                .where(
+                    SupplierIdentityClaimReviewRecord.research_run_id == run_id,
+                    SupplierIdentityClaimReviewRecord.tenant_id == tenant_id,
+                )
+                .order_by(
+                    SupplierIdentityClaimReviewRecord.supplier_identity_claim_id,
+                    SupplierIdentityClaimReviewRecord.resulting_version,
+                )
+            )
+            latest_review_by_claim_id = {
+                review.supplier_identity_claim_id: review for review in review_rows
+            }
             points = tuple(
                 SupplierIdentityClaimPoint(
                     claim_id=claim.external_claim_id,
@@ -2013,11 +2030,160 @@ class TradeRepository:
                     evidence_classification=evidence.classification,
                     evidence_confidence=evidence.confidence,
                     transformation=evidence.transformation,
+                    review_status=(
+                        SupplierIdentityReviewStatus(
+                            latest_review_by_claim_id[claim.id].resulting_status
+                        )
+                        if claim.id in latest_review_by_claim_id
+                        else SupplierIdentityReviewStatus.UNREVIEWED
+                    ),
+                    review_version=(
+                        latest_review_by_claim_id[claim.id].resulting_version
+                        if claim.id in latest_review_by_claim_id
+                        else 0
+                    ),
+                    latest_reviewed_at=(
+                        _database_utc(latest_review_by_claim_id[claim.id].created_at)
+                        if claim.id in latest_review_by_claim_id
+                        else None
+                    ),
                 )
                 for claim, observation, evidence, source in rows
             )
             summary = summarize_supplier_identity_claims(points)
             return {"research_run_id": run_id, **asdict(summary)}
+
+    def record_supplier_identity_claim_review(
+        self,
+        *,
+        run_id: str,
+        claim_id: str,
+        decision: SupplierIdentityReviewDecision,
+        rationale: str,
+        expected_version: int,
+        correlation_id: str,
+        tenant_id: str,
+        actor_id: str,
+    ) -> dict[str, Any]:
+        normalized_rationale = rationale.strip()
+        if not 3 <= len(normalized_rationale) <= 2_000:
+            raise PublicInputError("review rationale must contain 3 to 2000 characters")
+        with self._session_factory.begin() as session:
+            claim = session.scalar(
+                select(SupplierIdentityClaimRecord)
+                .join(
+                    ResearchRunRecord,
+                    ResearchRunRecord.id == SupplierIdentityClaimRecord.research_run_id,
+                )
+                .where(
+                    SupplierIdentityClaimRecord.research_run_id == run_id,
+                    SupplierIdentityClaimRecord.external_claim_id == claim_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
+            if claim is None:
+                raise KeyError("supplier identity claim not found")
+            latest = session.scalar(
+                select(SupplierIdentityClaimReviewRecord)
+                .where(
+                    SupplierIdentityClaimReviewRecord.tenant_id == tenant_id,
+                    SupplierIdentityClaimReviewRecord.research_run_id == run_id,
+                    SupplierIdentityClaimReviewRecord.supplier_identity_claim_id
+                    == claim.id,
+                )
+                .order_by(SupplierIdentityClaimReviewRecord.resulting_version.desc())
+                .limit(1)
+            )
+            current_version = latest.resulting_version if latest is not None else 0
+            if current_version != expected_version:
+                raise VersionConflictError(
+                    f"expected version {expected_version}, current version {current_version}"
+                )
+            previous_status = (
+                SupplierIdentityReviewStatus(latest.resulting_status)
+                if latest is not None
+                else SupplierIdentityReviewStatus.UNREVIEWED
+            )
+            resulting_status = SupplierIdentityReviewStatus(decision.value)
+            review = SupplierIdentityClaimReviewRecord(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                research_run_id=run_id,
+                supplier_identity_claim_id=claim.id,
+                reviewer_actor_id=actor_id,
+                decision=decision.value,
+                rationale=normalized_rationale,
+                previous_status=previous_status.value,
+                resulting_status=resulting_status.value,
+                previous_version=current_version,
+                resulting_version=current_version + 1,
+                created_at=datetime.now(UTC),
+            )
+            session.add(review)
+            self._audit(
+                session,
+                correlation_id,
+                tenant_id,
+                actor_id,
+                "SupplierIdentityClaim",
+                claim.id,
+                "IDENTITY_CLAIM_REVIEW_RECORDED",
+                {
+                    "research_run_id": run_id,
+                    "claim_id": claim.external_claim_id,
+                    "decision": decision.value,
+                    "previous_version": current_version,
+                    "resulting_version": current_version + 1,
+                },
+            )
+            response = self._supplier_identity_review_view(
+                review,
+                external_claim_id=claim.external_claim_id,
+            )
+        return response
+
+    def get_supplier_identity_claim_reviews(
+        self,
+        *,
+        run_id: str,
+        claim_id: str,
+        tenant_id: str,
+    ) -> list[dict[str, Any]]:
+        with self._session_factory() as session:
+            claim = session.scalar(
+                select(SupplierIdentityClaimRecord)
+                .join(
+                    ResearchRunRecord,
+                    ResearchRunRecord.id == SupplierIdentityClaimRecord.research_run_id,
+                )
+                .where(
+                    SupplierIdentityClaimRecord.research_run_id == run_id,
+                    SupplierIdentityClaimRecord.external_claim_id == claim_id,
+                    ResearchRunRecord.tenant_id == tenant_id,
+                )
+            )
+            if claim is None:
+                raise KeyError("supplier identity claim not found")
+            reviews = list(
+                session.scalars(
+                    select(SupplierIdentityClaimReviewRecord)
+                    .where(
+                        SupplierIdentityClaimReviewRecord.tenant_id == tenant_id,
+                        SupplierIdentityClaimReviewRecord.research_run_id == run_id,
+                        SupplierIdentityClaimReviewRecord.supplier_identity_claim_id
+                        == claim.id,
+                    )
+                    .order_by(SupplierIdentityClaimReviewRecord.resulting_version)
+                )
+            )
+            return [
+                self._supplier_identity_review_view(
+                    review,
+                    external_claim_id=claim.external_claim_id,
+                )
+                for review in reviews
+            ]
 
     def get_executive_summary(
         self,
@@ -2108,6 +2274,26 @@ class TradeRepository:
                     declared_unknown_count=gap_summary.declared_unknown_count,
                 )
             )
+
+    @staticmethod
+    def _supplier_identity_review_view(
+        review: SupplierIdentityClaimReviewRecord,
+        *,
+        external_claim_id: str,
+    ) -> dict[str, Any]:
+        return {
+            "id": review.id,
+            "research_run_id": review.research_run_id,
+            "claim_id": external_claim_id,
+            "reviewer_actor_id": review.reviewer_actor_id,
+            "decision": review.decision,
+            "rationale": review.rationale,
+            "previous_status": review.previous_status,
+            "resulting_status": review.resulting_status,
+            "previous_version": review.previous_version,
+            "resulting_version": review.resulting_version,
+            "created_at": _database_utc(review.created_at),
+        }
 
     @staticmethod
     def _executive_supplier_candidate(

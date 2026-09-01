@@ -261,10 +261,13 @@ requires one upstream attempt plus fifteen cache hits. API tests prove authentic
 passive reads, disabled state, stable counters, and failure status.
 
 Supplier-identity claim tests enforce bounded required legal-name/jurisdiction/
-registration fields, unique claim IDs, exact observation references, deterministic
-ordering, and explicit exclusion when an attached duplicate observation is removed.
+registration fields, URL-safe technical claim IDs, unique claim IDs, exact observation
+references, deterministic ordering, and explicit exclusion when an attached duplicate
+observation is removed.
 End-to-end API tests prove atomic persistence, tenant isolation, evidence catalog/freshness
-usage, raw-body omission, escaped report output, and fixed `UNREVIEWED` status. Ranking
-and supplier coverage remain unchanged and `UNVERIFIED`. PostgreSQL integration covers
-migration `20260901_0013`, native foreign keys/constraints, projection reads, and full
-rollback/re-upgrade.
+usage, raw-body omission, escaped report output, and initial `UNREVIEWED` status. Review
+tests prove append-only ordered history, allowed non-verification states, actor/correlation
+audit attribution without rationale, stale-version conflict, cross-tenant `404`, dynamic
+latest-state projection, report hash immutability, and unchanged ranking/due diligence.
+PostgreSQL integration covers migration `20260901_0014`, native constraints, row-lock
+version behavior, projection reads, and full rollback/re-upgrade.

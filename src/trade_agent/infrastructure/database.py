@@ -372,6 +372,74 @@ class SupplierIdentityClaimRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class SupplierIdentityClaimReviewRecord(Base):
+    __tablename__ = "supplier_identity_claim_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "decision IN "
+            "('EVIDENCE_SUPPORTED', 'EVIDENCE_CONTRADICTED', 'INCONCLUSIVE')",
+            name="ck_supplier_identity_reviews_decision",
+        ),
+        CheckConstraint(
+            "previous_status IN "
+            "('UNREVIEWED', 'EVIDENCE_SUPPORTED', 'EVIDENCE_CONTRADICTED', "
+            "'INCONCLUSIVE')",
+            name="ck_supplier_identity_reviews_previous_status",
+        ),
+        CheckConstraint(
+            "resulting_status IN "
+            "('EVIDENCE_SUPPORTED', 'EVIDENCE_CONTRADICTED', 'INCONCLUSIVE')",
+            name="ck_supplier_identity_reviews_resulting_status",
+        ),
+        CheckConstraint(
+            "decision = resulting_status",
+            name="ck_supplier_identity_reviews_decision_status",
+        ),
+        CheckConstraint(
+            "resulting_version = previous_version + 1",
+            name="ck_supplier_identity_reviews_version_increment",
+        ),
+        CheckConstraint(
+            "previous_version >= 0",
+            name="ck_supplier_identity_reviews_previous_version_nonnegative",
+        ),
+        CheckConstraint(
+            "(previous_version = 0 AND previous_status = 'UNREVIEWED') OR "
+            "(previous_version > 0 AND previous_status <> 'UNREVIEWED')",
+            name="ck_supplier_identity_reviews_initial_status",
+        ),
+        UniqueConstraint(
+            "supplier_identity_claim_id",
+            "resulting_version",
+            name="uq_supplier_identity_reviews_claim_version",
+        ),
+        Index(
+            "ix_supplier_identity_reviews_tenant_run_claim_version",
+            "tenant_id",
+            "research_run_id",
+            "supplier_identity_claim_id",
+            "resulting_version",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    research_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("research_runs.id", ondelete="CASCADE")
+    )
+    supplier_identity_claim_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("supplier_identity_claims.id", ondelete="CASCADE")
+    )
+    reviewer_actor_id: Mapped[str] = mapped_column(String(100))
+    decision: Mapped[str] = mapped_column(String(30))
+    rationale: Mapped[str] = mapped_column(Text)
+    previous_status: Mapped[str] = mapped_column(String(30))
+    resulting_status: Mapped[str] = mapped_column(String(30))
+    previous_version: Mapped[int] = mapped_column(Integer)
+    resulting_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class FXRateRecord(Base):
     __tablename__ = "fx_rates"
     __table_args__ = (

@@ -4,9 +4,11 @@ import os
 import unittest
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, insert, select
+from sqlalchemy.exc import IntegrityError
 
 from trade_agent.api.app import create_app
 from trade_agent.config import Settings
@@ -17,6 +19,7 @@ from trade_agent.infrastructure.database import (
     OpportunityRecord,
     ResearchReviewRecord,
     SupplierIdentityClaimRecord,
+    SupplierIdentityClaimReviewRecord,
 )
 
 POSTGRES_URL = os.getenv("TRADE_AGENT_TEST_POSTGRES_URL")
@@ -52,7 +55,7 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["schema_mode"], "alembic")
-        self.assertEqual(readiness.json()["schema_revision"], "20260901_0013")
+        self.assertEqual(readiness.json()["schema_revision"], "20260901_0014")
 
         bundle = json.loads(Path("examples/demo_case.json").read_text(encoding="utf-8"))
         bundle["supplier_identity_claims"] = [
@@ -381,7 +384,61 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
             "POSTGRES-FIXTURE-001",
         )
         self.assertEqual(identity_claims.json()["claims"][0]["review_status"], "UNREVIEWED")
+        self.assertEqual(identity_claims.json()["claims"][0]["review_version"], 0)
         self.assertNotIn("raw_value", json.dumps(identity_claims.json()))
+
+        identity_review_path = (
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims/"
+            "postgres-identity-claim-1/reviews"
+        )
+        identity_review = self.client.post(
+            identity_review_path,
+            json={
+                "decision": "EVIDENCE_SUPPORTED",
+                "rationale": "PostgreSQL fixture evidence supports this scoped claim",
+                "expected_version": 0,
+            },
+        )
+        stale_identity_review = self.client.post(
+            identity_review_path,
+            json={
+                "decision": "INCONCLUSIVE",
+                "rationale": "The stale PostgreSQL writer must be rejected",
+                "expected_version": 0,
+            },
+        )
+        identity_review_history = self.client.get(identity_review_path)
+        reviewed_identity_claims = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/supplier-identity-claims"
+        )
+        report_after_identity_review = self.client.get(
+            f"/api/v1/research-runs/{run['id']}/report"
+        )
+
+        self.assertEqual(identity_review.status_code, 201)
+        self.assertEqual(identity_review.json()["previous_status"], "UNREVIEWED")
+        self.assertEqual(identity_review.json()["resulting_status"], "EVIDENCE_SUPPORTED")
+        self.assertEqual(identity_review.json()["resulting_version"], 1)
+        self.assertEqual(stale_identity_review.status_code, 409)
+        self.assertEqual(stale_identity_review.json()["code"], "VERSION_CONFLICT")
+        self.assertEqual(identity_review_history.status_code, 200)
+        self.assertEqual(len(identity_review_history.json()), 1)
+        self.assertEqual(reviewed_identity_claims.status_code, 200)
+        self.assertEqual(
+            reviewed_identity_claims.json()["status"],
+            "REVIEWED_IDENTITY_CLAIMS",
+        )
+        self.assertEqual(
+            reviewed_identity_claims.json()["claims"][0]["review_status"],
+            "EVIDENCE_SUPPORTED",
+        )
+        self.assertEqual(reviewed_identity_claims.json()["claims"][0]["review_version"], 1)
+        self.assertEqual(report_after_identity_review.status_code, 200)
+        self.assertEqual(
+            report_after_identity_review.json()["content_sha256"],
+            completed["report_sha256"],
+        )
+        self.assertIn("`UNREVIEWED`", report_after_identity_review.json()["content"])
 
         additional_ids = {
             self.client.post(
@@ -462,6 +519,16 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
                 .select_from(SupplierIdentityClaimRecord)
                 .where(SupplierIdentityClaimRecord.research_run_id == run["id"])
             )
+            identity_claim_database_id = connection.scalar(
+                select(SupplierIdentityClaimRecord.id).where(
+                    SupplierIdentityClaimRecord.research_run_id == run["id"]
+                )
+            )
+            identity_claim_review_count = connection.scalar(
+                select(func.count())
+                .select_from(SupplierIdentityClaimReviewRecord)
+                .where(SupplierIdentityClaimReviewRecord.research_run_id == run["id"])
+            )
 
         self.assertEqual(tenant_id, "postgres-ci")
         self.assertIsInstance(total, Decimal)
@@ -470,6 +537,26 @@ class PostgreSQLIntegrationTests(unittest.TestCase):
         self.assertEqual(idempotency_count, 1)
         self.assertEqual(review_count, 1)
         self.assertEqual(identity_claim_count, 1)
+        self.assertEqual(identity_claim_review_count, 1)
+        self.assertIsNotNone(identity_claim_database_id)
+
+        with self.assertRaises(IntegrityError), self.engine.begin() as connection:
+            connection.execute(
+                insert(SupplierIdentityClaimReviewRecord).values(
+                    id=str(uuid4()),
+                    tenant_id="postgres-ci",
+                    research_run_id=run["id"],
+                    supplier_identity_claim_id=identity_claim_database_id,
+                    reviewer_actor_id="postgres-native-constraint-test",
+                    decision="VERIFIED",
+                    rationale="This forbidden state must fail at the database boundary",
+                    previous_status="UNREVIEWED",
+                    resulting_status="VERIFIED",
+                    previous_version=0,
+                    resulting_version=1,
+                    created_at=func.now(),
+                )
+            )
 
 
 if __name__ == "__main__":

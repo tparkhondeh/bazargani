@@ -90,9 +90,11 @@ unknown or requires human verification?
   field coverage without merging anonymous offers or claiming identity, source
   independence, certifications, capacity, or due-diligence verification.
 - A supplier legal-identity claim is optional, immutable, tied to one exact retained
-  offer and its own evidence, and remains `UNREVIEWED`; its legal name, jurisdiction,
+  offer and its own evidence, and begins `UNREVIEWED`; its legal name, jurisdiction,
   or registration number never overwrites the quoted supplier name, changes ranking,
-  creates a supplier profile, or proves due diligence.
+  creates a supplier profile, or proves due diligence. Separate append-only reviews
+  may describe the evidence as supported, contradicted, or inconclusive, but never
+  label the identity verified or mutate the original report snapshot.
 - Assumptions and unknowns remain distinct, bounded, tenant-scoped run snapshots and
   are visible in the current decision without permitting historical mutation.
 - Generated report text cannot let untrusted product/source/note fields inject HTML,

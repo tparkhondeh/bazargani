@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+
+SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+_SAFE_EXTERNAL_ID = re.compile(SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN)
 
 
 class EvidenceClass(StrEnum):
@@ -217,6 +221,11 @@ class SupplierIdentityClaim:
             normalized[field_name] = text
         for field_name, value in normalized.items():
             object.__setattr__(self, field_name, value)
+        if _SAFE_EXTERNAL_ID.fullmatch(self.claim_id) is None:
+            raise ValueError(
+                "claim_id must start with an ASCII letter or digit and contain only "
+                "ASCII letters, digits, '.', '_', ':', or '-'"
+            )
 
 
 @dataclass(frozen=True, slots=True)

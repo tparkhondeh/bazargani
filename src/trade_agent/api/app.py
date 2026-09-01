@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, Query, Request, Security
+from fastapi import Depends, FastAPI, Header, Path, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
@@ -59,6 +59,8 @@ from trade_agent.api.schemas import (
     ResearchValidationView,
     ScenarioFXRateView,
     SupplierCoverageSummaryView,
+    SupplierIdentityClaimReviewSubmit,
+    SupplierIdentityClaimReviewView,
     SupplierIdentityClaimSummaryView,
     TradeCostCoverageView,
     ValidationErrorDetail,
@@ -73,6 +75,7 @@ from trade_agent.application.reference_rates import (
 )
 from trade_agent.config import Settings, get_settings
 from trade_agent.domain.errors import PublicInputError
+from trade_agent.domain.models import SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN
 from trade_agent.domain.workflow import (
     IdempotencyConflictError,
     InvalidTransitionError,
@@ -802,6 +805,58 @@ def create_app(
     ) -> Any:
         return repository.get_supplier_identity_claims(
             run_id,
+            tenant_id=authenticated.tenant_id,
+        )
+
+    @app.post(
+        "/api/v1/research-runs/{run_id}/supplier-identity-claims/{claim_id}/reviews",
+        response_model=SupplierIdentityClaimReviewView,
+        status_code=201,
+    )
+    def record_supplier_identity_claim_review(
+        run_id: str,
+        claim_id: Annotated[
+            str,
+            Path(
+                min_length=1,
+                max_length=200,
+                pattern=SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN,
+            ),
+        ],
+        payload: SupplierIdentityClaimReviewSubmit,
+        correlation_id: Annotated[str, Depends(correlation)],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.record_supplier_identity_claim_review(
+            run_id=run_id,
+            claim_id=claim_id,
+            decision=payload.decision,
+            rationale=payload.rationale,
+            expected_version=payload.expected_version,
+            correlation_id=correlation_id,
+            tenant_id=authenticated.tenant_id,
+            actor_id=authenticated.actor_id,
+        )
+
+    @app.get(
+        "/api/v1/research-runs/{run_id}/supplier-identity-claims/{claim_id}/reviews",
+        response_model=list[SupplierIdentityClaimReviewView],
+    )
+    def get_supplier_identity_claim_reviews(
+        run_id: str,
+        claim_id: Annotated[
+            str,
+            Path(
+                min_length=1,
+                max_length=200,
+                pattern=SAFE_SUPPLIER_IDENTITY_CLAIM_ID_PATTERN,
+            ),
+        ],
+        authenticated: Annotated[AuthenticatedPrincipal, Depends(principal)],
+    ) -> Any:
+        return repository.get_supplier_identity_claim_reviews(
+            run_id=run_id,
+            claim_id=claim_id,
             tenant_id=authenticated.tenant_id,
         )
 

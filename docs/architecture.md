@@ -205,9 +205,17 @@ Supplier identity claims enter only with the immutable evidence bundle. Each cla
 references one exact retained price observation and one deduplicated evidence record;
 claims referring to an observation removed by deterministic deduplication are excluded
 with an explicit validation error rather than being reassigned. A shared pure projection
-orders claims and labels each `UNREVIEWED` for both API and report. It never mutates the
-offer's supplier name, ranking, or due-diligence status and does not create a cross-run
-supplier profile.
+orders claims and initially labels each `UNREVIEWED` for both API and report. It never
+mutates the offer's supplier name, ranking, or due-diligence status and does not create
+a cross-run supplier profile.
+
+Post-result identity-claim review is a separate append-only ledger. A tenant-scoped
+repository query locks the immutable claim row, compares `expected_version` to the
+latest ledger version, appends one decision and audit event atomically, and returns a
+conflict to stale writers. Reads fold only the latest review into the live claim
+projection while retaining every prior decision. The immutable generated report is not
+rewritten, so it remains an ingestion-time `UNREVIEWED` snapshot. Review states describe
+evidence support, not verified identity.
 
 Incoterm coverage uses a shared versioned code vocabulary also consumed by validation.
 The repository projects only tenant-owned observation/evidence rows into a pure

@@ -111,10 +111,12 @@ authentication. Migration `0007` assigns pre-existing rows to the quarantined
 credentials, and back up the database before the migration.
 
 Migration `20260901_0013` creates the supplier-identity claim table and moves no legacy
-data. Back up before upgrade, run `alembic check`, verify the required revision is
-`20260901_0013`, and exercise full downgrade/re-upgrade in the release gate. Treat legal
-names and registration numbers as supplier data under the approved retention/access
-policy even though raw evidence is omitted from claim reads.
+data. Migration `20260901_0014` adds its append-only review ledger and also moves no
+legacy data. Back up before upgrade, run `alembic check`, verify the required revision
+is `20260901_0014`, and exercise full downgrade/re-upgrade in the release gate. Treat
+legal names, registration numbers, and review rationale as supplier data under the
+approved retention/access policy even though raw evidence is omitted from claim reads
+and rationale is excluded from audit payloads.
 
 Use `/health` only for process liveness and `/ready` for traffic admission. In managed
 mode, readiness returns `200` only when database connectivity works and

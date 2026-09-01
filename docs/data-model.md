@@ -87,8 +87,15 @@ one research run, exact price observation, and evidence record; the external cla
 unique within the run. Required legal name, jurisdiction, and registration number are
 stored as the source's assertion, not a normalized supplier master record. Claim
 evidence participates in the existing fingerprint, usage, freshness, and raw-body
-protection rules. The claim has no verified status column because v0.46 exposes only
-the honest `UNREVIEWED` projection; later review decisions require a separate ledger.
+protection rules. The claim has no mutable or verified status column.
+
+Migration `20260901_0014` adds append-only `supplier_identity_claim_reviews`. Each row
+records tenant/run/claim scope, credential actor fingerprint, one bounded rationale,
+the previous and resulting evidence-review states, consecutive versions, and creation
+time. The database enforces allowed non-verified decisions, status/decision agreement,
+one-version increments, initial `UNREVIEWED` semantics, and uniqueness per claim/version.
+The live claim projection folds the latest ledger row; the immutable decision report
+continues to represent the ingestion-time snapshot.
 
 The append-only audit ledger is exposed through a bounded tenant-scoped keyset query
 ordered by `(occurred_at, id)`. API views omit the redundant tenant identifier while

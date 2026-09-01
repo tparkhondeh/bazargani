@@ -12,6 +12,8 @@ from trade_agent.domain.workflow import (
     OpportunityStatus,
     ResearchReviewDecision,
     ResearchRunStatus,
+    SupplierIdentityReviewDecision,
+    SupplierIdentityReviewStatus,
 )
 
 
@@ -418,7 +420,9 @@ class SupplierIdentityClaimView(BaseModel):
     claimed_legal_name: str
     jurisdiction: str
     registration_number: str
-    review_status: Literal["UNREVIEWED"]
+    review_status: SupplierIdentityReviewStatus
+    review_version: int = Field(ge=0)
+    latest_reviewed_at: AwareDatetime | None
     source_name: str
     source_url: str
     retrieved_at: AwareDatetime
@@ -431,11 +435,32 @@ class SupplierIdentityClaimSummaryView(BaseModel):
     research_run_id: str
     status: Literal[
         "NO_SUPPLIER_IDENTITY_CLAIMS",
+        "REVIEWED_IDENTITY_CLAIMS",
         "UNREVIEWED_IDENTITY_CLAIMS",
     ]
     claim_count: int = Field(ge=0)
     claims: tuple[SupplierIdentityClaimView, ...]
     limitations: tuple[str, ...]
+
+
+class SupplierIdentityClaimReviewSubmit(BaseModel):
+    decision: SupplierIdentityReviewDecision
+    rationale: str = Field(min_length=3, max_length=2_000)
+    expected_version: int = Field(ge=0)
+
+
+class SupplierIdentityClaimReviewView(BaseModel):
+    id: str
+    research_run_id: str
+    claim_id: str
+    reviewer_actor_id: str
+    decision: SupplierIdentityReviewDecision
+    rationale: str
+    previous_status: SupplierIdentityReviewStatus
+    resulting_status: SupplierIdentityReviewStatus
+    previous_version: int = Field(ge=0)
+    resulting_version: int = Field(gt=0)
+    created_at: AwareDatetime
 
 
 class IncotermEvidenceGroupView(BaseModel):
